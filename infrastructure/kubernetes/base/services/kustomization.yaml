@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - auth-service
+  - capital-finance-svc
+  - crm-svc
+  - dms-svc
+  - executive-svc
+  - fleet-service
+  - global-mobility-svc
+  - hrm-svc
+  - insurance-risk-svc
+  - management-svc
+  - marketing-service
+  - notification-service
+  - originations-svc
+  - payment-service
+  - pricing-service
+  - rbac-service
+  - real-estate-svc
+  - rental-service
+  - sales-service
+  - security-compliance-svc
+  - subscription-service
+  - super-admin-svc
+  - technology-ip-svc
+  - user-service

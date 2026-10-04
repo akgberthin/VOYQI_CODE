@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VOYQI Mobility OS — Architecture &amp; Wireframe Set</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0A1520;
+    --grid:#12283b;
+    --panel:#0F2033;
+    --panel-alt:#142B41;
+    --line:#2A4A63;
+    --line-strong:#3F7A97;
+    --cyan:#5FD4E8;
+    --amber:#F2A93B;
+    --text:#E7EEF4;
+    --mute:#7C93A4;
+    --wf-fill:#17304A;
+    --wf-fill-2:#1D3A56;
+    --wf-border:#3A5975;
+    --ok:#5FD48B;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background-color:var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:28px 28px;
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:16px;
+    border-bottom:2px solid var(--line-strong);
+    padding-bottom:16px;margin-bottom:18px;
+  }
+  .masthead .wordmark{
+    font-family:var(--font-display);font-weight:700;
+    font-size:clamp(24px,4vw,34px);letter-spacing:0.5px;color:var(--text);
+  }
+  .masthead .wordmark span{color:var(--cyan);}
+  .masthead .tagline{
+    font-family:var(--font-mono);font-size:11px;color:var(--mute);
+    text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;
+  }
+  .masthead .doc-meta{
+    text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--mute);
+    line-height:1.7;
+  }
+  .masthead .doc-meta b{color:var(--cyan);}
+
+  /* ---------- Sheet tabs ---------- */
+  .sheet-tabs{display:flex;gap:2px;margin-bottom:22px;flex-wrap:wrap;}
+  .sheet-tab{
+    font-family:var(--font-mono);font-size:12px;letter-spacing:0.5px;
+    color:var(--mute);background:var(--panel);
+    border:1px solid var(--line);border-bottom:none;
+    padding:10px 18px 9px;cursor:pointer;
+    border-radius:6px 6px 0 0;
+    transition:color .15s, background .15s;
+  }
+  .sheet-tab b{color:var(--cyan);font-weight:600;margin-right:6px;}
+  .sheet-tab:hover{color:var(--text);}
+  .sheet-tab.active{
+    color:var(--text);background:var(--panel-alt);
+    border-color:var(--line-strong);
+    box-shadow:0 -2px 0 var(--cyan) inset;
+  }
+
+  .sheet{display:none;background:var(--panel-alt);border:1px solid var(--line-strong);
+    border-radius:0 8px 8px 8px;padding:28px clamp(14px,4vw,36px);}
+  .sheet.active{display:block;}
+
+  .sheet-heading{display:flex;justify-content:space-between;align-items:baseline;
+    flex-wrap:wrap;gap:10px;margin-bottom:6px;}
+  .sheet-heading h2{
+    font-family:var(--font-display);font-size:clamp(18px,2.6vw,24px);
+    margin:0;color:var(--text);font-weight:600;
+  }
+  .sheet-heading .rev{font-family:var(--font-mono);font-size:11px;color:var(--amber);}
+  .sheet-sub{font-family:var(--font-mono);font-size:12px;color:var(--mute);margin:0 0 26px;
+    letter-spacing:.3px;}
+
+  /* ---------- Legend ---------- */
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:26px;
+    font-family:var(--font-mono);font-size:11px;color:var(--mute);}
+  .legend .item{display:flex;align-items:center;gap:7px;}
+  .legend .swatch{width:14px;height:14px;border-radius:3px;flex:none;}
+
+  /* ================= ARCHITECTURE DIAGRAM ================= */
+  .diagram{display:flex;gap:26px;align-items:flex-start;}
+  .diagram-main{flex:1;min-width:0;}
+  .diagram-notes{width:230px;flex:none;}
+
+  .node{
+    background:var(--panel);border:1.5px solid var(--line-strong);border-radius:8px;
+    padding:14px 16px;text-align:center;position:relative;
+  }
+  .node .label{font-family:var(--font-display);font-weight:600;font-size:14px;color:var(--text);}
+  .node .port{font-family:var(--font-mono);font-size:10px;color:var(--cyan);margin-top:2px;display:block;}
+  .node .caption{font-family:var(--font-mono);font-size:10px;color:var(--mute);margin-top:6px;line-height:1.5;}
+
+  .row-client{display:flex;gap:14px;margin-bottom:0;flex-wrap:wrap;}
+  .row-client .node{flex:1;min-width:150px;}
+
+  .vline{width:2px;height:26px;background:repeating-linear-gradient(var(--cyan) 0 6px, transparent 6px 11px);margin:0 auto;}
+  .arrow-down{width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--cyan);}
+
+  .gateway-node{border-color:var(--cyan);background:var(--wf-fill);}
+  .gateway-node .label{color:var(--cyan);font-size:16px;}
+
+  .branch-wrap{position:relative;padding-top:26px;margin-top:0;}
+  .branch-wrap .stem{position:absolute;top:0;left:50%;width:2px;height:26px;
+    background:repeating-linear-gradient(var(--cyan) 0 6px, transparent 6px 11px);transform:translateX(-1px);}
+  .branch-wrap .bar{position:absolute;top:26px;left:25%;right:25%;height:2px;
+    background:repeating-linear-gradient(to right, var(--cyan) 0 6px, transparent 6px 11px);}
+  .branch-row{display:flex;gap:22px;}
+  .branch-col{flex:1;min-width:0;position:relative;padding-top:26px;}
+  .branch-col::before{content:'';position:absolute;top:0;left:50%;width:2px;height:26px;
+    background:repeating-linear-gradient(var(--cyan) 0 6px, transparent 6px 11px);transform:translateX(-1px);}
+  .branch-col::after{content:'▼';position:absolute;top:16px;left:50%;transform:translateX(-50%);
+    color:var(--cyan);font-size:9px;}
+
+  .ai-nucleus{border-color:var(--amber);background:linear-gradient(180deg,var(--wf-fill),var(--panel));}
+  .ai-nucleus .label{color:var(--amber);font-size:14px;}
+  .ai-batch{border-color:var(--cyan);background:linear-gradient(180deg,var(--wf-fill),var(--panel));margin-top:10px;}
+  .ai-batch .label{color:var(--cyan);font-size:14px;}
+  .agent-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+  .agent-chip{
+    font-family:var(--font-mono);font-size:9.5px;color:var(--text);
+    background:var(--panel-alt);border:1px solid var(--amber);border-radius:20px;
+    padding:4px 9px;letter-spacing:.3px;
+  }
+  .agent-chip.supervisor{background:var(--amber);color:#1a1204;font-weight:600;}
+  .agent-chip.batch{border-color:var(--cyan);}
+  .shared-context-note{
+    font-family:var(--font-mono);font-size:8.5px;color:var(--mute);text-align:center;
+    margin-top:10px;border-top:1px dashed var(--line-strong);padding-top:8px;letter-spacing:.3px;
+  }
+  .shared-context-note b{color:var(--text);}
+
+  .exec-layers{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+  .layer-block{border:1px dashed var(--line-strong);border-radius:6px;padding:10px;}
+  .layer-block .layer-title{font-family:var(--font-mono);font-size:9.5px;color:var(--mute);
+    text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;justify-content:space-between;}
+  .layer-block .layer-title b{color:var(--cyan);}
+  .svc-grid{display:flex;flex-wrap:wrap;gap:5px;}
+  .svc-chip{
+    font-family:var(--font-mono);font-size:9px;color:var(--text);
+    background:var(--wf-fill);border:1px solid var(--line);border-radius:4px;
+    padding:3px 7px;
+  }
+  .svc-chip .p{color:var(--cyan);}
+  .svc-chip.dev{border-color:var(--amber);color:var(--amber);}
+  .svc-chip.planned{border-style:dashed;color:var(--mute);border-color:var(--mute);}
+
+  .data-layer{margin-top:26px;position:relative;}
+  .data-layer::before{content:'';position:absolute;top:-26px;left:25%;height:26px;width:2px;
+    background:repeating-linear-gradient(var(--line-strong) 0 6px, transparent 6px 11px);}
+  .data-layer::after{content:'';position:absolute;top:-26px;left:75%;height:26px;width:2px;
+    background:repeating-linear-gradient(var(--line-strong) 0 6px, transparent 6px 11px);}
+  .data-band{border:1.5px solid var(--line-strong);border-radius:8px;background:var(--panel);
+    padding:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-around;}
+  .data-chip{flex:1;min-width:140px;text-align:center;font-family:var(--font-mono);font-size:10.5px;color:var(--text);
+    border-left:2px solid var(--cyan);padding:4px 10px;}
+  .data-chip .dt{color:var(--cyan);font-weight:600;display:block;font-size:11.5px;margin-bottom:2px;}
+  .data-chip .dd{color:var(--mute);}
+
+  .notes-box{border:1px dashed var(--line-strong);border-radius:6px;padding:14px 14px 6px;background:var(--panel);}
+  .notes-box .nt{font-family:var(--font-mono);font-size:10px;color:var(--amber);letter-spacing:1px;
+    text-transform:uppercase;margin-bottom:10px;}
+  .note-item{display:flex;gap:8px;margin-bottom:12px;font-family:var(--font-mono);font-size:10.5px;color:var(--mute);line-height:1.5;}
+  .note-item .num{color:var(--cyan);flex:none;}
+
+  /* ================= WIREFRAME PRIMITIVES ================= */
+  .wf-line{height:8px;background:var(--wf-fill-2);border-radius:3px;}
+  .wf-img{
+    background:
+      linear-gradient(135deg, transparent calc(50% - 1px), var(--wf-border) calc(50% - 1px), var(--wf-border) calc(50% + 1px), transparent calc(50% + 1px)),
+      linear-gradient(45deg, transparent calc(50% - 1px), var(--wf-border) calc(50% - 1px), var(--wf-border) calc(50% + 1px), transparent calc(50% + 1px)),
+      var(--wf-fill);
+    border:1px solid var(--wf-border);border-radius:6px;
+  }
+  .wf-avatar{width:30px;height:30px;border-radius:50%;background:var(--wf-fill-2);border:1px solid var(--wf-border);flex:none;}
+  .wf-btn{
+    font-family:var(--font-mono);font-size:9.5px;color:var(--text);
+    background:var(--wf-fill-2);border:1px solid var(--wf-border);border-radius:20px;
+    padding:6px 12px;text-align:center;white-space:nowrap;
+  }
+  .wf-btn.primary{background:var(--cyan);color:#052029;border-color:var(--cyan);font-weight:600;}
+  .aip{border:1.5px dashed var(--amber);border-radius:8px;background:rgba(242,169,59,0.07);padding:10px;}
+  .aip-h{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.5px;
+    display:flex;align-items:center;gap:6px;margin-bottom:8px;text-transform:uppercase;justify-content:space-between;}
+  .aip-h::before{content:'◆';font-size:8px;}
+  .aip-h .aip-title{display:flex;align-items:center;gap:6px;}
+  .aip-body{font-family:var(--font-body);font-size:11.5px;color:var(--text);line-height:1.5;margin-bottom:10px;}
+  /* Tier badges — the visual language for the 3-tier autonomy model.
+     See docs/AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md */
+  .tier-badge{
+    font-family:var(--font-mono);font-size:8px;font-weight:600;letter-spacing:.5px;
+    padding:2px 7px;border-radius:10px;white-space:nowrap;
+  }
+  .tier-badge.t1{background:rgba(95,212,139,0.15);color:var(--ok);border:1px solid var(--ok);}
+  .tier-badge.t2{background:rgba(242,169,59,0.12);color:var(--amber);border:1px solid var(--amber);}
+  .tier-badge.t3{background:rgba(255,107,107,0.12);color:#FF6B6B;border:1px solid #FF6B6B;}
+  /* Tier 1 card — auto-executed, no approval gate, log-only */
+  .aip-auto{border:1.5px solid var(--ok);border-radius:8px;background:rgba(95,212,139,0.06);padding:10px;}
+  .aip-auto .aip-h{color:var(--ok);}
+  .aip-auto .aip-h::before{content:'●';font-size:8px;}
+  .auto-log-line{font-family:var(--font-mono);font-size:9.5px;color:var(--mute);display:flex;
+    justify-content:space-between;align-items:center;}
+  .auto-log-line .t{color:var(--ok);}
+  .detail-tag{
+    position:absolute;top:-11px;left:14px;background:var(--cyan);color:#052029;
+    font-family:var(--font-mono);font-weight:700;font-size:10px;padding:2px 8px;border-radius:4px;
+  }
+
+  /* ---------- Phone frames (Sheet 2) ---------- */
+  .phones-row{display:flex;gap:22px;flex-wrap:wrap;justify-content:flex-start;}
+  .phone{
+    width:236px;flex:none;background:var(--panel);border:3px solid var(--wf-border);
+    border-radius:26px;padding:10px 10px 14px;position:relative;
+  }
+  .phone::before{content:'';position:absolute;top:6px;left:50%;transform:translateX(-50%);
+    width:60px;height:6px;background:var(--wf-border);border-radius:4px;}
+  .phone .screen{margin-top:16px;display:flex;flex-direction:column;gap:9px;}
+  .phone-caption{font-family:var(--font-mono);font-size:10px;color:var(--mute);margin-top:10px;line-height:1.5;text-align:center;}
+  .phone-caption b{color:var(--cyan);display:block;font-size:11px;margin-bottom:2px;letter-spacing:.5px;}
+
+  .class-card{border:1px solid var(--wf-border);border-radius:6px;padding:7px;display:flex;justify-content:space-between;
+    align-items:center;background:var(--wf-fill);}
+  .class-card .cn{font-family:var(--font-mono);font-size:9px;color:var(--text);}
+  .class-card .cp{font-family:var(--font-mono);font-size:9px;color:var(--cyan);}
+
+  .chat-bubble{max-width:78%;border-radius:10px;padding:7px 9px;font-family:var(--font-mono);}
+  .chat-bubble .wf-line{background:var(--wf-border);}
+  .chat-bubble.left{align-self:flex-start;background:var(--wf-fill);}
+  .chat-bubble.right{align-self:flex-end;background:var(--wf-fill-2);}
+
+  /* ---------- Browser frames (Sheet 3) ---------- */
+  .browser{border:1.5px solid var(--line-strong);border-radius:10px;overflow:hidden;margin-bottom:30px;position:relative;}
+  .browser-chrome{background:var(--panel);padding:9px 12px;display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid var(--line-strong);}
+  .browser-chrome .dot{width:9px;height:9px;border-radius:50%;background:var(--line);}
+  .browser-url{font-family:var(--font-mono);font-size:10.5px;color:var(--mute);background:var(--bg);
+    border-radius:5px;padding:3px 10px;margin-left:6px;flex:1;}
+  .browser-body{background:var(--panel-alt);padding:16px;display:flex;gap:16px;flex-wrap:wrap;}
+  .b-sidebar{width:170px;flex:none;display:flex;flex-direction:column;gap:9px;}
+  .b-sidebar .sitem{display:flex;align-items:center;gap:8px;}
+  .b-sidebar .sq{width:9px;height:9px;background:var(--wf-fill-2);border:1px solid var(--wf-border);flex:none;border-radius:2px;}
+  .b-sidebar .sitem.active .sq{background:var(--cyan);border-color:var(--cyan);}
+  .b-main{flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px;}
+
+  .kpi-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .kpi-card{flex:1;min-width:120px;border:1px solid var(--wf-border);border-radius:6px;padding:10px;background:var(--wf-fill);}
+  .kpi-card .kt{font-family:var(--font-mono);font-size:9px;color:var(--mute);text-transform:uppercase;letter-spacing:.5px;}
+  .kpi-card .kv{font-family:var(--font-display);font-size:19px;color:var(--cyan);font-weight:600;margin-top:4px;}
+
+  table.wf-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:10px;}
+  table.wf-table th{text-align:left;color:var(--mute);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line-strong);
+    text-transform:uppercase;letter-spacing:.5px;font-size:9px;}
+  table.wf-table td{padding:7px 8px;border-bottom:1px solid var(--line);}
+  table.wf-table .wf-line{width:80%;}
+
+  .feed-log{font-family:var(--font-mono);font-size:9.5px;color:var(--mute);border-top:1px dashed var(--line-strong);
+    padding-top:8px;margin-top:6px;display:flex;flex-direction:column;gap:5px;}
+  .feed-log .t{color:var(--cyan);}
+
+  .tab-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab-row .t{font-family:var(--font-mono);font-size:9.5px;color:var(--mute);border:1px solid var(--wf-border);
+    border-radius:5px;padding:5px 10px;}
+  .tab-row .t.on{color:var(--cyan);border-color:var(--cyan);background:var(--wf-fill);}
+
+  .browser-caption{padding:8px 16px;font-family:var(--font-mono);font-size:10px;color:var(--mute);
+    background:var(--panel);border-top:1px dashed var(--line);}
+  .browser-caption b{color:var(--amber);}
+
+  /* ---------- Title block ---------- */
+  .title-block{
+    margin-top:24px;border:1.5px solid var(--line-strong);border-radius:8px;
+    background:var(--panel);padding:14px 20px;display:flex;justify-content:space-between;
+    flex-wrap:wrap;gap:14px;font-family:var(--font-mono);font-size:10px;color:var(--mute);
+  }
+  .title-block .tb-left{display:flex;align-items:center;gap:12px;}
+  .compass{width:30px;height:30px;flex:none;}
+  .title-block .tb-cols{display:flex;gap:26px;flex-wrap:wrap;}
+  .title-block .tb-col b{display:block;color:var(--text);font-size:11px;margin-bottom:2px;}
+
+  @media (max-width:760px){
+    .diagram{flex-direction:column;}
+    .diagram-notes{width:100%;}
+    .branch-row{flex-direction:column;}
+    .branch-col::before,.branch-col::after,.branch-wrap .bar{display:none;}
+    .branch-wrap .stem{display:none;}
+    .branch-col{padding-top:0;}
+    .branch-col + .branch-col{margin-top:14px;}
+    .data-layer::before,.data-layer::after{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="masthead">
+    <div>
+      <div class="wordmark">VOY<span>QI</span> MOBILITY OS</div>
+      <div class="tagline">Your Mobility Travels With You™ — Architecture &amp; Platform Wireframe Set</div>
+    </div>
+    <div class="doc-meta">
+      DRAWING NO. <b>VOYQI-ARC-003</b><br/>
+      SCALE: <b>NTS</b> &nbsp;|&nbsp; REV: <b>E</b><br/>
+      STATUS: <b>FOR REVIEW</b>
+    </div>
+  </div>
+
+  <div class="sheet-tabs">
+    <div class="sheet-tab active" data-target="sheet-arch"><b>SHEET 01</b>SYSTEM ARCHITECTURE</div>
+    <div class="sheet-tab" data-target="sheet-app"><b>SHEET 02</b>MEMBER APP</div>
+    <div class="sheet-tab" data-target="sheet-admin"><b>SHEET 03</b>ADMIN &amp; EXECUTIVE CONSOLE</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SHEET 01 — SYSTEM ARCHITECTURE                                -->
+  <!-- ============================================================ -->
+  <section class="sheet active" id="sheet-arch">
+    <div class="sheet-heading">
+      <h2>System Architecture — AI-as-Nucleus, 26 Services / 3 Layers</h2>
+      <span class="rev">GCP · GKE + CLOUD SQL — CORRECTED FROM PRIOR AWS DRAFT</span>
+    </div>
+    <p class="sheet-sub">CLIENT → GATEWAY (8000) → { AI REALTIME (8020) + AI BATCH (8014) ∥ EXECUTION LAYERS } → DATA LAYER</p>
+
+    <div class="legend">
+      <div class="item"><div class="swatch" style="background:var(--cyan)"></div>READY / core path</div>
+      <div class="item"><div class="swatch" style="background:var(--amber)"></div>AI nucleus / active dev</div>
+      <div class="item"><div class="swatch" style="background:var(--mute);opacity:.6"></div>Planned (scoped, not built)</div>
+    </div>
+
+    <div class="diagram">
+      <div class="diagram-main">
+
+        <div class="row-client">
+          <div class="node"><span class="label">Member App</span><span class="caption">Flutter · mobile client</span></div>
+          <div class="node"><span class="label">Operator Portal</span><span class="caption">React · TanStack Start</span></div>
+          <div class="node"><span class="label">Executive Console</span><span class="caption">React · founder-level views</span></div>
+        </div>
+
+        <div class="vline"></div><div class="arrow-down"></div>
+
+        <div class="node gateway-node">
+          <span class="label">API GATEWAY</span>
+          <span class="port">PORT 8000 — SOLE CLIENT-FACING INGRESS</span>
+          <span class="caption">JWT (HttpOnly cookie) · Rate limiting · Reverse proxy to all 25 services · No service port ever called directly by a client</span>
+        </div>
+
+        <div class="branch-wrap">
+          <div class="stem"></div><div class="bar"></div>
+          <div class="branch-row">
+
+            <div class="branch-col">
+              <div class="node ai-nucleus">
+                <span class="label">AI — REALTIME</span>
+                <span class="port">PORT 8020 · GUARANTEED QoS</span>
+                <span class="caption">Supervisor · Concierge · Member Experience · Relationship Intelligence — a human is waiting in-session</span>
+                <div class="agent-grid">
+                  <span class="agent-chip supervisor">SUPERVISOR</span>
+                  <span class="agent-chip">CONCIERGE</span>
+                  <span class="agent-chip">MEMBER EXP</span>
+                  <span class="agent-chip">RELATIONSHIP INTEL</span>
+                </div>
+              </div>
+              <div class="node ai-batch">
+                <span class="label">AI — BATCH</span>
+                <span class="port">PORT 8014 · BURSTABLE QoS</span>
+                <span class="caption">Throughput-heavy / non-interactive reasoning — never competes with the realtime path for a node, a pod, or an Anthropic rate-limit budget</span>
+                <div class="agent-grid">
+                  <span class="agent-chip batch">FLEET INTEL</span>
+                  <span class="agent-chip batch">PRICING INTEL</span>
+                  <span class="agent-chip batch">REVENUE</span>
+                  <span class="agent-chip batch">RETENTION</span>
+                  <span class="agent-chip batch">SALES &amp; ORIG.</span>
+                  <span class="agent-chip batch">TALENT &amp; WORKFORCE</span>
+                  <span class="agent-chip batch">COMPLIANCE &amp; RISK</span>
+                  <span class="agent-chip batch">PORTFOLIO</span>
+                </div>
+              </div>
+              <div class="shared-context-note">
+                <b>12 agents, ONE logical service</b> — both tiers share one Postgres decision log + one Redis-backed LangGraph checkpoint store. Not 2 independent AI services (PRD §23.1).
+              </div>
+            </div>
+
+            <div class="branch-col">
+              <div class="node" style="text-align:left;">
+                <span class="label" style="display:block;text-align:center;">EXECUTION LAYERS — 25 SERVICES</span>
+                <div class="exec-layers">
+                  <div class="layer-block">
+                    <div class="layer-title">LAYER 0 — PLATFORM INFRA <b>(2)</b></div>
+                    <div class="svc-grid">
+                      <span class="svc-chip"><span class="p">8000</span> gateway</span>
+                      <span class="svc-chip"><span class="p">8001</span> auth-svc</span>
+                    </div>
+                  </div>
+                  <div class="layer-block">
+                    <div class="layer-title">LAYER 1 — CORE EXECUTION <b>(11)</b></div>
+                    <div class="svc-grid">
+                      <span class="svc-chip"><span class="p">8002</span> user</span>
+                      <span class="svc-chip"><span class="p">8003</span> subscription</span>
+                      <span class="svc-chip"><span class="p">8004</span> fleet</span>
+                      <span class="svc-chip"><span class="p">8005</span> rental</span>
+                      <span class="svc-chip"><span class="p">8006</span> payment</span>
+                      <span class="svc-chip"><span class="p">8007</span> marketing</span>
+                      <span class="svc-chip"><span class="p">8009</span> sales</span>
+                      <span class="svc-chip"><span class="p">8010</span> pricing</span>
+                      <span class="svc-chip"><span class="p">8011</span> rbac</span>
+                      <span class="svc-chip"><span class="p">8012</span> notification</span>
+                      <span class="svc-chip"><span class="p">8013</span> global-mobility</span>
+                    </div>
+                  </div>
+                  <div class="layer-block">
+                    <div class="layer-title">LAYER 2 — ADMIN-PANEL-BACKING <b>(12)</b></div>
+                    <div class="svc-grid">
+                      <span class="svc-chip dev"><span class="p">8021</span> super-admin</span>
+                      <span class="svc-chip planned"><span class="p">8022</span> crm</span>
+                      <span class="svc-chip planned"><span class="p">8023</span> dms</span>
+                      <span class="svc-chip planned"><span class="p">8024</span> originations</span>
+                      <span class="svc-chip planned"><span class="p">8025</span> executive</span>
+                      <span class="svc-chip planned"><span class="p">8026</span> management</span>
+                      <span class="svc-chip planned"><span class="p">8027</span> real-estate</span>
+                      <span class="svc-chip planned"><span class="p">8028</span> capital-fin</span>
+                      <span class="svc-chip planned"><span class="p">8029</span> insurance</span>
+                      <span class="svc-chip planned"><span class="p">8030</span> tech-ip</span>
+                      <span class="svc-chip planned"><span class="p">8031</span> security</span>
+                      <span class="svc-chip dev"><span class="p">8101</span> hrm</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="data-layer">
+          <div class="data-band">
+            <div class="data-chip"><span class="dt">CLOUD SQL — CORE</span><span class="dd">13 databases · Layer 0/1</span></div>
+            <div class="data-chip"><span class="dt">CLOUD SQL — ADMIN</span><span class="dd">12 databases · Layer 2</span></div>
+            <div class="data-chip"><span class="dt">REDIS / MEMORYSTORE</span><span class="dd">rate limits · pricing cache</span></div>
+            <div class="data-chip"><span class="dt">KAFKA (STRIMZI/GKE)</span><span class="dd">every service publishes</span></div>
+            <div class="data-chip"><span class="dt">MOSQUITTO / EMQX</span><span class="dd">MQTT+TLS · VIN = CN</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="diagram-notes">
+        <div class="notes-box">
+          <div class="nt">Margin Notes</div>
+          <div class="note-item"><span class="num">01</span>Gateway-only ingress — enforced by K8s NetworkPolicy, not convention.</div>
+          <div class="note-item"><span class="num">02</span>Database-per-service. No shared DB, no cross-service SQL join.</div>
+          <div class="note-item"><span class="num">03</span>Every request carries X-Tenant-Id. Every table is tenant-scoped.</div>
+          <div class="note-item"><span class="num">04</span>"AI proposes, human approves" — the UX rule for every AI-assisted flow.</div>
+          <div class="note-item"><span class="num">05</span>Two-layer agent discipline — every AI judgment has a deterministic fallback.</div>
+          <div class="note-item"><span class="num">06</span>JWT via HttpOnly cookie only. Never localStorage.</div>
+          <div class="note-item"><span class="num">07</span>REV D: AI split into realtime/batch node pools — fixes resource contention, deploy blast radius, rate-limit contention, session affinity. Still one service.</div>
+          <div class="note-item"><span class="num">08</span>Roster expanded 7→12 agents to close the gap between the Admin Screen Spec (which assumed CRM/Originations/Talent-CRM agents) and what was formally defined.</div>
+          <div class="note-item"><span class="num">09</span>REV E: blanket "AI proposes, human approves" replaced with 3 tiers (T1 auto / T2 approval / T3 always-human) — see Sheets 02–03 for examples and AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md. Fleet's diff is spec'd but not yet applied to the live server.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SHEET 02 — MEMBER APP WIREFRAMES                              -->
+  <!-- ============================================================ -->
+  <section class="sheet" id="sheet-app">
+    <div class="sheet-heading">
+      <h2>Member App — Portable Mobility™ Client (Flutter)</h2>
+      <span class="rev">4 OF 13 PRD §6.2 SCREENS SHOWN</span>
+    </div>
+    <p class="sheet-sub">LOW-FIDELITY STRUCTURE ONLY — NOT FINAL VISUAL DESIGN</p>
+    <div class="legend">
+      <div class="item"><span class="tier-badge t1">T1 · AUTO</span>&nbsp;executes immediately, no gate</div>
+      <div class="item"><span class="tier-badge t2">T2 · APPROVAL</span>&nbsp;waits for a click</div>
+    </div>
+
+    <div class="phones-row">
+
+      <!-- Phone A: Home -->
+      <div class="phone" style="position:relative;">
+        <span class="detail-tag">A</span>
+        <div class="screen">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="wf-avatar"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+              <div class="wf-line" style="width:70%;"></div>
+              <div class="wf-line" style="width:40%;height:6px;"></div>
+            </div>
+          </div>
+          <div class="wf-img" style="height:80px;"></div>
+          <div class="class-card"><span class="cn">EXECUTIVE CLASS · GOLD PLUS</span><span class="cp">ACTIVE</span></div>
+          <div style="display:flex;gap:6px;">
+            <div class="wf-btn" style="flex:1;">Request</div>
+            <div class="wf-btn" style="flex:1;">Pause</div>
+            <div class="wf-btn" style="flex:1;">Upgrade</div>
+          </div>
+          <div class="aip-auto">
+            <div class="aip-h"><span class="aip-title" style="font-size:9px;">Concierge</span><span class="tier-badge t1">T1 · AUTO</span></div>
+            <div class="aip-body" style="font-size:10px;">Vehicle staged at Brickell Hub — ready in 4 min.</div>
+            <div class="auto-log-line" style="font-size:8.5px;"><span class="t">✓ done</span><span>no action needed</span></div>
+          </div>
+          <div class="aip" style="margin-top:8px;">
+            <div class="aip-h"><span class="aip-title" style="font-size:9px;">Concierge</span><span class="tier-badge t2">T2 · APPROVAL</span></div>
+            <div class="aip-body" style="font-size:10px;">Reroute via premium corridor — adds $45 to this trip.</div>
+            <div style="display:flex;gap:6px;">
+              <div class="wf-btn primary" style="flex:1;font-size:9px;">Approve</div>
+              <div class="wf-btn" style="flex:1;font-size:9px;">Decline</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>Home / Dashboard</b>Routine actions auto-execute (Tier 1); cost/scope changes still ask (Tier 2)</div>
+      </div>
+
+      <!-- Phone B: Hub Network / Card -->
+      <div class="phone" style="position:relative;">
+        <span class="detail-tag">B</span>
+        <div class="screen">
+          <div class="wf-line" style="width:55%;"></div>
+          <div class="wf-img" style="height:110px;"></div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;"><div class="wf-line" style="width:50%;"></div><div class="wf-line" style="width:20%;"></div></div>
+            <div style="display:flex;justify-content:space-between;"><div class="wf-line" style="width:60%;"></div><div class="wf-line" style="width:15%;"></div></div>
+            <div style="display:flex;justify-content:space-between;"><div class="wf-line" style="width:45%;"></div><div class="wf-line" style="width:22%;"></div></div>
+          </div>
+          <div style="border:1px dashed var(--wf-border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div class="wf-line" style="width:90px;margin-bottom:6px;"></div>
+              <div class="wf-line" style="width:60px;height:6px;"></div>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--cyan);">))) NFC</div>
+          </div>
+          <div class="wf-btn primary" style="text-align:center;">Add to Wallet</div>
+        </div>
+        <div class="phone-caption"><b>Hub Network / VOYQI Card</b>Map, hub list, NFC card access</div>
+      </div>
+
+      <!-- Phone C: Class + Subscription -->
+      <div class="phone" style="position:relative;">
+        <span class="detail-tag">C</span>
+        <div class="screen">
+          <div class="wf-line" style="width:65%;"></div>
+          <div class="class-card"><span class="cn">Urban</span><span class="cp">$449/mo</span></div>
+          <div class="class-card"><span class="cn">Family</span><span class="cp">$649/mo</span></div>
+          <div class="class-card" style="border-color:var(--cyan);"><span class="cn">Executive</span><span class="cp">$859/mo</span></div>
+          <div class="class-card"><span class="cn">Adventure</span><span class="cp">$549/mo</span></div>
+          <div class="class-card"><span class="cn">Luxury</span><span class="cp">$1,499/mo</span></div>
+          <div class="wf-line" style="width:50%;margin-top:4px;"></div>
+          <div class="tab-row">
+            <div class="t on">Gold Plus</div>
+            <div class="t">Platinum +$74</div>
+            <div class="t">Exec +$249</div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>Mobility Class &amp; Subscription</b>8 classes, 3 service levels</div>
+      </div>
+
+      <!-- Phone D: AI Chat -->
+      <div class="phone" style="position:relative;">
+        <span class="detail-tag">D</span>
+        <div class="screen">
+          <div style="font-family:var(--font-mono);font-size:8.5px;color:var(--amber);text-align:center;
+            border:1px dashed var(--amber);border-radius:5px;padding:4px;">AI PROPOSES → YOU APPROVE</div>
+          <div class="chat-bubble left"><div class="wf-line" style="width:120px;margin-bottom:5px;"></div><div class="wf-line" style="width:80px;height:6px;"></div></div>
+          <div class="chat-bubble right"><div class="wf-line" style="width:90px;"></div></div>
+          <div class="chat-bubble left"><div class="wf-line" style="width:140px;margin-bottom:5px;"></div><div class="wf-line" style="width:100px;margin-bottom:5px;"></div><div class="wf-line" style="width:70px;height:6px;"></div></div>
+          <div style="flex:1;"></div>
+          <div style="display:flex;gap:6px;align-items:center;border:1px solid var(--wf-border);border-radius:20px;padding:6px 10px;">
+            <div class="wf-line" style="flex:1;height:6px;"></div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--cyan);">➤</div>
+          </div>
+        </div>
+        <div class="phone-caption"><b>AI Concierge Chat</b>Natural-language requests to the nucleus</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SHEET 03 — ADMIN & EXECUTIVE CONSOLE                          -->
+  <!-- ============================================================ -->
+  <section class="sheet" id="sheet-admin">
+    <div class="sheet-heading">
+      <h2>Admin &amp; Executive Console — Operator Portal (React)</h2>
+      <span class="rev">4 OF 17 PRIMARY PANELS SHOWN</span>
+    </div>
+    <p class="sheet-sub">EVERY PANEL BELOW IS PROVISIONED FROM THE SUPER ADMIN PANEL (SAP-003)</p>
+    <div class="legend">
+      <div class="item"><span class="tier-badge t1">T1 · AUTO</span>&nbsp;executes immediately, logged, no gate</div>
+      <div class="item"><span class="tier-badge t2">T2 · APPROVAL</span>&nbsp;queues in AI-002, waits for a click</div>
+      <div class="item"><span class="tier-badge t3">T3 · ALWAYS HUMAN</span>&nbsp;hard-blocked, needs a named accountable role</div>
+    </div>
+
+    <!-- Browser 1: Super Admin -->
+    <div class="browser" style="position:relative;">
+      <span class="detail-tag">E</span>
+      <div class="browser-chrome">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="browser-url">admin.voyqi.com/super-admin</div>
+      </div>
+      <div class="browser-body">
+        <div class="b-sidebar">
+          <div class="sitem active"><div class="sq"></div><div class="wf-line" style="width:100px;"></div></div>
+          <div class="sitem"><div class="sq"></div><div class="wf-line" style="width:80px;"></div></div>
+          <div class="sitem"><div class="sq"></div><div class="wf-line" style="width:90px;"></div></div>
+          <div class="sitem"><div class="sq"></div><div class="wf-line" style="width:70px;"></div></div>
+          <div class="sitem"><div class="sq"></div><div class="wf-line" style="width:95px;"></div></div>
+          <div class="sitem"><div class="sq"></div><div class="wf-line" style="width:60px;"></div></div>
+          <div style="font-family:var(--font-mono);font-size:8.5px;color:var(--mute);margin-top:6px;">+ 11 more panels…</div>
+        </div>
+        <div class="b-main">
+          <div class="wf-line" style="width:220px;height:11px;"></div>
+          <table class="wf-table">
+            <tr><th>Tenant</th><th>Panel</th><th>Status</th><th>Actions</th></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:40%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:40%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:40%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td></tr>
+          </table>
+          <div class="aip">
+            <div class="aip-h"><span class="aip-title">ABAC Policy Simulation</span><span class="tier-badge t1">T1 · AUTO</span></div>
+            <div class="aip-body" style="font-size:10.5px;">Propose access grant: Dealership GM → inherits Sales Manager bundle. Conflicts checked against 3 existing RBAC rules — re-simulates automatically on every edit, no approval needed to preview.</div>
+            <div style="border-top:1px dashed var(--line-strong);padding-top:8px;margin-top:4px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-family:var(--font-mono);font-size:9px;color:var(--mute);">TO APPLY:</span>
+                <span class="tier-badge t3">T3 · ALWAYS HUMAN</span>
+              </div>
+              <div class="wf-btn" style="font-size:9px;margin-bottom:6px;">Select accountable role ▾</div>
+              <div class="wf-btn primary" style="font-size:9px;opacity:0.45;">Apply Policy — locked until role selected</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="browser-caption"><b>Super Admin Panel</b> — RBAC/ABAC authoring, panel &amp; module distribution console, global directory, audit (SAP-001–007). Policy grants are Tier 3, hard-blocked until an accountable role is named — not reachable via any AI-005 threshold change.</div>
+    </div>
+
+    <!-- Browser 2: Executive Command Center -->
+    <div class="browser" style="position:relative;">
+      <span class="detail-tag">F</span>
+      <div class="browser-chrome">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="browser-url">admin.voyqi.com/executive</div>
+      </div>
+      <div class="browser-body" style="flex-direction:column;">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kt">MRR</div><div class="kv">$—</div></div>
+          <div class="kpi-card"><div class="kt">Active Members</div><div class="kv">—</div></div>
+          <div class="kpi-card"><div class="kt">Fleet Utilization</div><div class="kv">—%</div></div>
+          <div class="kpi-card"><div class="kt">Hub Count</div><div class="kv">—</div></div>
+        </div>
+        <div class="tab-row">
+          <div class="t on">Auto Group</div><div class="t">Fleet</div><div class="t">Mobility</div>
+          <div class="t">Rental</div><div class="t">Real Estate</div><div class="t">Capital</div>
+        </div>
+        <div class="wf-img" style="height:150px;"></div>
+      </div>
+      <div class="browser-caption"><b>Executive Command Center</b> — consolidated cross-subsidiary dashboards, founder-level governance</div>
+    </div>
+
+    <!-- Browser 3: Fleet Management -->
+    <div class="browser" style="position:relative;">
+      <span class="detail-tag">G</span>
+      <div class="browser-chrome">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="browser-url">admin.voyqi.com/fleet</div>
+      </div>
+      <div class="browser-body">
+        <div class="b-main" style="flex:2;">
+          <table class="wf-table">
+            <tr><th>VIN</th><th>Class</th><th>Status</th><th>Hub</th></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:60%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td><td><div class="wf-line" style="width:70%;"></div></td></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:60%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td><td><div class="wf-line" style="width:70%;"></div></td></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:60%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td><td><div class="wf-line" style="width:70%;"></div></td></tr>
+            <tr><td><div class="wf-line"></div></td><td><div class="wf-line" style="width:60%;"></div></td><td><div class="wf-line" style="width:50%;"></div></td><td><div class="wf-line" style="width:70%;"></div></td></tr>
+          </table>
+        </div>
+        <div class="b-main" style="flex:1;min-width:220px;">
+          <div class="aip-auto">
+            <div class="aip-h"><span class="aip-title">Fleet Intelligence — Staging</span><span class="tier-badge t1">TIER 1 · AUTO</span></div>
+            <div class="aip-body" style="font-size:10.5px;">Pre-staged 2 vehicles to Brickell Hub — same-region, within threshold. No approval needed.</div>
+            <div class="auto-log-line"><span class="t">✓ executed 14:03:02</span><span>logged to decision log</span></div>
+          </div>
+          <div class="aip" style="margin-top:10px;">
+            <div class="aip-h"><span class="aip-title">Fleet Intelligence — Reassignment</span><span class="tier-badge t2">TIER 2 · APPROVAL</span></div>
+            <div class="aip-body" style="font-size:10.5px;">Reassign 3 vehicles Miami → Ft. Lauderdale — cross-region, above threshold.</div>
+            <div style="display:flex;gap:6px;"><div class="wf-btn primary">Approve</div><div class="wf-btn">Override</div></div>
+          </div>
+          <div class="feed-log">
+            <div><span class="t">14:03:02</span> DFEED — fleet.staging.auto_executed</div>
+            <div><span class="t">14:02:11</span> DFEED — fleet.reassign.proposed</div>
+            <div><span class="t">14:02:14</span> DFEED — human.review.pending</div>
+            <div><span class="t">13:58:47</span> DFEED — telemetry.sync.ok</div>
+          </div>
+        </div>
+      </div>
+      <div class="browser-caption"><b>Fleet Management</b> — vehicle table + deterministic AI panel, <span style="color:var(--text);">DFEED.unshift()</span> event feed. Tier 1/2 split per <span style="color:var(--text);">tier-policy.yaml</span> — same-region staging auto-executes, cross-region reassignment still gates on approval.</div>
+    </div>
+
+    <!-- Browser 4: HRM -->
+    <div class="browser" style="position:relative;">
+      <span class="detail-tag">H</span>
+      <div class="browser-chrome">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="browser-url">admin.voyqi.com/hrm</div>
+      </div>
+      <div class="browser-body" style="flex-direction:column;">
+        <div class="tab-row">
+          <div class="t on">Academy</div><div class="t">Notices &amp; Communication</div><div class="t">Employee Directory</div>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <div class="b-main" style="min-width:220px;">
+            <div class="wf-line" style="width:150px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div class="wf-img" style="width:100px;height:70px;"></div>
+              <div class="wf-img" style="width:100px;height:70px;"></div>
+              <div class="wf-img" style="width:100px;height:70px;"></div>
+            </div>
+          </div>
+          <div class="b-main" style="flex:1;min-width:220px;">
+            <div class="aip">
+              <div class="aip-h">AI Course-Prep Assistant</div>
+              <div class="aip-body" style="font-size:10.5px;">Draft onboarding module for Dealer Center staff — pulls from CMS content library.</div>
+              <div class="wf-btn primary">Generate Draft</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="browser-caption"><b>HRM — AI-Native Talent CRM</b> — Academy (HRM-006) + Notices (HRM-008) active dev · Anthropic Messages API wiring is the open item</div>
+    </div>
+
+  </section>
+
+  <div class="title-block">
+    <div class="tb-left">
+      <svg class="compass" viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="18" stroke="#3F7A97" stroke-width="1.5"/>
+        <path d="M20 4 L23 20 L20 36 L17 20 Z" fill="#5FD4E8" opacity="0.85"/>
+        <text x="20" y="10" fill="#7C93A4" font-size="6" text-anchor="middle" font-family="IBM Plex Mono">N</text>
+      </svg>
+      <div>VOYQI HOLDINGS INC.<br/>Delaware C-Corp</div>
+    </div>
+    <div class="tb-cols">
+      <div class="tb-col"><b>DRAWING</b>Architecture + Wireframe Set</div>
+      <div class="tb-col"><b>SHEETS</b>01 – 03</div>
+      <div class="tb-col"><b>CLOUD</b>GCP · GKE + Cloud SQL</div>
+      <div class="tb-col"><b>SERVICES</b>26 across 3 layers</div>
+      <div class="tb-col"><b>REV E</b>3-tier autonomy model — T1 auto / T2 approval / T3 always-human</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.sheet-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.sheet-tab').forEach(function(t){t.classList.remove('active');});
+      document.querySelectorAll('.sheet').forEach(function(s){s.classList.remove('active');});
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.target).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

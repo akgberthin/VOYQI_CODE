@@ -1,0 +1,43 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.tfvars.local
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+
+# Node (frontend)
+node_modules/
+dist/
+.output/
+.vinxi/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

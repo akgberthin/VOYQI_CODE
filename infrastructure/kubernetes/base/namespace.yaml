@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: voyqi
+  labels:
+    app.kubernetes.io/part-of: voyqi-mobility-os
+---
+# Kubernetes Service Accounts bound to GCP Service Accounts via Workload
+# Identity (see terraform/modules/iam). One KSA per architecture layer.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-ksa
+  namespace: voyqi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: core-svc-ksa
+  namespace: voyqi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-orch-ksa
+  namespace: voyqi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-svc-ksa
+  namespace: voyqi

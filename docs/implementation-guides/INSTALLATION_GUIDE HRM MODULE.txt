@@ -1,0 +1,423 @@
+# VOYQI Mobility OS — Installation Guide
+
+This guide is fully self-contained: It covers three installation paths, in order of speed:
+
+1. **Docker Compose** (fastest — full platform, one command)
+2. **Manual local development** (single service, for active development)
+3. **Kubernetes / production** (GKE, pointers only — see `infra/k8s`)
+
+It also covers database migrations, AI orchestration configuration, running
+the test suites, verifying the install, and troubleshooting the specific
+failure modes this platform has actually hit before.
+
+---
+
+## 1. Architecture at a glance
+
+VOYQI Mobility OS is 14 independently-deployable FastAPI microservices, each
+with its own Postgres database (no shared databases between services), wired
+together by a Kafka event bus. One service — `ai-orchestration-svc` — is the
+AI nucleus: every other service publishes domain events to Kafka, and
+`ai-orchestration-svc` consumes them, runs the relevant agent, and calls back
+into the originating service's REST API to act.
+
+| Service | Port | Purpose |
+|---|---|---|
+| `subscription-svc` | 8003 | Mobility class subscriptions, GU loyalty economy |
+| `fleet-svc` | 8004 | Vehicle fleet, telematics, lifecycle |
+| `rental-svc` | 8005 | Short-term rental bookings |
+| `hub-svc` | 8006 | Hub network, card access control |
+| `marketing-svc` | 8007 | Campaigns, content studio |
+| `dms-svc` | 8008 | Dealer Center — inventory, deal desk, trade appraisal |
+| `rbac-svc` | 8011 | Roles, permissions, ABAC policies |
+| `identity-svc` | 8014 | Identity, auth |
+| `platform-config-svc` | 8015 | Super Admin Panel config (theming, payment gateways, SEO) |
+| `cms-svc` | 8016 | Website builder, media library |
+| `ai-orchestration-svc` | 8020 | **The AI nucleus** — every agent, every decision log |
+| `crm-svc` | 8021 | Sales CRM, lead capture |
+| `org-svc` | 8022 | Case decisioning, funding matching |
+| `hrm-svc` | 8023 | HR core, payroll, benefits, recruiting, performance, academy, cases, notices |
+
+Every service follows the same internal pattern: FastAPI + async SQLAlchemy +
+Alembic migrations + `pydantic-settings` config with a per-service environment
+variable prefix (e.g. `HRM_`, `AI_ORCH_`) + Kafka producer/consumer via
+`aiokafka` + pytest with `asyncio_mode = auto`.
+
+---
+
+## 2. Prerequisites
+
+**For the Docker Compose path (recommended for a first install):**
+- Docker and Docker Compose v2 (`docker compose version` should work)
+- ~4 GB RAM free for Kafka + 14 Postgres instances + 14 service containers
+
+**For the manual local-development path (per service):**
+- Python 3.12
+- `pip` with `--break-system-packages` if your Python is externally managed
+- SQLite is enough for local dev (no separate DB server needed) — each
+  service defaults to `sqlite+aiosqlite:///./<service>.db` when no
+  `DATABASE_URL` override is set
+- A running Kafka broker if you want cross-service events to actually fire;
+  every service degrades gracefully without one (publish calls are
+  fire-and-forget and swallow connection errors), so you can run a single
+  service in total isolation for API-level work
+
+**For AI-driven capabilities specifically:**
+- An Anthropic API key, only if you want the live-Claude reasoning path.
+  **Every agent has a deterministic fallback** that runs identically without
+  a key configured — the platform is fully functional, just not
+  LLM-reasoned, with no key set. This is the actual current state of most
+  local dev environments for this project.
+
+**For the Kubernetes path:**
+- A GKE cluster (or any Kubernetes 1.28+ cluster), `kubectl`, `kustomize`
+- Cloud SQL instances (or any Postgres reachable from the cluster) per service
+- A Kafka cluster — this platform is built against Strimzi-managed Kafka on
+  GKE
+
+---
+
+## 3. Path A — Docker Compose (fastest, full platform)
+
+The repo ships a working Compose file at
+`infra/docker-compose.rbac-and-ai-orchestration.yml`. Despite the filename
+(a holdover from when it covered two services), it now brings up **all 14
+services**, their databases, and Kafka in one command.
+
+```bash
+cd voyqi-platform
+docker compose -f infra/docker-compose.rbac-and-ai-orchestration.yml up --build
+```
+
+This will:
+- Start a single-node KRaft-mode Kafka broker on port 9092
+- Start 14 Postgres 16 containers, one database per service, with dev
+  passwords (`devpassword` by default — override per service, see below)
+- Build and start all 14 FastAPI services on their assigned ports
+- Auto-create every table on first boot (each service's `lifespan` handler
+  calls `init_models()`, which runs `Base.metadata.create_all` — no manual
+  migration step is required to get a working database, though Alembic
+  migrations are still the correct path for schema changes later, see §5)
+
+**Override database passwords** (all default to `devpassword`, fine for
+local dev, not for anything else) by exporting environment variables before
+running Compose, e.g.:
+
+```bash
+export HRM_DB_PASSWORD=$(openssl rand -hex 16)
+export AI_ORCH_DB_PASSWORD=$(openssl rand -hex 16)
+# ...one per service, following the pattern <SERVICE>_DB_PASSWORD
+```
+
+**Enable live-Claude reasoning** by exporting `ANTHROPIC_API_KEY` before
+bringing the stack up — `ai-orchestration-svc` picks it up automatically:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+docker compose -f infra/docker-compose.rbac-and-ai-orchestration.yml up --build
+```
+
+Without it, every agent runs its deterministic fallback path — this is a
+supported, tested, first-class mode, not a degraded one.
+
+**Bring it down** (add `-v` to also drop the Postgres/Kafka volumes and
+start clean next time):
+
+```bash
+docker compose -f infra/docker-compose.rbac-and-ai-orchestration.yml down
+```
+
+---
+
+## 4. Path B — Manual local development (single service)
+
+Use this when you're actively developing one service and don't want to
+rebuild containers on every change. Every service follows this identical
+pattern — the example below is `hrm-svc`; substitute the service directory
+and env prefix for any other.
+
+```bash
+cd voyqi-platform/services/hrm-svc
+
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
+pip install -r requirements.txt --break-system-packages   # omit the flag on a normal venv
+
+uvicorn src.main:app --reload --port 8023
+```
+
+That's it — with no `HRM_DATABASE_URL` set, it defaults to a local SQLite
+file (`hrm.db`) in the service directory and creates all tables on startup.
+Visit `http://localhost:8023/docs` for the interactive OpenAPI explorer.
+
+**To point it at Postgres instead of SQLite**, set the prefixed env var
+before starting:
+
+```bash
+export HRM_DATABASE_URL="postgresql+asyncpg://hrm_svc:devpassword@localhost:5432/hrm"
+```
+
+**To wire it to a real Kafka broker** (otherwise publish calls no-op
+silently, which is fine for isolated API testing):
+
+```bash
+export HRM_KAFKA_BOOTSTRAP_SERVERS="localhost:9092"
+```
+
+**To let `hrm-svc` actually reach the AI nucleus** for AI-first capabilities
+(benefits recommendations, feedback drafts, course drafts, formal email,
+etc.), also run `ai-orchestration-svc` (same pattern, its own venv, port
+8020) and confirm the default `HRM_AI_ORCHESTRATION_SVC_BASE_URL` points at
+it (`http://localhost:8020` if you override the default
+`http://ai-orchestration-svc:8020`, which is a Docker-network hostname that
+won't resolve outside Compose):
+
+```bash
+export HRM_AI_ORCHESTRATION_SVC_BASE_URL="http://localhost:8020"
+```
+
+Every env var for every service follows `<PREFIX>_<SETTING_NAME>` uppercase.
+Check `src/core/config.py` inside any service for its exact settings and
+defaults — that file is always the source of truth, not this guide.
+
+---
+
+## 5. Database migrations (Alembic)
+
+`init_models()` (§3, §4) is enough to get a working database from nothing,
+but it only ever adds tables — it never alters an existing one. For real
+schema evolution, use Alembic, which every service has pre-configured.
+
+```bash
+cd voyqi-platform/services/hrm-svc     # or any other service
+
+# Apply every migration up to the latest:
+python3 -m alembic upgrade head
+
+# After changing a model, generate a new migration:
+python3 -m alembic revision --autogenerate -m "describe the change"
+
+# Then open the generated file under alembic/versions/ and confirm it looks
+# right before applying it — autogenerate is a draft, not a guarantee.
+```
+
+**One thing to check on every generated migration file, every time:** each
+one needs `import src.core.database` added directly after `import
+sqlalchemy as sa`. Alembic's autogenerate template doesn't add this
+automatically, and without it the migration can't resolve the app's custom
+column types on a fresh database. This has been a recurring, real gap on
+this project — check for it before running the migration, not after it
+fails.
+
+Point Alembic at Postgres instead of the SQLite default the same way as the
+running service — Alembic reads the same `<PREFIX>_DATABASE_URL` env var via
+each service's own `alembic/env.py`, which imports the service's `Settings`
+class rather than hardcoding a URL.
+
+---
+
+## 6. Configuring AI orchestration
+
+`ai-orchestration-svc` is the one service every other service calls into for
+AI-first work. Its settings (`AI_ORCH_` prefix) that matter for a real
+install:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `AI_ORCH_ANTHROPIC_API_KEY` | unset | Live-Claude path activates only when this is set |
+| `AI_ORCH_ANTHROPIC_MODEL` | `claude-sonnet-5` | Override per environment if needed |
+| `AI_ORCH_DATABASE_URL` | local SQLite | Every `DecisionLog`, every `Agent` row lives here |
+| `AI_ORCH_KAFKA_BOOTSTRAP_SERVERS` | `kafka:9092` | Must be reachable for event-driven agents to fire at all |
+| `AI_ORCH_<SERVICE>_SVC_BASE_URL` | one per downstream service | How the agent calls back into the service that triggered it — e.g. `AI_ORCH_HRM_SVC_BASE_URL` |
+
+**Agents are per-tenant, per-key rows in the `agents` table, not hardcoded.**
+There's no seed script — an agent key that's never been registered simply
+defaults to `ACTIVE` (fully autonomous) the first time it's checked. To
+explicitly register one (needed only if you want it to show up in an admin
+panel, or to pre-set it to `paused`/`disabled`):
+
+```bash
+curl -X POST http://localhost:8020/api/v1/ai/agents \
+  -H "X-Tenant-Id: your-tenant" \
+  -H "Content-Type: application/json" \
+  -d '{"key": "benefits_agent", "display_name": "Benefits Agent"}'
+```
+
+**To pause or disable an agent** (the human override switch every agent
+has):
+
+```bash
+curl -X POST http://localhost:8020/api/v1/ai/agents/<agent_id>/status \
+  -H "X-Tenant-Id: your-tenant" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "paused"}'
+```
+
+The HRM module specifically registers eight independent agent keys, one per
+HR sub-module — `onboarding_agent`, `benefits_agent`, `recruiting_agent`,
+`performance_agent`, `workforce_analytics_agent`, `academy_agent`,
+`case_management_agent`, `communication_agent` — each pausable without
+affecting the others.
+
+---
+
+## 7. Verifying the install
+
+Every service exposes a bare health check with no auth:
+
+```bash
+curl http://localhost:8023/health
+# {"status": "ok", "service": "hrm-svc"}
+```
+
+Run this against every port in the table in §1 to confirm the full stack is
+up. Then a real end-to-end smoke test, using `hrm-svc` + `ai-orchestration-svc`
+as the example (works the same for any service pair):
+
+```bash
+# Create an employee
+curl -X POST http://localhost:8023/api/v1/hrm/employees \
+  -H "X-Tenant-Id: smoke-test" -H "Content-Type: application/json" \
+  -d '{"full_name": "Test Employee", "job_title": "Service Advisor", "department": "Service"}'
+
+# Confirm the AI nucleus is reachable and has no decision logs yet for this tenant
+curl http://localhost:8020/api/v1/ai/agents -H "X-Tenant-Id: smoke-test"
+```
+
+If the second call 404s or connection-refuses, `ai-orchestration-svc` isn't
+running or isn't reachable from `hrm-svc` — check
+`HRM_AI_ORCHESTRATION_SVC_BASE_URL` first (§4).
+
+---
+
+## 8. Running the test suites
+
+Every service's tests run against an isolated in-memory SQLite database
+(`StaticPool`, configured in `tests/conftest.py`) — no running database or
+Kafka broker required.
+
+```bash
+cd voyqi-platform/services/hrm-svc          # or any other service
+pip install -r requirements.txt --break-system-packages
+python3 -m pytest tests/ -q
+```
+
+Lint before you consider anything done — this project runs `ruff` clean as
+a hard requirement:
+
+```bash
+python3 -m ruff check .
+```
+
+To run every service's suite in one pass from the repo root:
+
+```bash
+for svc in services/*/; do
+  echo "=== $svc ==="
+  (cd "$svc" && python3 -m pytest tests/ -q)
+done
+```
+
+---
+
+## 9. Kubernetes / production deployment
+
+Base manifests for every service live under `infra/k8s/base/`, wired
+together with `infra/k8s/base/kustomization.yaml`. Each service's Deployment
+expects a `<service>-secrets` Secret and a `<service>-config` ConfigMap
+(names are per-service, e.g. `hrm-svc-secrets` / `hrm-svc-config`) supplying
+the same prefixed environment variables described in §4 and §6 — nothing
+different, just delivered via Kubernetes instead of shell exports.
+
+Every Deployment's readiness and liveness probes hit `/health` on the
+service's own port, matching §7 exactly.
+
+```bash
+kubectl apply -k infra/k8s/base/
+```
+
+This repo does not include Terraform for the underlying GCP
+infrastructure (GKE cluster, Cloud SQL instances, Strimzi Kafka operator) —
+provision those first, following the platform's standing infrastructure
+choices (GKE + Cloud SQL + Redis + Strimzi Kafka), then point each service's
+Secret/ConfigMap at the real, provisioned endpoints before applying the
+manifests above.
+
+---
+
+## 10. Troubleshooting
+
+Failure modes that have actually happened on this project, in order of how
+often they bite:
+
+**A migration fails on a fresh database with an unresolvable column type.**
+The generated migration file is missing `import src.core.database` right
+after `import sqlalchemy as sa` (§5). Add it and rerun.
+
+**A test passes locally but fails in CI, or vice versa, around
+datetime comparisons.** SQLite stores naive datetimes; comparing one against
+an aware `datetime.now(timezone.utc)` raises or silently produces the wrong
+answer. Normalize with `.replace(tzinfo=timezone.utc)` before comparing.
+
+**A router's endpoints 404 even though the code looks wired up.** Check for
+a double-prefix router registration — a router with its own
+`prefix="/api/v1/hrm"` being `include_router()`'d with a *second*
+`/api/v1/hrm` prefix at the app level produces `/api/v1/hrm/api/v1/hrm/...`
+silently.
+
+**A record looks fetched twice / a second lookup returns `None` when the
+first one worked.** A double `.scalar_one_or_none()` call against the same
+result cursor — SQLAlchemy result objects are consumed on first read.
+
+**Proration or benefits math looks double-charged.** Check for proration
+double-billing — a known repeat bug pattern here, specifically around
+mid-cycle plan changes.
+
+**A newly added model column is `None` immediately after
+`db.add()`/before `db.commit()` even though it has a Python-side default.**
+SQLAlchemy column defaults don't apply until flush — initialize the value
+explicitly in the model's constructor if code reads it before committing.
+
+**A test passes alone but fails in the full suite, or vice versa.**
+Monkeypatching a function that the target module imported by name (`from x
+import y`) doesn't affect the target module's own reference to `y` — patch
+`target_module.y`, not `x.y`.
+
+**A risk-threshold or RBAC-override check lets a zero score through when it
+shouldn't.** `score < threshold` treats `0` as "safe" by default in Python;
+DENY-override logic needs to explicitly handle the zero case rather than
+relying on truthiness.
+
+**Toggling AI content-assist settings in the Super Admin Panel 422s.** The
+backend enum for that settings category needs `ai_content_assist` added
+explicitly — it's not inferred from the panel's other categories.
+
+**Every agent runs its deterministic fallback and no live-Claude reasoning
+ever fires.** This is very likely intentional/expected if
+`AI_ORCH_ANTHROPIC_API_KEY` isn't set — check §6 first before treating it as
+a bug.
+
+---
+
+## Appendix: quick reference
+
+```bash
+# Full platform, one command
+docker compose -f infra/docker-compose.rbac-and-ai-orchestration.yml up --build
+
+# Single service, local dev
+cd services/<service-name>
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt --break-system-packages
+python3 -m alembic upgrade head
+uvicorn src.main:app --reload --port <service-port>
+
+# Tests
+python3 -m pytest tests/ -q
+python3 -m ruff check .
+
+# Health check any service
+curl http://localhost:<service-port>/health
+```
+

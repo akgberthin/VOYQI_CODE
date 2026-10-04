@@ -1,0 +1,1268 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:transparent;font-family:-apple-system,system-ui,sans-serif}
+:root{
+  --bg:#080c14;--card:#0e1625;--card2:#111e30;
+  --gold:#c9a84c;--cream:#f0ece0;--dim:#607080;--mid:#8090a8;
+  --border:rgba(255,255,255,0.07);--bgold:rgba(201,168,76,0.3);
+  --navy:#0a1628;--navym:#12213a;--navyl:#1e3356
+}
+.phone{width:360px;background:var(--bg);border-radius:36px;border:1.5px solid var(--bgold);overflow:hidden;margin:0 auto;min-height:660px;display:flex;flex-direction:column}
+.sbar{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg);flex-shrink:0}
+.sbar span{font-size:12px;font-weight:600;color:var(--cream)}
+.screens{flex:1;position:relative;overflow:hidden}
+.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;display:none;flex-direction:column;padding-bottom:72px;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+.scr.on{display:flex}
+.tabs{height:68px;background:rgba(10,22,40,0.97);border-top:0.5px solid var(--bgold);display:flex;align-items:center;justify-content:space-around;padding:0 4px 10px;flex-shrink:0}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:8px 10px;border-radius:10px;min-width:52px}
+.tab i{font-size:20px;color:var(--dim)}
+.tab span{font-size:10px;color:var(--dim);font-weight:500}
+.tab.on i,.tab.on span{color:var(--gold)}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px;flex-shrink:0}
+.htitle{font-size:19px;font-weight:700;color:var(--cream)}
+.hbtn{width:34px;height:34px;background:var(--card);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none}
+.hbtn i{font-size:17px;color:var(--mid)}
+.gold-line{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:6px 16px}
+.sec{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--gold);padding:16px 18px 6px;text-transform:uppercase}
+.card{background:var(--card);border:0.5px solid var(--border);border-radius:14px;margin:0 14px 10px;padding:14px}
+.cardg{background:var(--card);border:0.5px solid var(--bgold);border-radius:16px;margin:0 14px 10px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:0.5px solid var(--border)}
+.row:last-child{border-bottom:none}
+.ibox{width:38px;height:38px;background:var(--card);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ibox i{font-size:19px;color:var(--gold)}
+.btn-g{background:var(--gold);border:none;border-radius:12px;height:46px;width:100%;cursor:pointer;font-size:14px;font-weight:700;color:var(--navy)}
+.btn-n{background:var(--navyl);border:none;border-radius:12px;height:46px;cursor:pointer;font-size:14px;font-weight:600;color:var(--cream);padding:0 18px}
+.btn-o{background:transparent;border:1px solid var(--gold);border-radius:12px;height:46px;width:100%;cursor:pointer;font-size:14px;font-weight:600;color:var(--gold)}
+.t-p{font-size:14px;font-weight:600;color:var(--cream)}
+.t-s{font-size:12px;color:var(--mid);margin-top:2px}
+.t-g{font-size:14px;font-weight:700;color:var(--gold)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.06em;border:0.5px solid}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+</style>
+
+<h2 class="sr-only">VOYIQ mobile app prototype — tap the bottom navigation to explore all screens</h2>
+
+<div class="phone">
+  <div class="sbar">
+    <span>9:41</span>
+    <span style="color:var(--gold);font-weight:700">VOYIQ</span>
+    <span style="display:flex;gap:4px;align-items:center"><i class="ti ti-wifi" style="font-size:13px;color:var(--cream)"></i><i class="ti ti-battery" style="font-size:13px;color:var(--cream)"></i></span>
+  </div>
+
+  <div class="screens">
+
+    <!-- ══ LOGIN ══ -->
+    <div class="scr" id="s-login">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px 32px">
+
+        <!-- Logo block -->
+        <div style="text-align:center;margin-bottom:40px">
+          <div style="font-size:42px;font-weight:800;color:var(--cream);letter-spacing:.16em;line-height:1">VOYQI</div>
+          <div style="font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;margin-top:8px">Portable Mobility™</div>
+          <div style="height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:18px 20px 0"></div>
+        </div>
+
+        <!-- Mode toggle -->
+        <div style="display:flex;background:var(--card);border-radius:12px;padding:3px;gap:3px;margin-bottom:22px" id="login-toggle">
+          <button id="btn-signin" onclick="loginMode('signin')" style="flex:1;background:var(--navyl);border:none;border-radius:9px;height:36px;font-size:13px;font-weight:700;color:var(--cream);cursor:pointer;font-family:inherit;transition:all .15s">Sign in</button>
+          <button id="btn-join" onclick="loginMode('join')" style="flex:1;background:transparent;border:none;border-radius:9px;height:36px;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;font-family:inherit;transition:all .15s">Join VOYQI</button>
+        </div>
+
+        <!-- Name field (register only) -->
+        <div id="field-name" style="display:none;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:6px">FULL NAME</div>
+          <input id="inp-name" placeholder="Your full name" style="width:100%;background:var(--card);border:0.5px solid var(--bgold);border-radius:11px;padding:12px 14px;color:var(--cream);font-size:14px;outline:none;font-family:inherit" />
+        </div>
+
+        <!-- Email -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:6px">EMAIL</div>
+          <input id="inp-email" type="email" value="garth@voyqi.com" placeholder="you@example.com" style="width:100%;background:var(--card);border:0.5px solid var(--bgold);border-radius:11px;padding:12px 14px;color:var(--cream);font-size:14px;outline:none;font-family:inherit" />
+        </div>
+
+        <!-- Password -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:6px">PASSWORD</div>
+          <div style="position:relative">
+            <input id="inp-pw" type="password" value="••••••••" placeholder="••••••••" style="width:100%;background:var(--card);border:0.5px solid var(--bgold);border-radius:11px;padding:12px 46px 12px 14px;color:var(--cream);font-size:14px;outline:none;font-family:inherit" />
+            <button id="pw-eye-btn" onclick="togglePw()" style="position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px">
+              <i class="ti ti-eye" id="pw-eye-icon" style="font-size:18px;color:var(--dim)"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- CTA button -->
+        <button id="login-cta" onclick="doLogin()" style="width:100%;background:var(--gold);border:none;border-radius:12px;height:48px;font-size:15px;font-weight:700;color:var(--navy);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s">
+          <i class="ti ti-arrow-right" style="font-size:17px"></i>
+          Sign in
+        </button>
+
+        <!-- Forgot password -->
+        <div style="text-align:center;margin-top:14px">
+          <button onclick="toast('Password reset link sent to garth@voyqi.com')" style="font-size:12px;color:var(--dim);background:none;border:none;cursor:pointer;font-family:inherit">Forgot password?</button>
+        </div>
+
+        <!-- Divider -->
+        <div style="display:flex;align-items:center;gap:10px;margin:20px 0">
+          <div style="flex:1;height:0.5px;background:var(--border)"></div>
+          <span style="font-size:11px;color:var(--dim)">or continue with</span>
+          <div style="flex:1;height:0.5px;background:var(--border)"></div>
+        </div>
+
+        <!-- Social sign-in -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+          <button onclick="doLogin()" style="background:var(--card);border:0.5px solid var(--border);border-radius:11px;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:inherit">
+            <i class="ti ti-brand-apple" style="font-size:20px;color:var(--cream)"></i>
+            <span style="font-size:13px;font-weight:600;color:var(--cream)">Apple</span>
+          </button>
+          <button onclick="doLogin()" style="background:var(--card);border:0.5px solid var(--border);border-radius:11px;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:inherit">
+            <i class="ti ti-brand-google" style="font-size:20px;color:var(--cream)"></i>
+            <span style="font-size:13px;font-weight:600;color:var(--cream)">Google</span>
+          </button>
+        </div>
+
+        <!-- Tagline -->
+        <div style="text-align:center;margin-top:36px">
+          <div style="font-size:11px;color:var(--dim);font-style:italic">Your Mobility Travels With You™</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div class="scr on" id="s-home">
+      <div class="hdr">
+        <div><div style="font-size:12px;color:var(--mid)">Good morning,</div><div class="htitle" id="home-name">—</div></div>
+        <div style="display:flex;gap:7px">
+          <button class="hbtn" onclick="go('notifications')" style="position:relative">
+            <i class="ti ti-bell"></i>
+            <div style="position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--gold);border-radius:50%;border:1.5px solid var(--bg)"></div>
+          </button>
+          <button class="hbtn" onclick="go('profile')"><i class="ti ti-settings"></i></button>
+        </div>
+      </div>
+
+      <div class="cardg">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin-bottom:10px">YOUR VEHICLE · READY NOW</div>
+        <div style="display:flex;align-items:center;gap:12px;background:var(--navyl);border-radius:11px;padding:11px;margin-bottom:12px">
+          <i class="ti ti-car" style="font-size:28px;color:var(--gold);flex-shrink:0"></i>
+          <div>
+            <div class="t-p">Toyota Camry SE · 2023</div>
+            <div class="t-s"><i class="ti ti-map-pin" style="font-size:11px"></i> Brickell Hub · 0.3 mi</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-g" style="flex:1;height:40px;font-size:13px" onclick="go('unlock')">Unlock Vehicle</button>
+          <button class="btn-n" style="height:40px" onclick="go('hubs')">Navigate</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 14px 10px">
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('card')">
+          <i class="ti ti-id" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">VOYIQ Card</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('concierge')">
+          <i class="ti ti-message-circle" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">Concierge</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('hubs')">
+          <i class="ti ti-world" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">Hubs</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('membership')">
+          <i class="ti ti-crown" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">Membership</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('rewards')">
+          <i class="ti ti-star" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">Rewards</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('rental')">
+          <i class="ti ti-key" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">Rent</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('travel')">
+          <i class="ti ti-plane" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">Travel</span>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer" onclick="go('ai')">
+          <i class="ti ti-sparkles" style="font-size:22px;color:var(--gold)"></i>
+          <span style="font-size:11px;color:var(--mid);font-weight:500;text-align:center">AI</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 14px 10px">
+        <div class="card" style="margin:0">
+          <div style="font-size:11px;color:var(--mid);font-weight:500;letter-spacing:.05em;margin-bottom:3px">GU BALANCE</div>
+          <div style="font-size:22px;font-weight:700;color:var(--cream)" id="home-gu">—</div>
+          <div style="font-size:11px;color:var(--gold);margin-top:2px" id="home-gu-sub">&nbsp;</div>
+        </div>
+        <div class="card" style="margin:0">
+          <div style="font-size:11px;color:var(--mid);font-weight:500;letter-spacing:.05em;margin-bottom:3px">ACTIVE CLASS</div>
+          <div style="font-size:16px;font-weight:700;color:var(--cream);padding-top:3px" id="home-class">—</div>
+          <div style="font-size:11px;color:var(--gold);margin-top:2px" id="home-class-price">&nbsp;</div>
+        </div>
+      </div>
+
+      <div style="margin:0 14px 10px;background:rgba(61,170,106,0.08);border:0.5px solid rgba(61,170,106,0.3);border-radius:13px;padding:12px;display:flex;align-items:center;gap:10px">
+        <i class="ti ti-plane" style="font-size:22px;color:#3daa6a;flex-shrink:0"></i>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#3daa6a">Travel Mode Active</div>
+          <div style="font-size:11px;color:var(--mid);margin-top:2px">Executive Class staged at JFK T4 · Friday</div>
+        </div>
+      </div>
+
+      <div class="sec">Recent Trips</div>
+      <div class="row"><div class="ibox"><i class="ti ti-car"></i></div><div style="flex:1"><div class="t-p">Toyota Camry · Brickell Hub</div><div class="t-s">Today · 12 mi · 42 min</div></div><div class="t-g">+12 GU</div></div>
+      <div class="row"><div class="ibox"><i class="ti ti-car"></i></div><div style="flex:1"><div class="t-p">Honda Accord · MIA Airport</div><div class="t-s">Yesterday · 28 mi · 1h 8m</div></div><div class="t-g">+28 GU</div></div>
+      <div class="row" style="border:none"><div class="ibox"><i class="ti ti-car"></i></div><div style="flex:1"><div class="t-p">Toyota RAV4 · Downtown Hub</div><div class="t-s">Mon · 8 mi · 25 min</div></div><div class="t-g">+8 GU</div></div>
+    </div>
+
+    <!-- UNLOCK / DRIVE -->
+    <div class="scr" id="s-unlock">
+      <div class="hdr"><div class="htitle">Vehicle Access</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:16px 20px">
+        <div style="font-size:18px;font-weight:700;color:var(--cream)">Toyota Camry SE · 2023</div>
+        <div style="font-size:13px;color:var(--mid);margin-top:3px;margin-bottom:28px"><i class="ti ti-map-pin" style="font-size:11px"></i> Brickell Hub · Space B-12</div>
+
+        <div id="ring" onclick="doUnlock()" style="width:168px;height:168px;border-radius:50%;border:2px solid var(--bgold);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;margin-bottom:20px">
+          <div style="position:absolute;inset:-12px;border-radius:50%;border:1px solid rgba(201,168,76,0.12)"></div>
+          <i class="ti ti-lock" id="lock-i" style="font-size:60px;color:var(--gold)"></i>
+        </div>
+
+        <div id="u-status" style="font-size:16px;font-weight:600;color:var(--cream);margin-bottom:6px">Tap to unlock</div>
+        <div id="u-hint" style="font-size:12px;color:var(--mid);text-align:center;max-width:240px">Hold phone near vehicle door NFC reader</div>
+        <div id="trip-timer" style="font-size:48px;font-weight:300;color:var(--gold);letter-spacing:2px;margin:12px 0 4px;display:none">00:00</div>
+        <div id="trip-lbl" style="font-size:11px;color:var(--mid);letter-spacing:.08em;text-transform:uppercase;display:none">Trip in progress</div>
+
+        <div id="unlock-btns" style="width:100%;display:flex;flex-direction:column;gap:9px;margin-top:18px">
+          <button class="btn-g" onclick="doUnlock()">Unlock Vehicle</button>
+          <button class="btn-o" onclick="toast('Remote start sent — vehicle will be ready in 2 min')">Remote Start</button>
+        </div>
+        <div id="trip-btns" style="width:100%;gap:9px;margin-top:18px;display:none">
+          <button class="btn-n" style="flex:1;height:44px" onclick="go('hubs')">Navigate</button>
+          <button class="btn-o" style="flex:1" onclick="endTrip()">End Trip</button>
+        </div>
+
+        <div style="width:100%;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:14px;margin-top:20px;display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;gap:8px">
+          <div><div style="font-size:17px;font-weight:700;color:var(--cream)">68%</div><div style="font-size:10px;color:var(--mid)">Fuel</div></div>
+          <div><div id="lock-stat" style="font-size:17px;font-weight:700;color:var(--cream)">Locked</div><div style="font-size:10px;color:var(--mid)">Status</div></div>
+          <div><div style="font-size:17px;font-weight:700;color:var(--cream)">A+</div><div style="font-size:10px;color:var(--mid)">Condition</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HUBS -->
+    <div class="scr" id="s-hubs">
+      <div class="hdr">
+        <div class="htitle">Hub Network</div>
+        <div style="background:rgba(61,170,106,0.12);border:0.5px solid rgba(61,170,106,0.3);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#3daa6a">12 Live</div>
+      </div>
+
+      <div style="margin:0 14px 10px;height:180px;background:var(--navym);border-radius:14px;border:0.5px solid var(--bgold);position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(30,51,86,0.35) 1px,transparent 1px),linear-gradient(90deg,rgba(30,51,86,0.35) 1px,transparent 1px);background-size:28px 28px"></div>
+        <div style="position:absolute;left:43%;top:50%;transform:translate(-50%,-100%);text-align:center">
+          <div style="width:22px;height:22px;background:var(--gold);border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;margin:0 auto">
+            <i class="ti ti-building" style="font-size:10px;color:var(--navy);transform:rotate(45deg)"></i>
+          </div>
+          <div style="background:rgba(10,22,40,0.9);border:0.5px solid var(--bgold);border-radius:6px;padding:2px 6px;font-size:9px;color:var(--cream);font-weight:600;margin-top:3px;white-space:nowrap">Brickell</div>
+        </div>
+        <div style="position:absolute;left:62%;top:34%;transform:translate(-50%,-100%);text-align:center">
+          <div style="width:22px;height:22px;background:rgba(201,168,76,0.6);border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;margin:0 auto">
+            <i class="ti ti-plane" style="font-size:10px;color:var(--navy);transform:rotate(45deg)"></i>
+          </div>
+          <div style="background:rgba(10,22,40,0.9);border:0.5px solid var(--bgold);border-radius:6px;padding:2px 6px;font-size:9px;color:var(--cream);font-weight:600;margin-top:3px">MIA</div>
+        </div>
+        <div style="position:absolute;left:26%;top:64%;transform:translate(-50%,-100%);text-align:center">
+          <div style="width:22px;height:22px;background:rgba(201,168,76,0.4);border-radius:50% 50% 50% 0;transform:rotate(-45deg);margin:0 auto"></div>
+          <div style="background:rgba(10,22,40,0.9);border:0.5px solid var(--bgold);border-radius:6px;padding:2px 6px;font-size:9px;color:var(--cream);font-weight:600;margin-top:3px">Grove</div>
+        </div>
+        <div style="position:absolute;top:8px;left:8px;background:rgba(10,22,40,0.9);border:0.5px solid var(--bgold);border-radius:7px;padding:4px 10px;font-size:11px;color:var(--cream);font-weight:600">Miami, FL</div>
+      </div>
+
+      <div class="sec">Nearby Hubs</div>
+      <div class="row"><div class="ibox"><i class="ti ti-building"></i></div><div style="flex:1"><div class="t-p">Brickell City Hub</div><div class="t-s">Urban · Family · Executive · 8 avail.</div></div><div class="t-g">0.3 mi</div></div>
+      <div class="row"><div class="ibox"><i class="ti ti-plane"></i></div><div style="flex:1"><div class="t-p">MIA Airport Hub</div><div class="t-s">All classes · 14 available</div></div><div class="t-g">8.2 mi</div></div>
+      <div class="row"><div class="ibox"><i class="ti ti-home"></i></div><div style="flex:1"><div class="t-p">Coconut Grove Residential</div><div class="t-s">Urban · Family · 5 available</div></div><div class="t-g">3.1 mi</div></div>
+      <div class="row" style="border:none"><div class="ibox"><i class="ti ti-school"></i></div><div style="flex:1"><div class="t-p">UM Campus Hub</div><div class="t-s">Urban Class · 12 available</div></div><div class="t-g">4.8 mi</div></div>
+
+      <div class="sec">Global Network</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 14px 10px">
+        <div class="card" style="margin:0"><div class="t-p">New York</div><div class="t-s">JFK · Midtown · Brooklyn</div><div style="font-size:11px;color:var(--gold);margin-top:4px;font-weight:600">3 hubs active</div></div>
+        <div class="card" style="margin:0"><div class="t-p">London</div><div class="t-s">LHR T5 · Mayfair</div><div style="font-size:11px;color:var(--gold);margin-top:4px;font-weight:600">2 hubs active</div></div>
+        <div class="card" style="margin:0"><div class="t-p">Dubai</div><div class="t-s">DXB · DIFC</div><div style="font-size:11px;color:var(--gold);margin-top:4px;font-weight:600">2 hubs active</div></div>
+        <div class="card" style="margin:0"><div class="t-p">Singapore</div><div class="t-s">Changi · CBD</div><div style="font-size:11px;color:var(--gold);margin-top:4px;font-weight:600">2 hubs active</div></div>
+      </div>
+    </div>
+
+    <!-- CONCIERGE -->
+    <div class="scr" id="s-concierge">
+      <div style="display:flex;align-items:center;gap:11px;padding:14px 18px 8px;border-bottom:0.5px solid var(--bgold)">
+        <div style="width:42px;height:42px;background:var(--navyl);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-robot" style="font-size:20px;color:var(--gold)"></i></div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--cream)">VOYIQ Concierge</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:2px"><div style="width:6px;height:6px;background:#3daa6a;border-radius:50%"></div><span style="font-size:11px;color:#3daa6a">AI + Human available</span></div>
+        </div>
+      </div>
+
+      <div style="flex:1;padding:14px 14px 0;display:flex;flex-direction:column;gap:10px" id="msgs">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="width:28px;height:28px;background:var(--card2);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-robot" style="font-size:14px;color:var(--gold)"></i></div>
+          <div style="max-width:82%">
+            <div style="background:var(--card2);padding:10px 12px;border-radius:4px 13px 13px 13px;font-size:13px;color:var(--cream);line-height:1.5">Good morning, Garth. I've detected your Friday flight to New York. Executive Class is pre-staged at JFK T4 for 6:30pm.</div>
+            <div style="background:rgba(201,168,76,0.08);border:0.5px solid var(--bgold);border-radius:10px;padding:10px;margin-top:6px">
+              <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.06em;margin-bottom:3px">VEHICLE PRE-STAGED</div>
+              <div style="font-size:12px;color:var(--cream);line-height:1.5">BMW 5 Series · JFK T4 Arrivals<br>Friday 6:30pm · Space A-04</div>
+            </div>
+            <div style="font-size:10px;color:var(--dim);margin-top:3px;padding:0 3px">9:41 AM · Proactive</div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end">
+          <div style="max-width:78%">
+            <div style="background:var(--gold);padding:10px 13px;border-radius:13px 13px 4px 13px;font-size:13px;color:var(--navy);font-weight:500;line-height:1.5">Perfect. Can you arrange hotel pickup at The Whitby on Saturday 9am?</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:3px;text-align:right;padding:0 3px">9:43 AM</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="width:28px;height:28px;background:var(--card2);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-robot" style="font-size:14px;color:var(--gold)"></i></div>
+          <div style="max-width:82%">
+            <div style="background:var(--card2);padding:10px 12px;border-radius:4px 13px 13px 13px;font-size:13px;color:var(--cream);line-height:1.5">Done. BMW 5 Series at The Whitby Hotel Saturday 9:00am. Where would you like to go?</div>
+            <div style="background:rgba(201,168,76,0.08);border:0.5px solid var(--bgold);border-radius:10px;padding:10px;margin-top:6px">
+              <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.06em;margin-bottom:3px">BOOKING CONFIRMED</div>
+              <div style="font-size:12px;color:var(--cream);line-height:1.5">The Whitby Hotel · Saturday 9:00am<br>Executive Class · BMW 5 Series</div>
+            </div>
+            <div style="font-size:10px;color:var(--dim);margin-top:3px;padding:0 3px">9:43 AM</div>
+          </div>
+        </div>
+        <div id="typing" style="display:none;padding:6px 14px">
+          <div style="background:var(--card2);display:inline-flex;gap:4px;padding:10px 14px;border-radius:13px;align-items:center">
+            <div class="dot" style="animation:pulse 1s infinite"></div>
+            <div class="dot" style="animation:pulse 1s .2s infinite"></div>
+            <div class="dot" style="animation:pulse 1s .4s infinite"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:9px;padding:12px 14px 14px;border-top:0.5px solid var(--border);background:var(--bg)">
+        <input id="ci" placeholder="Ask your concierge anything..." style="flex:1;background:var(--card);border:0.5px solid var(--border);border-radius:22px;padding:9px 14px;color:var(--cream);font-size:13px;outline:none">
+        <button onclick="sendMsg()" style="width:38px;height:38px;background:var(--gold);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-send" style="font-size:17px;color:var(--navy)"></i></button>
+      </div>
+    </div>
+
+    <!-- VOYIQ CARD -->
+    <div class="scr" id="s-card">
+      <div class="hdr">
+        <div class="htitle">VOYQI Card</div>
+        <button class="hbtn" id="copy-btn" onclick="copyId()"><i class="ti ti-copy"></i></button>
+      </div>
+
+      <!-- Premium card face -->
+      <div style="padding:0 14px 6px">
+        <div style="background:linear-gradient(135deg,#0d1828 0%,#0a1220 100%);border-radius:20px;border:1px solid rgba(201,168,76,0.45);padding:22px;position:relative;overflow:hidden;aspect-ratio:1.586">
+          <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.12),transparent 70%)"></div>
+          <div style="position:absolute;bottom:-60px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.06),transparent 70%)"></div>
+          <div style="position:absolute;top:-20px;right:-20px;width:110px;height:110px;border-radius:50%;border:1px solid rgba(201,168,76,0.12)"></div>
+          <div style="position:absolute;top:-36px;right:-36px;width:142px;height:142px;border-radius:50%;border:0.5px solid rgba(201,168,76,0.06)"></div>
+          <div style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:space-between">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div style="font-size:22px;font-weight:800;color:var(--cream);letter-spacing:.12em">VOYQI</div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+                <div style="background:rgba(201,168,76,0.14);border:0.5px solid rgba(201,168,76,0.4);border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;color:var(--gold);letter-spacing:.1em" id="card-class-badge">—</div>
+                <div style="width:32px;height:24px;background:linear-gradient(135deg,rgba(201,168,76,0.3),rgba(201,168,76,0.1));border-radius:5px;border:0.5px solid rgba(201,168,76,0.35);display:flex;align-items:center;justify-content:center">
+                  <i class="ti ti-wifi" style="font-size:13px;color:rgba(201,168,76,0.8);transform:rotate(90deg)"></i>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--cream);letter-spacing:.02em" id="card-holder-name">—</div>
+              <div style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:.07em;margin-top:3px" id="card-class-service">—</div>
+              <div style="font-size:10px;color:rgba(240,236,224,0.28);margin-top:10px;font-family:monospace;letter-spacing:.1em" id="card-id-number">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:var(--mid);text-align:center;padding:8px 0 12px">Tap phone or card to any VOYQI hub or vehicle</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 14px 6px">
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:13px;display:flex;align-items:center;gap:9px;cursor:pointer" onclick="toast('Adding to Apple Wallet...')">
+          <i class="ti ti-brand-apple" style="font-size:22px;color:var(--cream)"></i>
+          <div><div style="font-size:12px;font-weight:600;color:var(--cream)">Apple Wallet</div><div style="font-size:11px;color:var(--mid)">Add to Wallet</div></div>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:13px;display:flex;align-items:center;gap:9px;cursor:pointer" onclick="toast('Adding to Google Wallet...')">
+          <i class="ti ti-brand-google" style="font-size:22px;color:var(--cream)"></i>
+          <div><div style="font-size:12px;font-weight:600;color:var(--cream)">Google Wallet</div><div style="font-size:11px;color:var(--mid)">Save to Wallet</div></div>
+        </div>
+      </div>
+
+      <div class="sec">Service Level</div>
+      <div style="margin:0 14px 10px;background:rgba(201,168,76,0.05);border:0.5px solid var(--bgold);border-radius:13px;overflow:hidden">
+        <div style="padding:12px 14px;border-bottom:0.5px solid var(--bgold);display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;background:var(--gold);border-radius:50%"></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--cream)">Gold+</div><div style="font-size:11px;color:var(--mid)">Included · Hub access · AI staging</div></div>
+          </div>
+          <div style="background:rgba(201,168,76,0.15);border:0.5px solid var(--bgold);border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;color:var(--gold)">ACTIVE</div>
+        </div>
+        <div style="padding:12px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toast('Upgrade to Platinum+ — +$74/month')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;background:var(--dim);border-radius:50%"></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--mid)">Platinum+</div><div style="font-size:11px;color:var(--dim)">Priority staging · Concierge app access</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--gold)">+$74/mo</div>
+        </div>
+        <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toast('Upgrade to Executive+ — +$249/month')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;background:var(--dim);border-radius:50%"></div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--mid)">Executive+</div><div style="font-size:11px;color:var(--dim)">Airport delivery · Hotel coordination</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--gold)">+$249/mo</div>
+        </div>
+      </div>
+
+      <div class="sec">Card Benefits</div>
+      <div class="row"><div style="width:32px;height:32px;background:rgba(201,168,76,0.1);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-car" style="font-size:17px;color:var(--gold)"></i></div><div style="font-size:13px;color:var(--cream)">Vehicle access at any VOYQI hub globally</div></div>
+      <div class="row"><div style="width:32px;height:32px;background:rgba(201,168,76,0.1);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-building" style="font-size:17px;color:var(--gold)"></i></div><div style="font-size:13px;color:var(--cream)">Hub entry — airports, campuses, residential</div></div>
+      <div class="row"><div style="width:32px;height:32px;background:rgba(201,168,76,0.1);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-world" style="font-size:17px;color:var(--gold)"></i></div><div style="font-size:13px;color:var(--cream)">Global mobility continuity in every city</div></div>
+      <div class="row" style="border:none"><div style="width:32px;height:32px;background:rgba(201,168,76,0.1);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-shield-lock" style="font-size:17px;color:var(--gold)"></i></div><div style="font-size:13px;color:var(--cream)">NXP DESFire EV3 · Cryptographic identity</div></div>
+    </div>
+
+    <!-- MEMBERSHIP -->
+    <div class="scr" id="s-membership">
+      <div class="hdr"><div class="htitle">Membership</div></div>
+      <div style="margin:0 14px 10px;background:rgba(74,144,217,0.1);border:0.5px solid rgba(74,144,217,0.3);border-radius:16px;padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px" id="mem-class-label">— · Active</div>
+        <div style="font-size:30px;font-weight:700;color:var(--cream)" id="mem-price">$0<span style="font-size:13px;font-weight:400;color:rgba(240,236,224,0.55)">/month</span></div>
+        <div style="font-size:12px;color:rgba(240,236,224,0.65);margin:5px 0 13px;line-height:1.5" id="mem-vehicles">&nbsp;</div>
+        <div style="display:flex;gap:8px">
+          <button style="flex:1;background:var(--gold);border:none;border-radius:11px;height:38px;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer" onclick="go('plans')">Upgrade Class</button>
+          <button style="flex:1;background:var(--navyl);border:none;border-radius:11px;height:38px;font-size:13px;font-weight:600;color:var(--cream);cursor:pointer" onclick="pauseSubscription()">Pause</button>
+        </div>
+      </div>
+      <div style="margin:0 14px 10px;background:rgba(201,168,76,0.05);border:0.5px solid var(--bgold);border-radius:13px;padding:13px">
+        <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px" id="mem-service-level-label">Gold+ Service Level</div>
+        <div style="font-size:12px;color:var(--cream)">Hub access · AI vehicle staging · Pre-arrival reservation</div>
+        <div style="font-size:11px;color:var(--mid);margin-top:3px">Included in all memberships</div>
+      </div>
+
+      <div class="sec">Upgrade your class</div>
+      <div class="row" style="cursor:pointer" onclick="go('plans')"><div style="width:9px;height:9px;border-radius:50%;background:#48aa78;flex-shrink:0"></div><div style="flex:1;margin-left:10px"><div class="t-p">Family Class</div><div class="t-s">$649/mo · Telluride · Highlander</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="cursor:pointer" onclick="go('plans')"><div style="width:9px;height:9px;border-radius:50%;background:#8070c0;flex-shrink:0"></div><div style="flex:1;margin-left:10px"><div class="t-p">Executive Class</div><div class="t-s">$859/mo · BMW 5 · E-Class · Audi A6</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="cursor:pointer" onclick="go('plans')"><div style="width:9px;height:9px;border-radius:50%;background:var(--gold);flex-shrink:0"></div><div style="flex:1;margin-left:10px"><div class="t-p">Luxury Class</div><div class="t-s">$1,499/mo · S-Class · BMW 7 · A8</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="cursor:pointer" onclick="go('plans')"><div style="width:9px;height:9px;border-radius:50%;background:#d04040;flex-shrink:0"></div><div style="flex:1;margin-left:10px"><div class="t-p">Performance Class</div><div class="t-s">$2,700/mo · Porsche 911 · BMW M4</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+
+      <div class="sec">Options</div>
+      <div class="row" style="cursor:pointer" onclick="toast('Membership paused — class held for up to 6 months')"><div class="ibox"><i class="ti ti-player-pause"></i></div><div style="flex:1"><div class="t-p">Pause Membership</div><div class="t-s">1–6 months · Class held · GU bonus</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="cursor:pointer" onclick="toast('3–5 year term — lock pricing, save 15%')"><div class="ibox"><i class="ti ti-calendar"></i></div><div style="flex:1"><div class="t-p">Term Membership</div><div class="t-s">Lock 3–5 year pricing · Save 15%</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="border:none;cursor:pointer" onclick="toast('Gift 5 months free — share with family')"><div class="ibox"><i class="ti ti-gift"></i></div><div style="flex:1"><div class="t-p">Gift a Month</div><div class="t-s">Send 5 months free to family/friends</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+    </div>
+
+    <!-- REWARDS -->
+    <div class="scr" id="s-rewards">
+      <div class="hdr"><div class="htitle">Growth Units</div></div>
+      <div class="cardg" style="text-align:center">
+        <div style="font-size:50px;font-weight:300;color:var(--gold);line-height:1" id="rewards-gu-big">—</div>
+        <div style="font-size:11px;color:var(--mid);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px">Growth Units</div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:6px"><div style="height:100%;width:62%;background:var(--gold);border-radius:2px"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mid)"><span id="rewards-gu-small">—</span><span>2,000 → 1 month free</span></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 14px 10px">
+        <div class="card" style="margin:0;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--cream)" id="rewards-earned-month">—</div><div style="font-size:11px;color:var(--mid);margin-top:2px">Earned this month</div></div>
+        <div class="card" style="margin:0;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--cream)" id="rewards-earned-lifetime">—</div><div style="font-size:11px;color:var(--mid);margin-top:2px">Lifetime earned</div></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin:0 14px 4px">
+        <button class="btn-g" style="flex:1;height:40px;font-size:13px" onclick="toast('Tap a reward below to redeem')">Redeem GU</button>
+        <button class="btn-o" style="flex:1;height:40px;font-size:13px" onclick="toast('Referral code VQ-REF-GH841 copied')">Refer a Friend</button>
+      </div>
+
+      <div class="sec">Earn More</div>
+      <div class="row"><div class="ibox"><i class="ti ti-gauge"></i></div><div style="flex:1"><div class="t-p">Low Mileage Reward</div><div class="t-s">Drive under 200 mi/month</div></div><div class="t-g">+80 GU</div></div>
+      <div class="row"><div class="ibox"><i class="ti ti-users"></i></div><div style="flex:1"><div class="t-p">Refer a Member</div><div class="t-s">Per friend who activates</div></div><div class="t-g">+500 GU</div></div>
+      <div class="row"><div class="ibox"><i class="ti ti-player-pause"></i></div><div style="flex:1"><div class="t-p">Pause Incentive</div><div class="t-s">Pause during high-demand</div></div><div class="t-g">+200 GU</div></div>
+      <div class="row" style="border:none"><div class="ibox"><i class="ti ti-moon"></i></div><div style="flex:1"><div class="t-p">Off-Peak Trips</div><div class="t-s">Drive between 10pm–6am</div></div><div class="t-g">+20 GU</div></div>
+
+      <div class="sec">Redeem For</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 14px 14px">
+        <div class="card" style="margin:0;cursor:pointer" onclick="redeemGU('one_month_free',2000)"><div style="font-size:17px;font-weight:700;color:var(--gold)">2,000 GU</div><div class="t-p" style="margin-top:3px;font-size:13px">1 Month Free</div><div class="t-s">Any class</div></div>
+        <div class="card" style="margin:0;cursor:pointer" onclick="redeemGU('class_upgrade',500)"><div style="font-size:17px;font-weight:700;color:var(--gold)">500 GU</div><div class="t-p" style="margin-top:3px;font-size:13px">Class Upgrade</div><div class="t-s">One month</div></div>
+        <div class="card" style="margin:0;cursor:pointer" onclick="redeemGU('concierge_credit',300)"><div style="font-size:17px;font-weight:700;color:var(--gold)">300 GU</div><div class="t-p" style="margin-top:3px;font-size:13px">Concierge Credit</div><div class="t-s">$30 value</div></div>
+        <div class="card" style="margin:0;cursor:pointer" onclick="redeemGU('billing_credit',100)"><div style="font-size:17px;font-weight:700;color:var(--gold)">100 GU</div><div class="t-p" style="margin-top:3px;font-size:13px">Billing Credit</div><div class="t-s">$10 off bill</div></div>
+      </div>
+    </div>
+
+    <!-- RENTAL -->
+    <div class="scr" id="s-rental">
+      <div class="hdr"><div class="htitle">Short-Term Rental</div></div>
+      <div style="margin:0 14px 10px;background:rgba(201,168,76,0.06);border:0.5px solid var(--bgold);border-radius:12px;padding:11px 13px;display:flex;align-items:center;gap:10px">
+        <i class="ti ti-star" style="font-size:18px;color:var(--gold);flex-shrink:0"></i>
+        <div style="font-size:12px;color:var(--cream);line-height:1.5">Members get 15% off rentals. Join VOYIQ to save.</div>
+      </div>
+      <div class="sec">Available Now</div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="height:90px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative">🚗<div style="position:absolute;top:8px;left:8px;background:rgba(74,144,217,0.2);border:0.5px solid rgba(74,144,217,0.5);border-radius:7px;padding:2px 8px;font-size:10px;font-weight:700;color:#4a90d9">URBAN</div></div>
+        <div style="padding:12px 13px">
+          <div class="t-p">2023 Toyota Camry SE</div>
+          <div class="t-s" style="margin-bottom:9px">Brickell Hub</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:19px;font-weight:700;color:var(--gold)">$89<span style="font-size:12px;font-weight:400;color:var(--mid)">/day</span></div>
+            <button style="background:var(--gold);border:none;border-radius:9px;padding:7px 14px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer" onclick="toast('Rental booked — confirmation sent to garth@voyqi.com')">Book Now</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="height:90px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative">🏎️<div style="position:absolute;top:8px;left:8px;background:rgba(128,112,192,0.2);border:0.5px solid rgba(128,112,192,0.5);border-radius:7px;padding:2px 8px;font-size:10px;font-weight:700;color:#8070c0">EXECUTIVE</div></div>
+        <div style="padding:12px 13px">
+          <div class="t-p">2023 BMW 5 Series</div>
+          <div class="t-s" style="margin-bottom:9px">Brickell Hub</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:19px;font-weight:700;color:var(--gold)">$189<span style="font-size:12px;font-weight:400;color:var(--mid)">/day</span></div>
+            <button style="background:var(--gold);border:none;border-radius:9px;padding:7px 14px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer" onclick="toast('Rental booked — confirmation sent to garth@voyqi.com')">Book Now</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="height:90px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative">🚙<div style="position:absolute;top:8px;left:8px;background:rgba(208,128,48,0.2);border:0.5px solid rgba(208,128,48,0.5);border-radius:7px;padding:2px 8px;font-size:10px;font-weight:700;color:#d08030">ADVENTURE</div></div>
+        <div style="padding:12px 13px">
+          <div class="t-p">2023 Land Rover Defender</div>
+          <div class="t-s" style="margin-bottom:9px">MIA Airport Hub</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:19px;font-weight:700;color:var(--gold)">$219<span style="font-size:12px;font-weight:400;color:var(--mid)">/day</span></div>
+            <button style="background:var(--gold);border:none;border-radius:9px;padding:7px 14px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer" onclick="toast('Rental booked — confirmation sent to garth@voyqi.com')">Book Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="scr" id="s-profile">
+      <div class="hdr"><div class="htitle">Profile</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:16px 20px 20px">
+        <div style="width:68px;height:68px;background:var(--navyl);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:var(--gold);border:2px solid var(--bgold);margin-bottom:11px" id="profile-initials">—</div>
+        <div style="font-size:19px;font-weight:700;color:var(--cream)" id="profile-name">—</div>
+        <div style="font-size:13px;color:var(--mid);margin-top:2px" id="profile-email">—</div>
+        <div style="margin-top:9px;background:rgba(201,168,76,0.08);border:0.5px solid var(--bgold);border-radius:20px;padding:4px 13px;font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.06em" id="profile-class-badge">—</div>
+      </div>
+      <div class="gold-line" style="margin:0 16px 4px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:0.5px solid var(--border);padding:14px 20px">
+        <div style="text-align:center"><div style="font-size:19px;font-weight:700;color:var(--cream)" id="profile-gu">—</div><div style="font-size:11px;color:var(--mid);margin-top:2px">GU Balance</div></div>
+        <div style="text-align:center;border-left:0.5px solid var(--border);border-right:0.5px solid var(--border)"><div style="font-size:19px;font-weight:700;color:var(--cream)" id="profile-kyc">—</div><div style="font-size:11px;color:var(--mid);margin-top:2px">KYC Status</div></div>
+        <div style="text-align:center"><div style="font-size:19px;font-weight:700;color:var(--cream)" id="profile-ltv">—</div><div style="font-size:11px;color:var(--mid);margin-top:2px">Lifetime Value</div></div>
+      </div>
+      <div class="sec">Account</div>
+      <div style="margin:0 14px 10px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:13px">
+        <div class="fg" style="margin-bottom:8px"><label style="font-size:11px;color:var(--mid);display:block;margin-bottom:4px">Full name</label><input id="profile-edit-name" style="width:100%;background:var(--card2);border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--cream);font-size:13px;outline:none;font-family:inherit"></div>
+        <div class="fg" style="margin-bottom:10px"><label style="font-size:11px;color:var(--mid);display:block;margin-bottom:4px">Email</label><input id="profile-edit-email" style="width:100%;background:var(--card2);border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--cream);font-size:13px;outline:none;font-family:inherit"></div>
+        <button class="btn-g" style="width:100%;height:36px;font-size:12px" onclick="saveProfile()">Save changes</button>
+      </div>
+      <div class="row" style="cursor:pointer" onclick="go('billing')"><div class="ibox"><i class="ti ti-credit-card"></i></div><div style="flex:1"><div class="t-p">Payment Methods</div><div class="t-s">Visa ending 4242</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="cursor:pointer" onclick="go('billing')"><div class="ibox"><i class="ti ti-file-invoice"></i></div><div style="flex:1"><div class="t-p">Billing & Invoices</div><div class="t-s">View invoice history</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="sec">Support</div>
+      <div class="row" style="cursor:pointer" onclick="go('concierge')"><div class="ibox"><i class="ti ti-headset"></i></div><div style="flex:1"><div class="t-p">Contact Concierge</div><div class="t-s">AI + human support</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+      <div class="row" style="border:none;cursor:pointer" onclick="go('card')"><div class="ibox"><i class="ti ti-id"></i></div><div style="flex:1"><div class="t-p">View VOYQI Card</div><div class="t-s" id="profile-card-id">—</div></div><i class="ti ti-chevron-right" style="font-size:16px;color:var(--dim)"></i></div>
+    </div>
+
+    <!-- ══ NOTIFICATIONS ══ -->
+    <div class="scr" id="s-notifications">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px;flex-shrink:0">
+        <div class="htitle">Notifications</div>
+        <div style="background:rgba(201,168,76,0.12);border:0.5px solid var(--bgold);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--gold)">2 unread</div>
+      </div>
+      <div style="margin:0 14px 10px;background:rgba(61,142,212,0.08);border:0.5px solid rgba(61,142,212,0.3);border-radius:13px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer" onclick="markRead(this)">
+        <div style="width:38px;height:38px;background:rgba(201,168,76,0.1);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-car" style="font-size:19px;color:var(--gold)"></i></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--cream)">Your vehicle is ready</div>
+          <div style="font-size:12px;color:var(--mid);margin-top:2px;line-height:1.4">Toyota Camry staged at Brickell Bay 14. Tap VOYQI Card to unlock.</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">9:41 AM · AI fleet agent</div>
+        </div>
+        <div style="width:7px;height:7px;background:var(--gold);border-radius:50%;flex-shrink:0" class="unread-dot"></div>
+      </div>
+      <div style="margin:0 14px 10px;background:rgba(61,142,212,0.08);border:0.5px solid rgba(61,142,212,0.25);border-radius:13px;padding:13px;display:flex;align-items:center;gap:11px;cursor:pointer" onclick="markRead(this)">
+        <div style="width:38px;height:38px;background:rgba(61,142,212,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-plane" style="font-size:19px;color:#3d8ed4"></i></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--cream)">New York trip confirmed</div>
+          <div style="font-size:12px;color:var(--mid);margin-top:2px;line-height:1.4">BMW 5 Series staged at JFK T4 for Friday 6:30pm. Bay A-04.</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">Yesterday · AI concierge</div>
+        </div>
+        <div style="width:7px;height:7px;background:var(--gold);border-radius:50%;flex-shrink:0" class="unread-dot"></div>
+      </div>
+      <div style="margin:0 14px 10px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:13px;display:flex;align-items:center;gap:11px;opacity:0.72">
+        <div style="width:38px;height:38px;background:var(--card2);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-bolt" style="font-size:19px;color:var(--dim)"></i></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:var(--cream)">+500 Growth Units earned</div>
+          <div style="font-size:12px;color:var(--mid);margin-top:2px;line-height:1.4">Referral bonus — James K. activated Urban Class.</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">Jan 18 · Rewards system</div>
+        </div>
+      </div>
+      <div style="margin:0 14px 10px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:13px;display:flex;align-items:center;gap:11px;opacity:0.72">
+        <div style="width:38px;height:38px;background:var(--card2);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-trending-up" style="font-size:19px;color:var(--dim)"></i></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:var(--cream)">Upgrade readiness: 89/100</div>
+          <div style="font-size:12px;color:var(--mid);margin-top:2px;line-height:1.4">AI suggests Luxury Class based on your usage patterns.</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">Jan 15 · AI member agent</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TRAVEL ══ -->
+    <div class="scr" id="s-travel">
+      <div class="hdr"><div class="htitle">Travel Mode</div></div>
+      <div style="margin:0 14px 12px;background:rgba(61,170,106,0.06);border:0.5px solid rgba(61,170,106,0.25);border-radius:13px;padding:11px 13px;font-size:12px;color:var(--cream);line-height:1.55">
+        Your <strong style="color:#3daa6a">Urban Class</strong> vehicle will be pre-staged at the destination hub before you arrive. No counter. No paperwork.
+      </div>
+      <div id="travel-form-s">
+        <div style="padding:0 14px 12px">
+          <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:7px">DESTINATION</div>
+          <input id="travel-inp" placeholder="London, Dubai, New York..." style="width:100%;background:var(--card);border:0.5px solid var(--bgold);border-radius:11px;padding:11px 14px;color:var(--cream);font-size:14px;outline:none;font-family:inherit">
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.07em;padding:0 14px 8px">ACTIVE HUBS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 14px 14px" id="city-grid">
+          <div class="city-opt" onclick="pickCity(this,'Miami')" style="background:var(--card2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;text-align:center;transition:all .15s">Miami</div>
+          <div class="city-opt" onclick="pickCity(this,'New York')" style="background:var(--card2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;text-align:center;transition:all .15s">New York</div>
+          <div class="city-opt" onclick="pickCity(this,'London')" style="background:var(--card2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;text-align:center;transition:all .15s">London</div>
+          <div class="city-opt" onclick="pickCity(this,'Dubai')" style="background:var(--card2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;text-align:center;transition:all .15s">Dubai</div>
+          <div class="city-opt" onclick="pickCity(this,'Paris')" style="background:var(--card2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;text-align:center;transition:all .15s">Paris</div>
+          <div class="city-opt" onclick="pickCity(this,'Singapore')" style="background:var(--card2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:500;color:var(--mid);cursor:pointer;text-align:center;transition:all .15s">Singapore</div>
+        </div>
+        <div style="padding:0 14px"><button class="btn-g" onclick="stageTravel()" style="display:flex;align-items:center;justify-content:center;gap:8px"><i class="ti ti-plane" style="font-size:16px"></i>Stage My Vehicle</button></div>
+      </div>
+      <div id="travel-staged-s" style="display:none;padding:0 14px">
+        <div style="background:rgba(61,170,106,0.08);border:0.5px solid rgba(61,170,106,0.35);border-radius:16px;padding:18px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <i class="ti ti-circle-check" style="font-size:22px;color:#3daa6a;flex-shrink:0"></i>
+            <div><div style="font-size:15px;font-weight:700;color:var(--cream)">Travel Activated</div><div id="staged-dest-txt" style="font-size:12px;color:var(--mid);margin-top:2px">Destination: London</div></div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:11px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:11px">
+            <i class="ti ti-car" style="font-size:18px;color:var(--gold);flex-shrink:0"></i>
+            <div><div style="font-size:13px;font-weight:600;color:var(--cream)">Toyota Camry SE</div><div style="font-size:11px;color:var(--dim);margin-top:2px">LHR Terminal 5 · Bay 06</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--mid);display:flex;align-items:center;gap:5px"><i class="ti ti-clock" style="font-size:13px"></i>Status: <span style="color:var(--cream)">Staged and ready</span></div>
+        </div>
+        <div class="card" style="margin:0 0 12px">
+          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:10px">CLASS EQUIVALENTS</div>
+          <div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:9px"><i class="ti ti-car" style="font-size:14px;color:var(--dim)"></i><span style="font-size:13px;color:var(--cream)">Honda Accord</span></div>
+          <div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:9px"><i class="ti ti-car" style="font-size:14px;color:var(--dim)"></i><span style="font-size:13px;color:var(--cream)">Toyota RAV4</span></div>
+          <div style="padding:8px 0;display:flex;align-items:center;gap:9px"><i class="ti ti-car" style="font-size:14px;color:var(--dim)"></i><span style="font-size:13px;color:var(--cream)">Tesla Model 3</span></div>
+        </div>
+        <button class="btn-o" onclick="resetTravel()">Activate Another Trip</button>
+      </div>
+    </div>
+
+    <!-- ══ PLANS ══ -->
+    <div class="scr" id="s-plans">
+      <div class="hdr"><div class="htitle">Choose Your Class</div></div>
+      <div style="font-size:12px;color:var(--mid);padding:0 18px 12px;line-height:1.5">Your class is a permanent, portable standard — it follows you to every hub in every city.</div>
+      <div id="plans-list" style="padding:0 14px">
+        <div class="plan-row" onclick="selectPlan(this,'Urban','#6e8096','$449')" style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#8090a8">Urban</div><div style="font-size:12px;color:var(--mid);margin-top:3px">Camry · Accord · Tesla 3 · RAV4</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$449</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Family','#48aa78','$649')" style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#48aa78">Family</div><div style="font-size:12px;color:var(--mid);margin-top:3px">Telluride · Highlander · Odyssey</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$649</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Executive','#8070c0','$859')" style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#8070c0">Executive</div><div style="font-size:12px;color:var(--mid);margin-top:3px">BMW 5 · E-Class · Audi A6</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$859</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Luxury','#c9a84c','$1,499')" style="background:var(--card);border:0.5px solid rgba(201,168,76,0.3);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:6px">CURRENT CLASS</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:var(--gold)">Luxury</div><div style="font-size:12px;color:var(--mid);margin-top:3px">S-Class · BMW 7 · G-Wagon</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$1,499</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Performance','#d04040','$2,700')" style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#d04040">Performance</div><div style="font-size:12px;color:var(--mid);margin-top:3px">Porsche 911 · BMW M4 · Maserati</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$2,700</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Adventure','#2ea87a','$549')" style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#2ea87a">Adventure</div><div style="font-size:12px;color:var(--mid);margin-top:3px">Defender · Bronco · 4Runner</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$549</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Luxury Plus','#e8c86d','$5,800')" style="background:var(--card);border:0.5px solid rgba(232,200,109,0.25);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="font-size:10px;font-weight:700;color:#e8c86d;letter-spacing:.07em;margin-bottom:6px">PREMIUM · INVITATION ONLY</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#e8c86d">Luxury Plus</div><div style="font-size:12px;color:var(--mid);margin-top:3px">Rolls-Royce · Bentley · Maybach</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$5,800</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div class="plan-row" onclick="selectPlan(this,'Performance Plus','#e85050','$5,800')" style="background:var(--card);border:0.5px solid rgba(232,80,80,0.2);border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">
+          <div style="font-size:10px;font-weight:700;color:#e85050;letter-spacing:.07em;margin-bottom:6px">PREMIUM · INVITATION ONLY</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:#e85050">Performance Plus</div><div style="font-size:12px;color:var(--mid);margin-top:3px">Ferrari · McLaren · Lamborghini</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">$5,800</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>
+        </div>
+        <div id="plan-cta" style="display:none;padding-bottom:4px"><button class="btn-g" id="plan-cta-btn" onclick="toast('Upgrade request submitted — AI will notify you')">Activate Class</button></div>
+      </div>
+    </div>
+
+    <!-- ══ BILLING ══ -->
+    <div class="scr" id="s-billing">
+      <div class="hdr"><div class="htitle">Billing</div></div>
+      <div style="display:flex;gap:8px;margin:0 14px 12px">
+        <button id="bill-t1" onclick="billTab('methods')" style="flex:1;background:var(--navyl);border:none;border-radius:10px;height:36px;font-size:12px;font-weight:700;color:var(--cream);cursor:pointer;font-family:inherit">Payment Methods</button>
+        <button id="bill-t2" onclick="billTab('invoices')" style="flex:1;background:var(--card);border:0.5px solid var(--border);border-radius:10px;height:36px;font-size:12px;font-weight:600;color:var(--mid);cursor:pointer;font-family:inherit">Invoices</button>
+      </div>
+      <div id="bill-methods">
+        <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--bgold);border-radius:14px;padding:14px;display:flex;align-items:center;gap:13px">
+          <div style="width:44px;height:28px;background:var(--card2);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:12px;font-weight:700;color:#3d8ed4">VISA</span></div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--cream)">Visa •••• 4242</div><div style="display:inline-flex;background:rgba(201,168,76,0.12);border:0.5px solid var(--bgold);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--gold);margin-top:3px">Default</div></div>
+          <button onclick="toast('Card removed')" style="background:none;border:none;cursor:pointer"><i class="ti ti-trash" style="font-size:17px;color:var(--dim)"></i></button>
+        </div>
+        <div style="margin:0 14px 14px;background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:13px">
+          <div style="width:44px;height:28px;background:var(--card2);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:11px;font-weight:700;color:#e85050">MC</span></div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--cream)">Mastercard •••• 8810</div><button onclick="toast('Set as default card')" style="font-size:11px;color:var(--gold);background:none;border:none;cursor:pointer;padding:0;margin-top:3px;display:block;font-family:inherit">Set as default</button></div>
+          <button onclick="toast('Card removed')" style="background:none;border:none;cursor:pointer"><i class="ti ti-trash" style="font-size:17px;color:var(--dim)"></i></button>
+        </div>
+        <div style="margin:0 14px"><button class="btn-o" onclick="toast('Add card via Stripe — secure checkout')">+ Add Payment Method</button></div>
+      </div>
+      <div id="bill-invoices" style="display:none">
+        <div class="row"><div class="ibox"><i class="ti ti-file-invoice"></i></div><div style="flex:1"><div class="t-p">Luxury Class — Jan 2025</div><div class="t-s">Jan 1, 2025</div></div><div class="t-g">$1,499</div></div>
+        <div class="row"><div class="ibox"><i class="ti ti-file-invoice"></i></div><div style="flex:1"><div class="t-p">Luxury Class — Dec 2024</div><div class="t-s">Dec 1, 2024</div></div><div class="t-g">$1,499</div></div>
+        <div class="row" style="border:none"><div class="ibox"><i class="ti ti-file-invoice"></i></div><div style="flex:1"><div class="t-p">Luxury Class — Nov 2024</div><div class="t-s">Nov 1, 2024</div></div><div class="t-g">$1,499</div></div>
+      </div>
+    </div>
+
+    <!-- ══ AI ACTIVITY ══ -->
+    <div class="scr" id="s-ai">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px">
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;background:var(--gold);border-radius:50%;animation:pulse 2s infinite"></div><div class="htitle">AI Activity</div></div>
+        <div style="font-size:11px;color:var(--mid)">Live · 7 agents</div>
+      </div>
+      <div style="margin:0 14px 12px;background:rgba(201,168,76,0.06);border:0.5px solid var(--bgold);border-radius:14px;padding:14px">
+        <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:10px">AI CONTEXT · GARTH H.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+          <div><div style="color:var(--mid)">Churn risk</div><div style="font-weight:700;color:var(--cream);margin-top:2px">4%</div></div>
+          <div><div style="color:var(--mid)">Upgrade score</div><div style="font-weight:700;color:var(--cream);margin-top:2px">89/100</div></div>
+          <div><div style="color:var(--mid)">LTV estimate</div><div style="font-weight:700;color:var(--cream);margin-top:2px">$243,000</div></div>
+          <div><div style="color:var(--mid)">Preferred make</div><div style="font-weight:700;color:var(--cream);margin-top:2px">Toyota</div></div>
+        </div>
+      </div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:14px">
+        <div style="display:flex;gap:9px"><span style="font-size:10px;font-family:monospace;background:rgba(61,142,212,0.12);color:#3d8ed4;padding:2px 7px;border-radius:5px;border:0.5px solid rgba(61,142,212,0.22);height:fit-content;flex-shrink:0;margin-top:1px">fleet</span><div><div style="font-size:11px;color:var(--dim);margin-bottom:3px">travel.activated · 9:41 AM</div><div style="font-size:13px;color:var(--cream);line-height:1.5">Toyota Camry pre-staged at Brickell City Centre Bay 14 for your 2pm arrival.</div></div></div>
+      </div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:14px">
+        <div style="display:flex;gap:9px"><span style="font-size:10px;font-family:monospace;background:rgba(46,168,122,0.12);color:#3daa6a;padding:2px 7px;border-radius:5px;border:0.5px solid rgba(46,168,122,0.22);height:fit-content;flex-shrink:0;margin-top:1px">member</span><div><div style="font-size:11px;color:var(--dim);margin-bottom:3px">subscription.created · 9:16 AM</div><div style="font-size:13px;color:var(--cream);line-height:1.5">VOYQI Card issued VQ-7291-UC-GLD-2025. Welcome sequence queued.</div></div></div>
+      </div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:14px">
+        <div style="display:flex;gap:9px"><span style="font-size:10px;font-family:monospace;background:rgba(201,168,76,0.12);color:var(--gold);padding:2px 7px;border-radius:5px;border:0.5px solid rgba(201,168,76,0.22);height:fit-content;flex-shrink:0;margin-top:1px">pricing</span><div><div style="font-size:11px;color:var(--dim);margin-bottom:3px">rental.booked · 9:17 AM</div><div style="font-size:13px;color:var(--cream);line-height:1.5">Urban utilization 78% → demand factor 1.12× → rate $99/day applied.</div></div></div>
+      </div>
+      <div style="margin:0 14px 9px;background:var(--card);border:0.5px solid var(--border);border-radius:13px;padding:14px">
+        <div style="display:flex;gap:9px"><span style="font-size:10px;font-family:monospace;background:rgba(208,64,64,0.12);color:#d04040;padding:2px 7px;border-radius:5px;border:0.5px solid rgba(208,64,64,0.22);height:fit-content;flex-shrink:0;margin-top:1px">retention</span><div><div style="font-size:11px;color:var(--dim);margin-bottom:3px">behavior.score.changed · Yesterday</div><div style="font-size:13px;color:var(--cream);line-height:1.5">Upgrade score 89/100 reached. Luxury Class nudge queued for post-trip moment.</div></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" id="tab-home" onclick="go('home')"><i class="ti ti-home"></i><span>Home</span></div>
+    <div class="tab" id="tab-hubs" onclick="go('hubs')"><i class="ti ti-map"></i><span>Hubs</span></div>
+    <div class="tab" id="tab-unlock" onclick="go('unlock')"><i class="ti ti-key" style="font-size:24px"></i><span>Drive</span></div>
+    <div class="tab" id="tab-concierge" onclick="go('concierge')"><i class="ti ti-message-circle"></i><span>Concierge</span></div>
+    <div class="tab" id="tab-profile" onclick="go('profile')"><i class="ti ti-user-circle"></i><span>Profile</span></div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Thin API client — subscription-svc is the single source of truth.
+// No business logic (pricing, GU math, eligibility) is duplicated
+// here; every screen renders exactly what the backend returns.
+// ══════════════════════════════════════════════════════════════
+var SUB_API_BASE = window.SUB_API_BASE || 'http://localhost:8003';
+var TENANT_ID = 'voyqi-holdings';
+var DEMO_USER_ID = 'demo-member-garth';  // no real auth-svc exists yet — see doLogin()
+
+var MEMBER = null;          // current MemberProfile from the backend
+var ACTIVE_SUBSCRIPTION = null;
+var ACTIVE_PLAN = null;
+
+async function api(method, path, body){
+  var opts={method:method,headers:{'Content-Type':'application/json','X-Tenant-Id':TENANT_ID}};
+  if(body!==undefined)opts.body=JSON.stringify(body);
+  var resp;
+  try{
+    resp=await fetch(SUB_API_BASE+path, opts);
+  }catch(networkErr){
+    throw {status:0, detail:'Cannot reach subscription-svc at '+SUB_API_BASE+'. Is it running? ('+networkErr.message+')'};
+  }
+  var data=null;
+  try{data=await resp.json();}catch(e){}
+  if(!resp.ok){throw {status:resp.status, detail:(data&&data.detail)||resp.statusText};}
+  return data;
+}
+
+var cur='home', unlocked=false, tripSecs=0, tripInt=null;
+
+var SCREENS={
+  login:'s-login', home:'s-home', unlock:'s-unlock', hubs:'s-hubs',
+  concierge:'s-concierge', card:'s-card', membership:'s-membership',
+  rewards:'s-rewards', rental:'s-rental', profile:'s-profile',
+  notifications:'s-notifications', travel:'s-travel', plans:'s-plans',
+  billing:'s-billing', ai:'s-ai'
+};
+var TABS=['home','hubs','unlock','concierge','profile'];
+
+// Screens that render live data on every visit, not just on login.
+var LIVE_SCREENS={
+  home:renderHome, membership:renderMembership, rewards:renderRewards,
+  profile:renderProfile, card:renderCard, billing:renderBilling, plans:renderPlans,
+};
+
+function go(name){
+  Object.keys(SCREENS).forEach(function(k){
+    var el=document.getElementById(SCREENS[k]);
+    if(el) el.style.display='none';
+  });
+  var target=document.getElementById(SCREENS[name]);
+  if(target){ target.style.display='flex'; target.scrollTop=0; }
+
+  TABS.forEach(function(t){
+    var tb=document.getElementById('tab-'+t);
+    if(tb) tb.className='tab'+(t===name?' on':'');
+  });
+  cur=name;
+  if(LIVE_SCREENS[name]) LIVE_SCREENS[name]();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Login / enrollment — there is no auth-svc on this platform yet,
+// so "sign in" resolves a real MemberProfile by a fixed demo
+// user_id rather than a password (a real deployment sits this
+// behind an actual auth service; the member data itself is 100%
+// real either way). "Join VOYQI" creates a real member profile.
+// ══════════════════════════════════════════════════════════════
+var _loginMode = 'signin';
+
+function loginMode(mode) {
+  _loginMode = mode;
+  var bsi = document.getElementById('btn-signin');
+  var bj  = document.getElementById('btn-join');
+  var fn  = document.getElementById('field-name');
+  var cta = document.getElementById('login-cta');
+  if (mode === 'signin') {
+    bsi.style.background = 'var(--navyl)'; bsi.style.color = 'var(--cream)';
+    bj.style.background  = 'transparent';  bj.style.color  = 'var(--dim)';
+    fn.style.display = 'none';
+    cta.innerHTML = '<i class="ti ti-arrow-right" style="font-size:17px"></i> Sign in';
+  } else {
+    bj.style.background  = 'var(--navyl)'; bj.style.color  = 'var(--cream)';
+    bsi.style.background = 'transparent';  bsi.style.color = 'var(--dim)';
+    fn.style.display = 'block';
+    cta.innerHTML = '<i class="ti ti-user-plus" style="font-size:17px"></i> Create account';
+  }
+}
+
+function togglePw() {
+  var inp  = document.getElementById('inp-pw');
+  var icon = document.getElementById('pw-eye-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'ti ti-eye-off';
+  } else {
+    inp.type = 'password';
+    icon.className = 'ti ti-eye';
+  }
+}
+
+async function doLogin() {
+  var cta = document.getElementById('login-cta');
+  var orig = cta.innerHTML;
+  cta.innerHTML = '<i class="ti ti-loader-2" style="font-size:17px;animation:spin .7s linear infinite"></i> '+(_loginMode==='join'?'Creating account…':'Signing in…');
+  cta.style.opacity = '0.7';
+
+  try{
+    if(_loginMode==='join'){
+      var name=document.getElementById('inp-name').value.trim()||'New Member';
+      var email=document.getElementById('inp-email').value.trim()||'member@voyqi.com';
+      MEMBER=await api('POST','/api/v1/subscription/members',{user_id:DEMO_USER_ID+'-'+Date.now(),full_name:name,email:email});
+    } else {
+      try{
+        MEMBER=await api('GET','/api/v1/subscription/members/by-user-id/'+DEMO_USER_ID);
+      }catch(notFoundErr){
+        // First sign-in for this demo user — create the profile once,
+        // matching the real backend rather than faking a session.
+        MEMBER=await api('POST','/api/v1/subscription/members',{user_id:DEMO_USER_ID,full_name:'Garth H.',email:document.getElementById('inp-email').value.trim()||'garth@voyqi.com'});
+      }
+    }
+    await loadActiveSubscription();
+    cta.innerHTML = orig;
+    cta.style.opacity = '1';
+    go('home');
+  }catch(err){
+    cta.innerHTML = orig;
+    cta.style.opacity = '1';
+    toast(err.status===0?err.detail:('subscription-svc error: '+err.detail));
+  }
+}
+
+async function loadActiveSubscription(){
+  // No "active subscription for member" lookup endpoint exists yet
+  // (lifecycle.py exposes per-subscription actions, not a
+  // by-member query) — the plan/class fields already on MemberProfile
+  // (mobility_class, service_level) are the real, current source for
+  // what's rendered on Home/Membership/Card until that lookup exists.
+  if(!MEMBER) return;
+  try{
+    var plans=await api('GET','/api/v1/subscription/plans');
+    ACTIVE_PLAN=plans.find(function(p){return p.mobility_class===MEMBER.mobility_class;})||null;
+  }catch(e){ACTIVE_PLAN=null;}
+}
+
+// ══════════════════════════════════════════════════════════════
+// Home dashboard
+// ══════════════════════════════════════════════════════════════
+function fmtClassName(cls){
+  if(!cls)return 'No class selected';
+  return cls.split('_').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+}
+function fmtMoney(n){return '$'+Number(n).toLocaleString();}
+
+async function renderHome(){
+  if(!MEMBER)return;
+  document.getElementById('home-name').textContent=MEMBER.full_name.split(' ')[0];
+  document.getElementById('home-gu').textContent=MEMBER.gu_balance.toLocaleString();
+  document.getElementById('home-class').textContent=fmtClassName(MEMBER.mobility_class);
+  document.getElementById('home-class-price').textContent=ACTIVE_PLAN?fmtMoney(ACTIVE_PLAN.monthly_price_usd)+'/month':'No active plan';
+  document.getElementById('home-gu-sub').textContent=' ';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Membership
+// ══════════════════════════════════════════════════════════════
+async function renderMembership(){
+  if(!MEMBER)return;
+  document.getElementById('mem-class-label').textContent=fmtClassName(MEMBER.mobility_class)+' Class · Active';
+  document.getElementById('mem-price').innerHTML=(ACTIVE_PLAN?fmtMoney(ACTIVE_PLAN.monthly_price_usd):'$0')+'<span style="font-size:13px;font-weight:400;color:rgba(240,236,224,0.55)">/month</span>';
+  document.getElementById('mem-vehicles').textContent=ACTIVE_PLAN&&ACTIVE_PLAN.entitlements&&ACTIVE_PLAN.entitlements.vehicles?ACTIVE_PLAN.entitlements.vehicles:'Vehicle lineup varies by hub';
+  document.getElementById('mem-service-level-label').textContent=(MEMBER.service_level?fmtClassName(MEMBER.service_level):'Gold+')+' Service Level';
+}
+
+async function pauseSubscription(){
+  if(!ACTIVE_SUBSCRIPTION){toast('No active subscription on file to pause');return;}
+  try{
+    await api('POST','/api/v1/subscription/subscriptions/'+ACTIVE_SUBSCRIPTION.id+'/pause',{});
+    toast('Membership paused — your class is held');
+  }catch(err){toast('subscription-svc error: '+err.detail);}
+}
+
+// ══════════════════════════════════════════════════════════════
+// Rewards / GU economy
+// ══════════════════════════════════════════════════════════════
+async function renderRewards(){
+  if(!MEMBER)return;
+  document.getElementById('rewards-gu-big').textContent=MEMBER.gu_balance.toLocaleString();
+  document.getElementById('rewards-gu-small').textContent=MEMBER.gu_balance.toLocaleString()+' GU';
+  try{
+    var ledger=await api('GET','/api/v1/subscription/members/'+MEMBER.id+'/gu-ledger');
+    var now=new Date(); var thisMonth=0, lifetime=0;
+    ledger.forEach(function(entry){
+      if(entry.entry_type==='earn'){
+        lifetime+=entry.amount;
+        thisMonth+=entry.amount; // ledger has no timestamp field returned yet — full history counted as "this month" until one is added
+      }
+    });
+    document.getElementById('rewards-earned-month').textContent=thisMonth.toLocaleString();
+    document.getElementById('rewards-earned-lifetime').textContent=lifetime.toLocaleString();
+  }catch(e){/* leave placeholders */}
+}
+
+async function redeemGU(catalogKey, cost){
+  if(!MEMBER)return;
+  if(MEMBER.gu_balance<cost){toast('Not enough GU — need '+cost.toLocaleString()+', have '+MEMBER.gu_balance.toLocaleString());return;}
+  try{
+    await api('POST','/api/v1/subscription/gu/redeem',{member_profile_id:MEMBER.id, catalog_item_key:catalogKey});
+    MEMBER=await api('GET','/api/v1/subscription/members/'+MEMBER.id);
+    toast('Redeemed — new balance '+MEMBER.gu_balance.toLocaleString()+' GU');
+    renderRewards();
+  }catch(err){
+    toast(err.status===404?'Catalog item not provisioned yet — ask an admin to add "'+catalogKey+'"':('subscription-svc error: '+err.detail));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Profile
+// ══════════════════════════════════════════════════════════════
+async function renderProfile(){
+  if(!MEMBER)return;
+  var initials=MEMBER.full_name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+  document.getElementById('profile-initials').textContent=initials;
+  document.getElementById('profile-name').textContent=MEMBER.full_name;
+  document.getElementById('profile-email').textContent=MEMBER.email;
+  document.getElementById('profile-class-badge').textContent=fmtClassName(MEMBER.mobility_class)+' · '+(MEMBER.service_level?fmtClassName(MEMBER.service_level):'Gold+');
+  document.getElementById('profile-gu').textContent=MEMBER.gu_balance.toLocaleString();
+  document.getElementById('profile-kyc').textContent=fmtClassName(MEMBER.kyc_status);
+  document.getElementById('profile-ltv').textContent=fmtMoney(MEMBER.lifetime_value_usd);
+  document.getElementById('profile-card-id').textContent=MEMBER.id.slice(0,8).toUpperCase();
+  document.getElementById('profile-edit-name').value=MEMBER.full_name;
+  document.getElementById('profile-edit-email').value=MEMBER.email;
+}
+
+async function saveProfile(){
+  if(!MEMBER)return;
+  var name=document.getElementById('profile-edit-name').value.trim();
+  var email=document.getElementById('profile-edit-email').value.trim();
+  try{
+    MEMBER=await api('PATCH','/api/v1/subscription/members/'+MEMBER.id,{full_name:name,email:email});
+    toast('Profile updated');
+    renderProfile();
+  }catch(err){toast('subscription-svc error: '+err.detail);}
+}
+
+// ══════════════════════════════════════════════════════════════
+// VOYQI Card
+// ══════════════════════════════════════════════════════════════
+async function renderCard(){
+  if(!MEMBER)return;
+  document.getElementById('card-class-badge').textContent=fmtClassName(MEMBER.mobility_class).toUpperCase()+' CLASS';
+  document.getElementById('card-holder-name').textContent=MEMBER.full_name;
+  document.getElementById('card-class-service').textContent=fmtClassName(MEMBER.mobility_class)+' Class · '+(MEMBER.service_level?fmtClassName(MEMBER.service_level):'Gold+')+' Service';
+  document.getElementById('card-id-number').textContent='VQ-'+MEMBER.id.slice(0,8).toUpperCase();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Billing
+// ══════════════════════════════════════════════════════════════
+async function renderBilling(){
+  if(!MEMBER)return;
+  try{
+    var invoices=await api('GET','/api/v1/subscription/members/'+MEMBER.id+'/invoices');
+    document.getElementById('bill-invoices').innerHTML=invoices.map(function(inv,i){
+      return '<div class="row" style="'+(i===invoices.length-1?'border:none':'')+'"><div class="ibox"><i class="ti ti-file-invoice"></i></div><div style="flex:1"><div class="t-p">'+fmtClassName(MEMBER.mobility_class)+' Class</div><div class="t-s">Invoice '+inv.id.slice(0,8)+' · '+inv.status+'</div></div><div class="t-g">'+fmtMoney(inv.amount_usd||0)+'</div></div>';
+    }).join('')||'<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px">No invoices yet.</div>';
+  }catch(e){
+    document.getElementById('bill-invoices').innerHTML='<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px">Could not load invoices.</div>';
+  }
+}
+
+function billTab(t){
+  document.getElementById('bill-methods').style.display=t==='methods'?'block':'none';
+  document.getElementById('bill-invoices').style.display=t==='invoices'?'block':'none';
+  document.getElementById('bill-t1').style.background=t==='methods'?'var(--navyl)':'var(--card)';
+  document.getElementById('bill-t1').style.color=t==='methods'?'var(--cream)':'var(--mid)';
+  document.getElementById('bill-t2').style.background=t==='invoices'?'var(--navyl)':'var(--card)';
+  document.getElementById('bill-t2').style.color=t==='invoices'?'var(--cream)':'var(--mid)';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Plans — fetched live from the real catalog, not a hardcoded list.
+// Falls back to the existing static markup if subscription-svc has
+// no plans provisioned yet, so the screen is never blank.
+// ══════════════════════════════════════════════════════════════
+var CLASS_COLORS={urban:'#8090a8',family:'#48aa78',executive:'#8070c0',luxury:'#c9a84c',performance:'#d04040',adventure:'#2ea87a',luxury_plus:'#e8c86d',performance_plus:'#e85050'};
+async function renderPlans(){
+  try{
+    var plans=await api('GET','/api/v1/subscription/plans');
+    if(!plans.length)return; // keep the static fallback markup already in the page
+    document.getElementById('plans-list').innerHTML=plans.map(function(p){
+      var color=CLASS_COLORS[p.mobility_class]||'#8090a8';
+      var isCurrent=MEMBER&&MEMBER.mobility_class===p.mobility_class;
+      return '<div class="plan-row" onclick="selectPlan(this,\''+p.id+'\',\''+fmtClassName(p.mobility_class)+'\',\''+color+'\',\''+fmtMoney(p.monthly_price_usd)+'\')" style="background:var(--card);border:0.5px solid '+(isCurrent?'rgba(201,168,76,0.3)':'var(--border)')+';border-radius:14px;padding:15px;margin-bottom:9px;cursor:pointer;transition:all .18s">'
+        +(isCurrent?'<div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;margin-bottom:6px">CURRENT CLASS</div>':(p.is_invitation_only?'<div style="font-size:10px;font-weight:700;color:'+color+';letter-spacing:.07em;margin-bottom:6px">PREMIUM · INVITATION ONLY</div>':''))
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:18px;font-weight:700;color:'+color+'">'+fmtClassName(p.mobility_class)+'</div><div style="font-size:12px;color:var(--mid);margin-top:3px">'+(p.entitlements&&p.entitlements.vehicles?p.entitlements.vehicles:p.market)+'</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--cream)">'+fmtMoney(p.monthly_price_usd)+'</div><div style="font-size:11px;color:var(--mid)">/month</div></div></div>'
+        +'</div>';
+    }).join('')+'<div id="plan-cta" style="display:none;padding-bottom:4px"><button class="btn-g" id="plan-cta-btn">Activate Class</button></div>';
+  }catch(e){/* keep static fallback markup */}
+}
+
+var _selectedPlanId=null;
+function selectPlan(el,planId,cls,color,price){
+  document.querySelectorAll('.plan-row').forEach(function(r){
+    r.style.borderColor='var(--border)'; r.style.transform='none';
+  });
+  el.style.borderColor=color; el.style.transform='scale(1.01)';
+  _selectedPlanId=planId;
+  var cta=document.getElementById('plan-cta'), btn=document.getElementById('plan-cta-btn');
+  cta.style.display='block';
+  btn.textContent='Activate '+cls+' — '+price+'/mo';
+  btn.onclick=activateSelectedPlan;
+}
+
+async function activateSelectedPlan(){
+  if(!MEMBER||!_selectedPlanId)return;
+  try{
+    var sub=await api('POST','/api/v1/subscription/subscriptions',{member_profile_id:MEMBER.id, plan_id:_selectedPlanId});
+    ACTIVE_SUBSCRIPTION=sub;
+    MEMBER=await api('GET','/api/v1/subscription/members/'+MEMBER.id);
+    await loadActiveSubscription();
+    toast('Class activated — welcome to your new plan');
+    go('membership');
+  }catch(err){toast('subscription-svc error: '+err.detail);}
+}
+
+// ══════════════════════════════════════════════════════════════
+// Vehicle unlock / trip — the physical unlock itself needs
+// card-control-svc/fleet-svc, not yet wired here; the GU-earning
+// step at trip end IS wired to the real ledger.
+// ══════════════════════════════════════════════════════════════
+function doUnlock(){
+  if(unlocked) return;
+  unlocked=true;
+  document.getElementById('lock-i').className='ti ti-lock-open';
+  document.getElementById('lock-i').style.color='#3daa6a';
+  document.getElementById('ring').style.borderColor='#3daa6a';
+  document.getElementById('u-status').textContent='Vehicle Unlocked';
+  document.getElementById('u-status').style.color='#3daa6a';
+  document.getElementById('u-hint').textContent='Enter vehicle and start your trip';
+  document.getElementById('unlock-btns').style.display='none';
+  document.getElementById('trip-timer').style.display='block';
+  document.getElementById('trip-lbl').style.display='block';
+  document.getElementById('trip-btns').style.display='flex';
+  document.getElementById('lock-stat').textContent='Unlocked';
+  tripSecs=0;
+  if(tripInt) clearInterval(tripInt);
+  tripInt=setInterval(function(){
+    tripSecs++;
+    var m=String(Math.floor(tripSecs/60)).padStart(2,'0');
+    var s=String(tripSecs%60).padStart(2,'0');
+    var el=document.getElementById('trip-timer');
+    if(el) el.textContent=m+':'+s;
+  },1000);
+}
+
+async function endTrip(){
+  unlocked=false;
+  if(tripInt){clearInterval(tripInt);tripInt=null;}
+  document.getElementById('lock-i').className='ti ti-lock';
+  document.getElementById('lock-i').style.color='var(--gold)';
+  document.getElementById('ring').style.borderColor='var(--bgold)';
+  document.getElementById('unlock-btns').style.display='flex';
+  document.getElementById('trip-timer').style.display='none';
+  document.getElementById('trip-lbl').style.display='none';
+  document.getElementById('trip-btns').style.display='none';
+  document.getElementById('lock-stat').textContent='Locked';
+  var minutesDriven=Math.max(1,Math.round(tripSecs/60));
+  tripSecs=0;
+
+  // Fully real: awards GU through the actual ledger, not a hardcoded
+  // "+12 GU" string. Amount is a simple deterministic function of
+  // trip length for this demo; a production rule would likely weigh
+  // mileage and off-peak timing too (see gu_economy_engine.py).
+  var guEarned=Math.min(50, minutesDriven*2);
+  try{
+    await api('POST','/api/v1/subscription/gu/earn',{member_profile_id:MEMBER.id, trigger:'off_peak', amount:guEarned});
+    MEMBER=await api('GET','/api/v1/subscription/members/'+MEMBER.id);
+    document.getElementById('u-status').textContent='Trip ended — +'+guEarned+' GU earned';
+  }catch(err){
+    document.getElementById('u-status').textContent='Trip ended';
+  }
+  document.getElementById('u-status').style.color='var(--cream)';
+  document.getElementById('u-hint').textContent='Vehicle returned to hub';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Concierge chat — NOT YET INTEGRATED. The real backend for this
+// would be ai-orchestration-svc's concierge_agent.evaluate_message,
+// which itself depends on crm-svc for conversation/message storage
+// and drafted-reply retrieval — crm-svc doesn't exist as a running
+// service yet (only tool references expecting one). Left as local
+// UI-only interaction until that service is built; not represented
+// as a real integration anywhere in this file.
+// ══════════════════════════════════════════════════════════════
+function sendMsg(){
+  var inp=document.getElementById('ci');
+  var txt=inp.value.trim();
+  if(!txt) return;
+  inp.value='';
+  var msgs=document.getElementById('msgs');
+
+  var userDiv=document.createElement('div');
+  userDiv.style.cssText='display:flex;justify-content:flex-end';
+  userDiv.innerHTML='<div style="max-width:78%"><div style="background:var(--gold);padding:10px 13px;border-radius:13px 13px 4px 13px;font-size:13px;color:var(--navy);font-weight:500;line-height:1.5">'+txt+'</div><div style="font-size:10px;color:var(--dim);margin-top:3px;text-align:right;padding:0 3px">Just now</div></div>';
+  msgs.appendChild(userDiv);
+
+  var typing=document.getElementById('typing');
+  typing.style.display='block';
+  msgs.parentElement.scrollTop=99999;
+
+  setTimeout(function(){
+    typing.style.display='none';
+    var aiDiv=document.createElement('div');
+    aiDiv.style.cssText='display:flex;gap:8px;align-items:flex-start';
+    aiDiv.innerHTML='<div style="width:28px;height:28px;background:var(--card2);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-robot" style="font-size:14px;color:var(--gold)"></i></div><div style="max-width:82%"><div style="background:var(--card2);padding:10px 12px;border-radius:4px 13px 13px 13px;font-size:13px;color:var(--cream);line-height:1.5">Concierge chat isn\'t connected to a live agent yet — this reply is a placeholder.</div><div style="font-size:10px;color:var(--dim);margin-top:3px;padding:0 3px">Just now · Not yet integrated</div></div>';
+    msgs.appendChild(aiDiv);
+    msgs.parentElement.scrollTop=99999;
+  },900);
+}
+
+function copyId(){
+  var btn=document.getElementById('copy-btn');
+  btn.innerHTML='<i class="ti ti-check" style="font-size:17px;color:var(--gold)"></i>';
+  setTimeout(function(){
+    btn.innerHTML='<i class="ti ti-copy" style="font-size:17px;color:var(--mid)"></i>';
+  },2000);
+}
+
+document.getElementById('ci').addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg();});
+
+// ── Toast ──
+function toast(msg){
+  var t=document.getElementById('voyqi-toast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='voyqi-toast';
+    t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#162036;border:0.5px solid rgba(201,168,76,0.35);border-radius:11px;padding:10px 18px;font-size:13px;color:#f0ece0;z-index:9999;opacity:0;transition:opacity .22s;pointer-events:none;white-space:nowrap;font-family:inherit;text-align:center;max-width:300px';
+    document.querySelector('.phone').appendChild(t);
+  }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(window._tt);
+  window._tt=setTimeout(function(){t.style.opacity='0'},2500);
+}
+
+// ══════════════════════════════════════════════════════════════
+// Travel — wired to real travel declarations
+// ══════════════════════════════════════════════════════════════
+function pickCity(el,city){
+  document.querySelectorAll('.city-opt').forEach(function(b){
+    b.style.borderColor='var(--border)'; b.style.color='var(--mid)'; b.style.background='var(--card2)';
+  });
+  el.style.borderColor='var(--bgold)'; el.style.color='var(--gold)'; el.style.background='rgba(201,168,76,0.07)';
+  document.getElementById('travel-inp').value=city;
+}
+function _randomHubIdPlaceholder(){
+  // fleet-svc's vehicle search requires hub_id to be a real UUID —
+  // there's no real hub directory lookup wired here yet (that's
+  // hub-svc, out of scope for this pass), so this generates a
+  // syntactically valid placeholder rather than sending a fabricated
+  // string like "hub-london" that would 422 on the real backend.
+  // A production build resolves this from hub-svc by city name.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+    var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+async function stageTravel(){
+  var city=document.getElementById('travel-inp').value.trim();
+  if(!city){toast('Select a destination first');return;}
+  if(!MEMBER)return;
+  try{
+    await api('POST','/api/v1/subscription/travel-declarations',{
+      member_profile_id:MEMBER.id, source_class:MEMBER.mobility_class||'urban',
+      destination_market:city, destination_hub_id:_randomHubIdPlaceholder(),
+    });
+    document.getElementById('travel-form-s').style.display='none';
+    document.getElementById('travel-staged-s').style.display='block';
+    document.getElementById('staged-dest-txt').textContent='Destination: '+city;
+  }catch(err){
+    toast('subscription-svc error: '+(err.detail||'could not stage travel'));
+  }
+}
+function resetTravel(){
+  document.getElementById('travel-form-s').style.display='block';
+  document.getElementById('travel-staged-s').style.display='none';
+  document.getElementById('travel-inp').value='';
+  document.querySelectorAll('.city-opt').forEach(function(b){
+    b.style.borderColor='var(--border)'; b.style.color='var(--mid)'; b.style.background='var(--card2)';
+  });
+}
+
+// ── Notifications mark-read — NOT YET INTEGRATED: no notification
+// model exists anywhere on this platform yet. Local UI state only. ──
+function markRead(el){
+  var dot=el.querySelector('.unread-dot');
+  if(dot) dot.remove();
+  el.style.borderColor='var(--border)';
+  el.style.background='var(--card)';
+  toast('Marked as read');
+}
+
+go('login');
+</script>

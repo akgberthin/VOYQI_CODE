@@ -1,0 +1,338 @@
+# VOYQI Mobility OS — AI Orchestration Service (Layer 1)
+#
+# REV D — split into two deployment groups for resource isolation. This is
+# STILL ONE LOGICAL SERVICE, not two independent AI services — PRD §23.1
+# explicitly rules out "building the AI as multiple separate services"
+# because independent services don't share context. Both groups below:
+#   - run the same LangGraph graph / same image
+#   - read and write the SAME Postgres decision log (ai_orchestration_service db)
+#   - read and write the SAME Redis-backed LangGraph checkpoint store
+#     (see ai-orchestration-shared-config below — this is what keeps the
+#     Supervisor's "global platform context" genuinely global across both
+#     groups and across every replica, not pinned to whichever pod started
+#     a conversation)
+# The split is a K8s scheduling/isolation boundary only, addressing three
+# concrete compromises: node-level resource contention, deploy blast
+# radius, and in-memory session/checkpoint affinity.
+#
+# REALTIME group (port 8020) — Supervisor, Member Experience, Concierge,
+#   Relationship Intelligence (CRM). Latency-critical: a human is waiting
+#   on the response in-session (member chat, or staff waiting on a drafted
+#   reply in the Conversational Engagement Hub, CRM-003). Guaranteed QoS
+#   (requests == limits) so the kubelet never throttles these pods under
+#   node pressure. Higher PriorityClass than batch.
+# BATCH group (port 8014) — Fleet Intelligence, Pricing Intelligence,
+#   Revenue, Retention, Sales & Originations Intelligence, Talent &
+#   Workforce Intelligence, Compliance & Risk Intelligence, Portfolio
+#   Intelligence. Throughput-heavy or non-interactive reasoning (fleet-wide
+#   reassignment, pricing recalculation, F&I decisioning, HRM course/notice
+#   drafting, ABAC policy simulation, cross-subsidiary rollups). Burstable
+#   QoS is fine here — batch can tolerate being squeezed, it must never be
+#   the one doing the squeezing.
+#
+# Roster expansion note: the original 7-agent design (PRD v3 / SDA) covered
+# only the core Mobility platform. The Enterprise Admin Screen Specification
+# later assumed CRM/Originations/Talent-CRM agents that were never actually
+# defined — see docs/AI_ORCHESTRATION_SCALING.md §"Roster expansion" for the
+# full account of that gap and why these 5 agents close it (matched to
+# distinct judgment domains, not 1:1 with all 26 services).
+#
+# Both are scheduled on their OWN dedicated, tainted node pool — not just a
+# separate Deployment on the same pool — because CPU contention happens at
+# the node/kernel level, not the pod level. See terraform/modules/gke.
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: voyqi-ai-realtime-critical
+value: 900000
+globalDefault: false
+description: "Member-facing AI path (Supervisor, Concierge, Member Experience). Preempts batch under node pressure; never evicted first."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: voyqi-ai-batch-standard
+value: 100000
+globalDefault: false
+description: "Batch AI reasoning (Fleet Intelligence, Pricing Intelligence, Revenue, Retention). Evicted before realtime under any resource pressure."
+---
+# Shared, non-secret config read by BOTH deployment groups — this is the
+# concrete mechanism that keeps "one shared context" true despite the
+# scheduling split.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-orchestration-shared-config
+  namespace: voyqi
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "voyqi-prod-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  LANGGRAPH_CHECKPOINTER: "redis"
+  LANGGRAPH_CHECKPOINT_NAMESPACE: "voyqi-ai-nucleus"
+  DECISION_LOG_DB: "ai_orchestration_service" # single shared Postgres database — see terraform/modules/cloudsql
+  REDIS_HOST: "voyqi-prod-cache" # Memorystore — see terraform/modules/redis
+  REDIS_PORT: "6379"
+---
+# ============================== REALTIME GROUP ==============================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestration-realtime
+  namespace: voyqi
+  labels:
+    app: ai-orchestration-realtime
+    role: ai-orchestration
+    tier: realtime
+    voyqi-layer: "1"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never drop capacity on the member-facing path during a rollout
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: ai-orchestration-realtime
+  template:
+    metadata:
+      labels:
+        app: ai-orchestration-realtime
+        role: ai-orchestration
+        tier: realtime
+        voyqi-layer: "1"
+    spec:
+      serviceAccountName: ai-orch-ksa
+      priorityClassName: voyqi-ai-realtime-critical
+      tolerations:
+        - key: "workload"
+          operator: "Equal"
+          value: "ai-orchestration-realtime"
+          effect: "NoSchedule"
+      nodeSelector:
+        voyqi-pool: ai-orchestration-realtime
+      volumes:
+        - name: tier-policy
+          configMap:
+            name: ai-orchestration-tier-policy
+      containers:
+        - name: ai-orchestration-realtime
+          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-service:latest
+          ports:
+            - containerPort: 8020
+          env:
+            - name: ORCHESTRATION_TIER
+              value: "realtime"
+            - name: TIER_POLICY_PATH
+              value: "/etc/voyqi/tier-policy.yaml" # consulted before executing ANY agent action — see docs/AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md
+            - name: AGENT_ROSTER
+              value: "supervisor,member-experience,concierge,relationship-intelligence"
+            - name: KAFKA_CONSUMER_GROUP
+              value: "ai-orchestration-realtime"
+            - name: KAFKA_TOPICS
+              value: "subscription.*,travel.activated,concierge.requested,user.*,payment.failed,payment.processed,lead.captured,conversation.message.received,conversation.reply.drafted"
+          envFrom:
+            - configMapRef:
+                name: ai-orchestration-shared-config
+            - secretRef:
+                name: ai-orchestration-realtime-secrets # ANTHROPIC_API_KEY (realtime Workspace key), DB creds
+          volumeMounts:
+            - name: tier-policy
+              mountPath: /etc/voyqi
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /health, port: 8020 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8020 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            # Guaranteed QoS: requests == limits. Never throttled, never
+            # OOM-killed ahead of a lower-priority batch pod on the node.
+            requests: { cpu: "1500m", memory: "3Gi" }
+            limits: { cpu: "1500m", memory: "3Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestration-realtime
+  namespace: voyqi
+spec:
+  selector:
+    app: ai-orchestration-realtime
+  ports:
+    - port: 8020
+      targetPort: 8020
+  type: ClusterIP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ai-orchestration-realtime-pdb
+  namespace: voyqi
+spec:
+  minAvailable: 2 # of 3 — a rollout or node drain never drops below 2/3 realtime capacity
+  selector:
+    matchLabels:
+      app: ai-orchestration-realtime
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-orchestration-realtime-hpa
+  namespace: voyqi
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-orchestration-realtime
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+    # Primary signal: latency, not CPU — scale BEFORE chat replies slow
+    # down, not after the node is already hot. Requires the Prometheus
+    # Adapter exposing this custom metric (Prometheus + Grafana are already
+    # in the stack per the SDA's observability commitment).
+    - type: Pods
+      pods:
+        metric:
+          name: http_request_duration_p95_seconds
+        target:
+          type: AverageValue
+          averageValue: "800m" # 800ms p95 — scale out before members notice
+    # Fallback signal so autoscaling still functions before the custom
+    # metrics pipeline is wired up.
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+---
+# ============================== BATCH GROUP ==============================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestration-batch
+  namespace: voyqi
+  labels:
+    app: ai-orchestration-batch
+    role: ai-orchestration
+    tier: batch
+    voyqi-layer: "1"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: ai-orchestration-batch
+  template:
+    metadata:
+      labels:
+        app: ai-orchestration-batch
+        role: ai-orchestration
+        tier: batch
+        voyqi-layer: "1"
+    spec:
+      serviceAccountName: ai-orch-ksa
+      priorityClassName: voyqi-ai-batch-standard
+      tolerations:
+        - key: "workload"
+          operator: "Equal"
+          value: "ai-orchestration-batch"
+          effect: "NoSchedule"
+      nodeSelector:
+        voyqi-pool: ai-orchestration-batch
+      volumes:
+        - name: tier-policy
+          configMap:
+            name: ai-orchestration-tier-policy
+      containers:
+        - name: ai-orchestration-batch
+          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-service:latest
+          ports:
+            - containerPort: 8014
+          env:
+            - name: ORCHESTRATION_TIER
+              value: "batch"
+            - name: TIER_POLICY_PATH
+              value: "/etc/voyqi/tier-policy.yaml" # consulted before executing ANY agent action — see docs/AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md
+            - name: AGENT_ROSTER
+              value: "fleet-intelligence,pricing-intelligence,revenue,retention,sales-originations-intelligence,talent-workforce-intelligence,compliance-risk-intelligence,portfolio-intelligence"
+            - name: KAFKA_CONSUMER_GROUP
+              value: "ai-orchestration-batch"
+            - name: KAFKA_TOPICS
+              value: "travel.activated,vehicle.assigned,utilization.low,utilization.high,maintenance.due,rental.booked,event.detected,vehicle.idle.48h,revenue.below.target,subscription.paused,subscription.cancelled,subscription.downgraded,deal.submitted,credit.decision.requested,lender.matched,course.draft.requested,notice.draft.requested,candidate.screened,policy.simulation.requested,audit.anomaly.detected,portfolio.rollup.scheduled"
+            - name: ANTHROPIC_BATCH_API_ENABLED
+              value: "true" # non-time-critical jobs (e.g. scheduled fleet-wide reassignment) route through the Anthropic Batch API — separate infra/pricing tier, never competes with the realtime rate-limit pool
+          envFrom:
+            - configMapRef:
+                name: ai-orchestration-shared-config
+            - secretRef:
+                name: ai-orchestration-batch-secrets # ANTHROPIC_API_KEY (batch Workspace key), DB creds
+          volumeMounts:
+            - name: tier-policy
+              mountPath: /etc/voyqi
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /health, port: 8014 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /health, port: 8014 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            # Burstable QoS — batch can tolerate being squeezed under node
+            # pressure; it must never be the one squeezing realtime (it
+            # isn't even on the same node pool anymore).
+            requests: { cpu: "1", memory: "2Gi" }
+            limits: { cpu: "4", memory: "6Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestration-batch
+  namespace: voyqi
+spec:
+  selector:
+    app: ai-orchestration-batch
+  ports:
+    - port: 8014
+      targetPort: 8014
+  type: ClusterIP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ai-orchestration-batch-pdb
+  namespace: voyqi
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ai-orchestration-batch
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-orchestration-batch-hpa
+  namespace: voyqi
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-orchestration-batch
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    # Throughput signal — CPU utilization is fine to lag slightly here;
+    # nothing is watching a spinner on the batch path.
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

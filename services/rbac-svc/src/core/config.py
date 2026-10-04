@@ -1,0 +1,24 @@
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="RBAC_", extra="ignore")
+
+    service_name: str = "rbac-svc"
+    port: int = 8011
+    database_url: str = "sqlite+aiosqlite:///./rbac.db"
+    kafka_bootstrap_servers: str = "kafka:9092"
+    ai_orchestration_svc_base_url: str = "http://ai-orchestration-svc:8020"
+    ai_initiated_header_value: str = "compliance_audit_agent"
+
+    # SAP-002 — deny-wins: an explicit DENY on any matching permission
+    # always overrides an ALLOW from any other role or override, no
+    # exceptions. This is enforced in the engine, not just documented.
+    deny_wins: bool = True
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

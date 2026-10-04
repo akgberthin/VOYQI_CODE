@@ -1,0 +1,2 @@
+[tool.ruff.lint]
+ignore = ["B008"]  # Depends() in default args is FastAPI's required DI pattern, not a bug

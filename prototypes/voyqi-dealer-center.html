@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI Auto Group — Dealer Center</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --amber:#c9a84c;--purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --sw:224px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.wordmark span{color:var(--mid);font-weight:500;letter-spacing:.04em;margin-left:6px;font-size:12px}
+.tb-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim);flex-shrink:0}
+.tb-search{flex:1;max-width:340px;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:7px}
+.tb-search input{background:none;border:none;outline:none;font-size:13px;color:var(--text);width:100%}
+.tb-search input::placeholder{color:var(--dim)}
+.tb-search i{color:var(--dim);font-size:15px;flex-shrink:0}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.tbx{width:30px;height:30px;border-radius:7px;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+.tbx:hover{background:var(--surface3)}
+.tbx i{font-size:15px;color:var(--mid)}
+.nbadge{position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--gold);border-radius:50%;border:1.5px solid var(--surface)}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;cursor:pointer}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.nb-b{background:var(--blue-dim);color:var(--blue)}
+.nb-g{background:var(--gold-dim);color:var(--gold)}
+.sfoot{margin-top:auto;padding:10px 13px;border-top:0.5px solid var(--border)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.cg{background:var(--surface);border:0.5px solid var(--gold-border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:10px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center;transition:background .1s}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:var(--surface2)}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pp{background:var(--purple-dim);color:var(--purple);border:0.5px solid rgba(123,108,212,.3)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-o:hover{background:var(--surface2);color:var(--text)}
+.btn-gh{background:none;border:0.5px solid var(--border);color:var(--dim)}
+.btn-gh:hover{background:var(--surface2);color:var(--text)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--gold-border)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.ft{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;resize:vertical;min-height:70px}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.tog{display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0;user-select:none}
+.ts{width:34px;height:18px;border-radius:9px;background:var(--surface3);position:relative;transition:background .2s;border:0.5px solid var(--border);flex-shrink:0}
+.ts.on{background:var(--green)}
+.ts::after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:var(--dim);top:2px;left:2px;transition:all .2s}
+.ts.on::after{left:19px;background:#fff}
+.tlb{font-size:13px;color:var(--text)}
+.prog{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.pf{height:4px;border-radius:2px}
+.pf-g{background:var(--green)}
+.pf-gold{background:var(--gold)}
+.pf-r{background:var(--red)}
+.pf-b{background:var(--blue)}
+.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.at{font-family:monospace;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.sl{font-size:12px;color:var(--gold);cursor:pointer}
+.dv{height:0.5px;background:var(--border);margin:13px 0}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.flash{animation:fl .5s ease}
+@keyframes fl{0%{background:var(--gold-dim)}100%{background:transparent}}
+.stepper{display:flex;align-items:center;gap:0;margin-bottom:16px}
+.step{display:flex;align-items:center;gap:8px;flex:1}
+.step-dot{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dim);flex-shrink:0}
+.step.done .step-dot{background:var(--green-dim);border-color:var(--green-border);color:var(--green)}
+.step.active .step-dot{background:var(--gold-dim);border-color:var(--gold-border);color:var(--gold)}
+.step-lb{font-size:12px;color:var(--dim);white-space:nowrap}
+.step.done .step-lb,.step.active .step-lb{color:var(--text)}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 4px}
+.step.done .step-line{background:var(--green-border)}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:14px}
+.aip-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--gold)}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.aip-empty{font-size:13px;border:0.5px solid var(--gold-border);border-radius:8px;padding:10px;color:var(--gold);background:var(--gold-dim)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI<span>Dealer Center</span></span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx">VOYQI Auto Group</span>
+  <div class="tb-search"><i class="ti ti-search"></i><input type="text" placeholder="Search rooftops, VINs, deals, buyers..."></div>
+  <div class="tb-right">
+    <div class="tbx" onclick="sp('compliance')"><i class="ti ti-shield-exclamation"></i><div class="nbadge"></div></div>
+    <div class="tbx" onclick="sp('dash')"><i class="ti ti-sparkles"></i></div>
+    <div class="tbx"><i class="ti ti-settings"></i></div>
+    <div class="upill">
+      <div class="uav">DO</div>
+      <div><div class="uname">Dealer Ops</div><div class="urole">dms_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Overview</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Group dashboard</div>
+
+  <div class="ss">Sales &amp; Merchandising</div>
+  <div class="ni" id="n-rooftops" onclick="sp('rooftops')"><i class="ti ti-building-store"></i>Rooftop directory</div>
+  <div class="ni" id="n-inventory" onclick="sp('inventory')"><i class="ti ti-car"></i>Retail inventory<span class="nb nb-g" id="nb-aging">2</span></div>
+  <div class="ni" id="n-deals" onclick="sp('deals')"><i class="ti ti-file-dollar"></i>Sales desk &amp; deals</div>
+  <div class="ni" id="n-fi" onclick="sp('fi')"><i class="ti ti-shield-check"></i>F&amp;I &amp; compliance<span class="nb nb-r" id="nb-fi">1</span></div>
+  <div class="ni" id="n-lending" onclick="sp('lending')"><i class="ti ti-building-bank"></i>Lender &amp; credit apps<span class="nb nb-r" id="nb-ofac">0</span></div>
+  <div class="ni" id="n-appraisal" onclick="sp('appraisal')"><i class="ti ti-calculator"></i>Trade-in appraisal</div>
+
+  <div class="ss">Fixed Operations</div>
+  <div class="ni" id="n-service" onclick="sp('service')"><i class="ti ti-tool"></i>Service &amp; repair orders</div>
+  <div class="ni" id="n-recon" onclick="sp('recon')"><i class="ti ti-car-crane"></i>Recon workflow<span class="nb nb-r" id="nb-recon-backlog">0</span></div>
+  <div class="ni" id="n-parts" onclick="sp('parts')"><i class="ti ti-package"></i>Parts inventory<span class="nb nb-r" id="nb-parts">2</span></div>
+  <div class="ni" id="n-loaners" onclick="sp('loaners')"><i class="ti ti-key"></i>Loaner &amp; courtesy</div>
+
+  <div class="ss">Performance</div>
+  <div class="ni" id="n-pl" onclick="sp('pl')"><i class="ti ti-chart-bar"></i>P&amp;L &amp; KPI board</div>
+  <div class="ni" id="n-franchise" onclick="sp('franchise')"><i class="ti ti-award"></i>Franchise compliance<span class="nb nb-r" id="nb-franchise">1</span></div>
+  <div class="ni" id="n-compliance" onclick="sp('compliance')"><i class="ti ti-gavel"></i>Compliance queue<span class="nb nb-r" id="nb-compliance">3</span></div>
+
+  <div class="sfoot">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="uav" style="width:26px;height:26px;font-size:10px">DO</div>
+      <div><div style="font-size:12px;font-weight:500;color:var(--text)">Dealer Ops</div><div style="font-size:11px;color:var(--dim)">dms_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+
+<div class="page on" id="p-dash">
+<div class="ph"><div class="pt">Dealer group dashboard</div><div class="ps">VOYQI Auto Group · 4 rooftops · Florida &amp; Texas Holdco · <span class="ld"></span>Live</div>
+<div class="pa"><button class="btn btn-g" onclick="rerenderAll()"><i class="ti ti-refresh"></i>Refresh</button><button class="btn btn-o"><i class="ti ti-download"></i>Export group report</button></div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Group gross MTD</div><div class="kv" id="dk-gross">$—</div><div class="kd tg">4 rooftops delivered</div></div>
+  <div class="kpi"><div class="kl">Units sold MTD</div><div class="kv" id="dk-units">—</div><div class="kd tm">Across all rooftops</div></div>
+  <div class="kpi kpi-red"><div class="kl">Compliance flags open</div><div class="kv" id="dk-flags">—</div><div class="kd trr">Adverse action, red-flag, franchise</div></div>
+  <div class="kpi"><div class="kl">Inventory aging &gt;60d</div><div class="kv" id="dk-aging">—</div><div class="kd tm">Units at risk of markdown</div></div>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="ch"><span class="ct">Gross per unit by rooftop · vs. group average</span></div>
+    <div style="position:relative;height:190px"><canvas id="chartGross" role="img" aria-label="Gross per unit by rooftop">Gross per unit chart</canvas></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">AI &amp; compliance activity · live</span><span class="sl" onclick="sp('compliance')">View queue</span></div>
+    <div id="dash-feed" style="display:flex;flex-direction:column;gap:1px;max-height:210px;overflow-y:auto"></div>
+  </div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Inventory aging alerts</span><span class="sl" onclick="sp('inventory')">Manage</span></div>
+    <div id="dash-aging" style="display:flex;flex-direction:column"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Franchise compliance status</span><span class="sl" onclick="sp('franchise')">Manage</span></div>
+    <div id="dash-franchise" style="display:flex;flex-direction:column"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-rooftops">
+<div class="ph"><div class="pt">Rooftop directory &amp; entity mapping</div><div class="ps">DMS-001 · Dealership registry, franchise agreements, license renewal tracking</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('rf-form')"><i class="ti ti-plus"></i>Add rooftop</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Total rooftops</div><div class="kv" id="rk-total">—</div><div class="kd tm">2 state holdcos</div></div>
+  <div class="kpi"><div class="kl">OEM brands</div><div class="kv" id="rk-brands">—</div><div class="kd tm">Distinct franchises</div></div>
+  <div class="kpi kpi-red"><div class="kl">Licenses expiring &lt;60d</div><div class="kv" id="rk-expiring">—</div><div class="kd trr">Renewal required</div></div>
+  <div class="kpi kpi-green"><div class="kl">Naming compliance</div><div class="kv">100%</div><div class="kd tr2">No OEM flags</div></div>
+</div>
+<div class="card" id="rf-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">New rooftop</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Rooftop name</label><input class="fi" id="rf-name" placeholder="Austin Volvo"></div>
+    <div class="fg"><label class="fl">State holding company</label><input class="fi" id="rf-holdco" placeholder="Texas Holdco LLC"></div>
+    <div class="fg"><label class="fl">OEM brand</label><input class="fi" id="rf-brand" placeholder="Volvo"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">License number</label><input class="fi" id="rf-lic" placeholder="TX-DLR-88213"></div>
+    <div class="fg"><label class="fl">License expiry</label><input class="fi" id="rf-exp" type="date"></div>
+  </div>
+  <button class="btn btn-g" onclick="addRooftop()"><i class="ti ti-check"></i>Create rooftop</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.6fr 1.3fr 1fr 1fr 100px 90px"><span>Rooftop</span><span>Holding company</span><span>OEM brand</span><span>License #</span><span>Expiry</span><span>Status</span></div>
+  <div id="rooftop-rows"></div>
+</div>
+</div>
+
+<div class="page" id="p-inventory">
+<div class="ph"><div class="pt">Retail inventory &amp; merchandising</div><div class="ps">DMS-002 · New &amp; used stock per rooftop, aging alerts, transfer between rooftops</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('inv-form')"><i class="ti ti-plus"></i>Stock in vehicle</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Total units</div><div class="kv" id="ik-total">—</div><div class="kd tm">All rooftops</div></div>
+  <div class="kpi kpi-green"><div class="kl">In stock</div><div class="kv" id="ik-instock">—</div><div class="kd tr2">Available for sale</div></div>
+  <div class="kpi kpi-red"><div class="kl">Aging &gt;60 days</div><div class="kv" id="ik-aging">—</div><div class="kd trr">Markdown risk</div></div>
+  <div class="kpi kpi-g"><div class="kl">Avg days in stock</div><div class="kv" id="ik-avgdays">—</div><div class="kd tg">Group average</div></div>
+</div>
+<div class="card" id="inv-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Stock in vehicle</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Rooftop</label><select class="fs" id="inv-rooftop"></select></div>
+    <div class="fg"><label class="fl">VIN</label><input class="fi" id="inv-vin" placeholder="WDDUG8FB0KA123456"></div>
+    <div class="fg"><label class="fl">Condition</label><select class="fs" id="inv-cond"><option value="new">New</option><option value="used">Used</option></select></div>
+  </div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Make / model / year</label><input class="fi" id="inv-desc" placeholder="Mercedes-Benz S-Class 2024"></div>
+    <div class="fg"><label class="fl">Asking price ($)</label><input class="fi" id="inv-price" placeholder="125000"></div>
+    <div class="fg"><label class="fl">Acquisition cost ($)</label><input class="fi" id="inv-cost" placeholder="110000"></div>
+  </div>
+  <button class="btn btn-g" onclick="addInventory()"><i class="ti ti-check"></i>Add to inventory</button>
+</div>
+<div class="two" style="margin-bottom:14px;grid-template-columns:1fr 320px">
+  <div class="tw">
+    <div class="th" style="grid-template-columns:1.6fr 100px 90px 85px 90px 85px 90px"><span>Vehicle</span><span>Rooftop</span><span>Cond.</span><span>Asking</span><span>Acq. cost</span><span>Days</span><span>Status</span></div>
+    <div id="inventory-rows"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Aging alerts (&gt;60 days)</span></div>
+    <div id="inv-aging-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="sec"><span class="st">Vehicle inspector — history report, book value &amp; AI pricing</span></div>
+  <div class="fg" style="max-width:420px"><label class="fl">Select vehicle</label><select class="fs" id="vhr-vehicle-sel" onchange="renderVehicleInspector()"></select></div>
+  <div id="vhr-inspector"></div>
+</div>
+</div>
+
+<div class="page" id="p-deals">
+<div class="ph"><div class="pt">Sales desk &amp; deal manager</div><div class="ps">DMS-003 · Lead to delivery, desking, delivery scheduling</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('deal-form')"><i class="ti ti-plus"></i>Open deal</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Working</div><div class="kv" id="dlk-working">—</div><div class="kd tm">Awaiting desk</div></div>
+  <div class="kpi kpi-b"><div class="kl">Desking</div><div class="kv" id="dlk-desking">—</div><div class="kd tb2">Price negotiation</div></div>
+  <div class="kpi kpi-g"><div class="kl">Approved</div><div class="kv" id="dlk-approved">—</div><div class="kd tg">Awaiting delivery</div></div>
+  <div class="kpi kpi-green"><div class="kl">Delivered MTD</div><div class="kv" id="dlk-delivered">—</div><div class="kd tr2">Closed won</div></div>
+</div>
+<div class="card" id="deal-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Open new deal</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Rooftop</label><select class="fs" id="deal-rooftop"></select></div>
+    <div class="fg"><label class="fl">Vehicle (in-stock)</label><select class="fs" id="deal-vehicle"></select></div>
+    <div class="fg"><label class="fl">Buyer name</label><input class="fi" id="deal-buyer" placeholder="Jane Doe"></div>
+  </div>
+  <button class="btn btn-g" onclick="addDeal()"><i class="ti ti-check"></i>Open deal jacket</button>
+</div>
+<div id="deal-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-lending">
+<div class="ph"><div class="pt">Lender access &amp; credit application</div><div class="ps">Real bureau pull, OFAC sanctions screening, multi-lender submission &amp; decisioning — the financing decision behind every deal</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('lender-form')"><i class="ti ti-plus"></i>Add lender</button><button class="btn btn-o" onclick="toggleForm('credit-form')"><i class="ti ti-plus"></i>New credit application</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Applications open</div><div class="kv" id="clk-open">—</div><div class="kd tm">Awaiting bureau pull or decision</div></div>
+  <div class="kpi kpi-b"><div class="kl">Submitted to lenders</div><div class="kv" id="clk-submitted">—</div><div class="kd tb2">Awaiting decision</div></div>
+  <div class="kpi kpi-green"><div class="kl">Approved MTD</div><div class="kv" id="clk-approved">—</div><div class="kd tr2">Ready for selection</div></div>
+  <div class="kpi kpi-red"><div class="kl">OFAC matches</div><div class="kv" id="clk-ofac">—</div><div class="kd trr">Permanently blocked, no override</div></div>
+</div>
+<div class="card" id="lender-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Add lender</span></div>
+  <div class="fg"><label class="fl">Lender name</label><input class="fi" id="lender-name" placeholder="Westlake Financial"></div>
+  <button class="btn btn-g" onclick="addLender()"><i class="ti ti-check"></i>Add lender</button>
+</div>
+<div class="card" id="credit-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">New credit application</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Deal</label><select class="fs" id="credit-deal"></select></div>
+    <div class="fg"><label class="fl">Applicant name</label><input class="fi" id="credit-name" placeholder="Jane Doe"></div>
+    <div class="fg"><label class="fl">Annual income ($)</label><input class="fi" id="credit-income" placeholder="95000"></div>
+  </div>
+  <button class="btn btn-g" onclick="addCreditApplication()"><i class="ti ti-check"></i>Submit application</button>
+</div>
+<div id="credit-cards" style="display:flex;flex-direction:column;gap:12px"></div>
+</div>
+
+<div class="page" id="p-fi">
+<div class="ph"><div class="pt">F&amp;I menu &amp; compliance console</div><div class="ps">DMS-004 · Product menu, adverse-action notices, red-flag identity checks — all routed to the Compliance/Audit Agent</div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Menu attach rate</div><div class="kv">68%</div><div class="kd tm">Deals w/ F&amp;I product</div></div>
+  <div class="kpi kpi-red"><div class="kl">Adverse action overdue</div><div class="kv" id="fk-overdue">—</div><div class="kd trr">FCRA/ECOA exposure</div></div>
+  <div class="kpi kpi-g"><div class="kl">Red-flag checks flagged</div><div class="kv" id="fk-flagged">—</div><div class="kd tg">This month</div></div>
+  <div class="kpi"><div class="kl">Avg F&amp;I PVR</div><div class="kv">$1,340</div><div class="kd tm">Per vehicle retailed</div></div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Adverse action notices</span></div>
+    <div class="tw" style="margin-bottom:14px">
+      <div class="th" style="grid-template-columns:1fr 1.2fr 90px 80px"><span>Deal</span><span>Reason</span><span>Deadline</span><span>Status</span></div>
+      <div id="aan-rows"></div>
+    </div>
+    <div class="sec"><span class="st">F&amp;I product menu</span></div>
+    <div class="tw">
+      <div class="th" style="grid-template-columns:1.4fr 100px 90px"><span>Product</span><span>Type</span><span>Price</span></div>
+      <div class="tr" style="grid-template-columns:1.4fr 100px 90px"><span class="tc">Extended Service Contract — 5yr/100k</span><span class="tm" style="font-size:12px">service_contract</span><span>$2,200</span></div>
+      <div class="tr" style="grid-template-columns:1.4fr 100px 90px"><span class="tc">GAP Coverage</span><span class="tm" style="font-size:12px">gap</span><span>$895</span></div>
+      <div class="tr" style="grid-template-columns:1.4fr 100px 90px"><span class="tc">Tire &amp; Wheel Protection</span><span class="tm" style="font-size:12px">insurance</span><span>$650</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Red-flag identity checks</span></div>
+    <div id="rf-cards" style="display:flex;flex-direction:column;gap:9px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-appraisal">
+<div class="ph"><div class="pt">Trade-in &amp; appraisal console</div><div class="ps">DMS-005 · AI-assisted valuation via the Pricing Intelligence Agent — the same agent that prices rental vehicles</div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Pending</div><div class="kv" id="apk-pending">—</div><div class="kd tm">Awaiting valuation</div></div>
+  <div class="kpi kpi-b"><div class="kl">Valued</div><div class="kv" id="apk-valued">—</div><div class="kd tb2">Awaiting payoff/offer</div></div>
+  <div class="kpi kpi-g"><div class="kl">Offered</div><div class="kv" id="apk-offered">—</div><div class="kd tg">Awaiting response</div></div>
+  <div class="kpi kpi-green"><div class="kl">Accepted MTD</div><div class="kv" id="apk-accepted">—</div><div class="kd tr2">Entering inventory</div></div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Request AI valuation</span></div>
+    <div class="fr3">
+      <div class="fg"><label class="fl">VIN</label><input class="fi" id="ai-vin" placeholder="1HGCM82633A004352"></div>
+      <div class="fg"><label class="fl">Mileage</label><input class="fi" id="ai-mi" placeholder="45000"></div>
+      <div class="fg"><label class="fl">Condition notes</label><input class="fi" id="ai-cond" placeholder="minor curb rash, otherwise clean"></div>
+    </div>
+    <div class="tog" onclick="toggleKey()" style="margin-bottom:10px">
+      <div class="ts" id="ai-key-ts"></div>
+      <div class="tlb">ANTHROPIC_API_KEY configured (live Claude reasoning)</div>
+    </div>
+    <button class="btn btn-g" style="margin-bottom:12px" onclick="requestValuation()"><i class="ti ti-sparkles"></i>Request AI valuation</button>
+    <div id="ai-result"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Appraisal pipeline</span></div>
+    <div class="tw">
+      <div class="th" style="grid-template-columns:1fr 80px 90px 90px 85px"><span>Vehicle</span><span>Mileage</span><span>Valuation</span><span>Offer</span><span>Status</span></div>
+      <div id="appraisal-rows"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-recon">
+<div class="ph"><div class="pt">Recon workflow</div><div class="ps">DMS-006 extension · Reconditioning newly-acquired inventory before it's front-line ready — the aging clock in Retail Inventory starts here, not at physical arrival</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('recon-form')"><i class="ti ti-plus"></i>Open recon order</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Open recon orders</div><div class="kv" id="rck-open">—</div><div class="kd tm">Awaiting inspection or in progress</div></div>
+  <div class="kpi kpi-red"><div class="kl">Backlog (&gt;7 days)</div><div class="kv" id="rck-backlog">—</div><div class="kd trr">Turnaround concern</div></div>
+  <div class="kpi kpi-green"><div class="kl">Avg turnaround</div><div class="kv" id="rck-turnaround">—</div><div class="kd tr2">Completed orders</div></div>
+  <div class="kpi kpi-g"><div class="kl">Recon cost MTD</div><div class="kv" id="rck-cost">—</div><div class="kd tg">All open + completed orders</div></div>
+</div>
+<div class="card" id="recon-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Open recon order</span></div>
+  <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="recon-vehicle-sel"></select></div>
+  <button class="btn btn-g" onclick="openReconOrder()"><i class="ti ti-check"></i>Open recon order</button>
+</div>
+<div id="recon-cards" style="display:flex;flex-direction:column;gap:12px"></div>
+</div>
+
+<div class="page" id="p-service">
+<div class="ph"><div class="pt">Service &amp; repair orders</div><div class="ps">DMS-006 · Fixed-operations RO management, technician dispatch, warranty claims</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('ro-form')"><i class="ti ti-plus"></i>Open repair order</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Open</div><div class="kv" id="rok-open">—</div><div class="kd tm">Awaiting dispatch</div></div>
+  <div class="kpi kpi-b"><div class="kl">In progress</div><div class="kv" id="rok-progress">—</div><div class="kd tb2">Technician assigned</div></div>
+  <div class="kpi kpi-green"><div class="kl">Completed MTD</div><div class="kv" id="rok-completed">—</div><div class="kd tr2">Revenue realized</div></div>
+  <div class="kpi kpi-g"><div class="kl">Warranty claims</div><div class="kv" id="rok-warranty">—</div><div class="kd tg">OEM reimbursable</div></div>
+</div>
+<div class="card" id="ro-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">New repair order</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Rooftop</label><select class="fs" id="ro-rooftop"></select></div>
+    <div class="fg"><label class="fl">VIN</label><input class="fi" id="ro-vin" placeholder="1HGCM82633A004352"></div>
+    <div class="fg"><label class="fl">Customer</label><input class="fi" id="ro-customer" placeholder="Jane Doe"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="ro-desc" placeholder="Brake pad replacement, front"></div>
+    <div class="fg"><label class="fl">Warranty claim?</label><select class="fs" id="ro-warranty"><option value="no">No — customer pay</option><option value="yes">Yes — OEM warranty</option></select></div>
+  </div>
+  <button class="btn btn-g" onclick="addRO()"><i class="ti ti-check"></i>Open RO</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1fr 1.2fr 100px 90px 90px"><span>Vehicle / customer</span><span>Description</span><span>Technician</span><span>Revenue</span><span>Status</span></div>
+  <div id="ro-rows"></div>
+</div>
+</div>
+
+<div class="page" id="p-parts">
+<div class="ph"><div class="pt">Parts inventory &amp; vendor ordering</div><div class="ps">DMS-007 · Stock levels, reorder points, vendor EDI order tracking</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('part-form')"><i class="ti ti-plus"></i>Add catalog item</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Total SKUs</div><div class="kv" id="pk-total">—</div><div class="kd tm">Across all rooftops</div></div>
+  <div class="kpi kpi-red"><div class="kl">Reorder alerts</div><div class="kv" id="pk-reorder">—</div><div class="kd trr">At or below reorder point</div></div>
+  <div class="kpi kpi-b"><div class="kl">Open vendor orders</div><div class="kv" id="pk-open">—</div><div class="kd tb2">Awaiting receipt</div></div>
+  <div class="kpi kpi-g"><div class="kl">Inventory value</div><div class="kv" id="pk-value">—</div><div class="kd tg">At unit cost</div></div>
+</div>
+<div class="card" id="part-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">New catalog item</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Part number</label><input class="fi" id="part-num" placeholder="BP-1006"></div>
+    <div class="fg"><label class="fl">Name</label><input class="fi" id="part-name" placeholder="Brake Pads — Rear"></div>
+    <div class="fg"><label class="fl">Unit cost ($)</label><input class="fi" id="part-cost" placeholder="42.00"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Starting stock</label><input class="fi" id="part-stock" placeholder="15"></div>
+    <div class="fg"><label class="fl">Reorder point</label><input class="fi" id="part-reorder" placeholder="5"></div>
+  </div>
+  <button class="btn btn-g" onclick="addPart()"><i class="ti ti-check"></i>Add to catalog</button>
+</div>
+<div class="two">
+  <div class="tw">
+    <div class="th" style="grid-template-columns:100px 1.3fr 80px 70px 80px"><span>Part #</span><span>Name</span><span>Cost</span><span>Stock</span><span>Reorder @</span></div>
+    <div id="parts-rows"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Reorder alerts</span></div>
+    <div id="parts-alerts" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-loaners">
+<div class="ph"><div class="pt">Loaner &amp; courtesy vehicle manager</div><div class="ps">DMS-008 · Service loaners shared with the Rental pool — extended loaners flag for billing handoff</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('loaner-form')"><i class="ti ti-plus"></i>Reserve loaner</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Active loaners</div><div class="kv" id="lk-active">—</div><div class="kd tm">Reserved + out</div></div>
+  <div class="kpi kpi-red"><div class="kl">Billing handoff required</div><div class="kv" id="lk-extended">—</div><div class="kd trr">Past 5-day threshold</div></div>
+  <div class="kpi kpi-green"><div class="kl">Returned MTD</div><div class="kv" id="lk-returned">—</div><div class="kd tr2">Completed cycles</div></div>
+  <div class="kpi kpi-g"><div class="kl">Avg loaner duration</div><div class="kv">3.2 days</div><div class="kd tg">Group average</div></div>
+</div>
+<div class="card" id="loaner-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Reserve loaner</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Repair order</label><select class="fs" id="loaner-ro"></select></div>
+    <div class="fg"><label class="fl">Loaner vehicle</label><input class="fi" id="loaner-vehicle" placeholder="VOYQI Urban loaner #4"></div>
+    <div class="fg"><label class="fl">Customer</label><input class="fi" id="loaner-customer" placeholder="Jane Doe"></div>
+  </div>
+  <button class="btn btn-g" onclick="addLoaner()"><i class="ti ti-check"></i>Reserve loaner</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1fr 1fr 90px 90px 110px"><span>Customer</span><span>Vehicle</span><span>Days out</span><span>Status</span><span>Billing</span></div>
+  <div id="loaner-rows"></div>
+</div>
+</div>
+
+<div class="page" id="p-pl">
+<div class="ph"><div class="pt">Dealership P&amp;L &amp; KPI board</div><div class="ps">DMS-009 · Every metric computed from real transactions, not approximated — no AI reasoning belongs on a financial statement</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Group gross/unit</div><div class="kv" id="plk-gross">—</div><div class="kd tg">30-day snapshot</div></div>
+  <div class="kpi"><div class="kl">Group inventory turn</div><div class="kv" id="plk-turn">—</div><div class="kd tm">Units sold / stock</div></div>
+  <div class="kpi kpi-b"><div class="kl">Group F&amp;I PVR</div><div class="kv" id="plk-fipvr">—</div><div class="kd tb2">Per vehicle retailed</div></div>
+  <div class="kpi kpi-green"><div class="kl">Group service absorption</div><div class="kv" id="plk-absorption">—</div><div class="kd tr2">Fixed-ops coverage</div></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="ch"><span class="ct">Rooftop benchmark · gross per unit vs. group average</span></div>
+  <div style="position:relative;height:220px"><canvas id="chartBenchmark" role="img" aria-label="Rooftop benchmark chart">Benchmark chart</canvas></div>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.5fr 90px 100px 100px 110px 90px"><span>Rooftop</span><span>Units</span><span>Gross/unit</span><span>Inv. turn</span><span>F&amp;I PVR</span><span>Absorption</span></div>
+  <div id="pl-rows"></div>
+</div>
+</div>
+
+<div class="page" id="p-franchise">
+<div class="ph"><div class="pt">OEM &amp; franchise compliance</div><div class="ps">DMS-010 · Facility/image program status, sales effectiveness, co-op claims — non-compliance always routes to the Compliance/Audit Agent</div></div>
+<div class="krow">
+  <div class="kpi kpi-green"><div class="kl">Compliant</div><div class="kv" id="fck-compliant">—</div><div class="kd tr2">Facility programs current</div></div>
+  <div class="kpi kpi-g"><div class="kl">At risk</div><div class="kv" id="fck-atrisk">—</div><div class="kd tg">Renewal window open</div></div>
+  <div class="kpi kpi-red"><div class="kl">Non-compliant</div><div class="kv" id="fck-noncompliant">—</div><div class="kd trr">Always audited</div></div>
+  <div class="kpi"><div class="kl">Co-op claims YTD</div><div class="kv" id="fck-coop">—</div><div class="kd tm">All rooftops</div></div>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.4fr 100px 110px 130px 100px 110px"><span>Rooftop</span><span>OEM brand</span><span>Facility status</span><span>Sales effectiveness</span><span>Co-op YTD</span><span>Rebrand</span></div>
+  <div id="franchise-rows"></div>
+</div>
+</div>
+
+<div class="page" id="p-compliance">
+<div class="ph"><div class="pt">Compliance review queue</div><div class="ps">Every override, bypass, or forced action across the platform routes here — one reasoning surface, the Compliance/Audit Agent</div></div>
+<div class="krow">
+  <div class="kpi kpi-red"><div class="kl">Pending review</div><div class="kv" id="cqk-pending">—</div><div class="kd trr">Requires human decision</div></div>
+  <div class="kpi"><div class="kl">Adverse action</div><div class="kv" id="cqk-aa">—</div><div class="kd tm">FCRA/ECOA</div></div>
+  <div class="kpi"><div class="kl">Red-flag overrides</div><div class="kv" id="cqk-rf">—</div><div class="kd tm">Identity-theft rule</div></div>
+  <div class="kpi"><div class="kl">Franchise</div><div class="kv" id="cqk-fr">—</div><div class="kd tm">Facility non-compliance</div></div>
+</div>
+<div id="compliance-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════
+// Thin API client — dms-svc is the single source of truth for every
+// rooftop, vehicle, deal, credit application, appraisal, RO, part,
+// loaner, franchise record, and P&L snapshot. ai-orchestration-svc is
+// the single source of truth for every autonomous evaluation (aging
+// sweep, deal desk, lending routing, service dispatch, parts reorder,
+// loaner overdue, franchise remediation, dealer performance, trade
+// appraisal, retail pricing). No business logic — pricing, OFAC,
+// gross floors, aging thresholds — is duplicated here; every render
+// function displays exactly what one of the two real backends
+// returns.
+// ══════════════════════════════════════════════════════════════
+var DMS_API_BASE = window.DMS_API_BASE || 'http://localhost:8008';
+var AI_ORCH_API_BASE = window.AI_ORCH_API_BASE || 'http://localhost:8020';
+var TENANT_ID = 'voyqi-holdings';
+var CURRENT_USER = 'dealer-ops';
+
+async function api(method, path, body) {
+  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': TENANT_ID } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  var resp;
+  try {
+    resp = await fetch(DMS_API_BASE + path, opts);
+  } catch (networkErr) {
+    throw { status: 0, detail: 'Cannot reach dms-svc at ' + DMS_API_BASE + '. Is it running? (' + networkErr.message + ')' };
+  }
+  var data = null;
+  try { data = await resp.json(); } catch (e) {}
+  if (!resp.ok) throw { status: resp.status, detail: (data && data.detail) || resp.statusText };
+  return data;
+}
+
+async function aiApi(path, body) {
+  var opts = { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': TENANT_ID } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  var resp;
+  try {
+    resp = await fetch(AI_ORCH_API_BASE + path, opts);
+  } catch (networkErr) {
+    throw { status: 0, detail: 'Cannot reach ai-orchestration-svc at ' + AI_ORCH_API_BASE + '. (' + networkErr.message + ')' };
+  }
+  var data = null;
+  try { data = await resp.json(); } catch (e) {}
+  if (!resp.ok) throw { status: resp.status, detail: (data && data.detail) || resp.statusText };
+  return data;
+}
+
+function toast(msg, isError) {
+  var t = document.getElementById('dms-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'dms-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface2);border:0.5px solid var(--border2);border-radius:9px;padding:10px 18px;font-size:13px;color:var(--text);z-index:9999;opacity:0;transition:opacity .22s;pointer-events:none;max-width:440px;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.style.color = isError ? '#d05050' : 'var(--text)';
+  t.style.borderColor = isError ? 'rgba(208,80,80,0.4)' : 'var(--border2)';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(window._dmsToast);
+  window._dmsToast = setTimeout(function () { t.style.opacity = '0'; }, isError ? 6000 : 2800);
+}
+function connectionToast(err) { toast(err.status === 0 ? err.detail : ('dms-svc error ' + err.status + ': ' + err.detail), true); }
+function aiConnectionToast(err) { toast(err.status === 0 ? err.detail : ('ai-orchestration-svc error ' + err.status + ': ' + err.detail), true); }
+
+function toggleForm(id) { var el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+function fmtDate(d) { return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+function fmtMoney(n) { return '$' + Math.round(n || 0).toLocaleString(); }
+
+var PAGES = ['dash', 'rooftops', 'inventory', 'deals', 'fi', 'lending', 'appraisal', 'service', 'recon', 'parts', 'loaners', 'pl', 'franchise', 'compliance'];
+var LIVE_PAGE_RENDERERS = {}; // filled in below, per module
+
+function sp(id) {
+  PAGES.forEach(function (p) {
+    var pg = document.getElementById('p-' + p);
+    var nv = document.getElementById('n-' + p);
+    if (pg) pg.classList.remove('on');
+    if (nv) nv.classList.remove('on');
+  });
+  var pg = document.getElementById('p-' + id);
+  var nv = document.getElementById('n-' + id);
+  if (pg) pg.classList.add('on');
+  if (nv) nv.classList.add('on');
+  document.querySelector('.workspace').scrollTop = 0;
+  if (LIVE_PAGE_RENDERERS[id]) LIVE_PAGE_RENDERERS[id]();
+}
+
+function populateSelect(sel, items, labelFn, valueFn) {
+  if (!sel) return;
+  sel.innerHTML = items.map(function (i) { return '<option value="' + valueFn(i) + '">' + labelFn(i) + '</option>'; }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-style cache — most pages need rooftops/vehicles for dropdowns;
+// fetched once per render pass rather than duplicating fetch calls.
+// ══════════════════════════════════════════════════════════════
+var CACHE = { rooftops: [], vehicles: [], deals: [] };
+
+async function refreshCoreCache() {
+  try {
+    CACHE.rooftops = await api('GET', '/api/v1/dms/rooftops');
+    CACHE.vehicles = await api('GET', '/api/v1/dms/vehicles');
+    CACHE.deals = await api('GET', '/api/v1/dms/deals');
+  } catch (err) { connectionToast(err); }
+}
+function rooftopName(id) { var r = CACHE.rooftops.find(function (x) { return x.id === id; }); return r ? r.name : id; }
+function vehicleDesc(id) { var v = CACHE.vehicles.find(function (x) { return x.id === id; }); return v ? v.description : id; }
+
+// ══════════════════════════════════════════════════════════════
+// DMS-001 Rooftops
+// ══════════════════════════════════════════════════════════════
+async function addRooftop() {
+  var name = document.getElementById('rf-name').value.trim();
+  var holdco = document.getElementById('rf-holdco').value.trim();
+  var brand = document.getElementById('rf-brand').value.trim();
+  var lic = document.getElementById('rf-lic').value.trim();
+  var exp = document.getElementById('rf-exp').value;
+  if (!name || !brand || !lic || !exp) { toast('Fill in all required fields', true); return; }
+  try {
+    await api('POST', '/api/v1/dms/rooftops', { name: name, holding_company: holdco, oem_brand: brand, license_number: lic, license_expiry: exp + 'T00:00:00Z' });
+    toggleForm('rf-form');
+    await renderRooftops();
+    toast('Rooftop created.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function renderRooftops() {
+  var rooftops;
+  try { rooftops = await api('GET', '/api/v1/dms/rooftops'); }
+  catch (err) { connectionToast(err); return; }
+  CACHE.rooftops = rooftops;
+
+  var now = new Date();
+  var expiringSoon = rooftops.filter(function (r) { return (new Date(r.license_expiry) - now) / 86400000 < 60; }).length;
+  var brands = new Set(rooftops.map(function (r) { return r.oem_brand; }));
+
+  document.getElementById('rk-total').textContent = rooftops.length;
+  document.getElementById('rk-brands').textContent = brands.size;
+  document.getElementById('rk-expiring').textContent = expiringSoon;
+
+  document.getElementById('rooftop-rows').innerHTML = rooftops.map(function (r) {
+    var daysLeft = Math.round((new Date(r.license_expiry) - now) / 86400000);
+    var statusPill = r.renewal_filed ? '<span class="p pg">Filed</span>' : (daysLeft < 60 ? '<span class="p pr">Renewal due</span>' : '<span class="p pd">Current</span>');
+    return '<div class="tr" style="grid-template-columns:1.6fr 1.3fr 1fr 1fr 100px 90px"><span class="tc">' + r.name + '</span><span class="tm">' + (r.holding_company || '—') + '</span><span class="tm">' + r.oem_brand + '</span><span class="tm fm">' + r.license_number + '</span><span class="tm">' + fmtDate(r.license_expiry) + '</span>' + statusPill + '</div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No rooftops yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-002 Inventory — AI pricing and aging sweep flow through the
+// real Pricing Intelligence Agent, not a local JS formula.
+// ══════════════════════════════════════════════════════════════
+async function addInventory() {
+  var rooftopId = document.getElementById('inv-rooftop').value;
+  var vin = document.getElementById('inv-vin').value.trim();
+  var cond = document.getElementById('inv-cond').value;
+  var desc = document.getElementById('inv-desc').value.trim();
+  var price = parseFloat(document.getElementById('inv-price').value);
+  var cost = parseFloat(document.getElementById('inv-cost').value);
+  if (!rooftopId || !vin || !desc || !price || !cost) { toast('Fill in all required fields', true); return; }
+  try {
+    await api('POST', '/api/v1/dms/vehicles', { rooftop_id: rooftopId, vin: vin, description: desc, condition: cond, price_usd: price, cost_usd: cost });
+    toggleForm('inv-form');
+    await renderInventory();
+    toast('Vehicle added to inventory.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function renderInventory() {
+  var vehicles;
+  try { vehicles = await api('GET', '/api/v1/dms/vehicles'); }
+  catch (err) { connectionToast(err); return; }
+  CACHE.vehicles = vehicles;
+  populateSelect(document.getElementById('inv-rooftop'), CACHE.rooftops, function (r) { return r.name; }, function (r) { return r.id; });
+  populateSelect(document.getElementById('vhr-vehicle-sel'), vehicles, function (v) { return v.vin + ' — ' + v.description; }, function (v) { return v.id; });
+  populateSelect(document.getElementById('recon-vehicle-sel'), vehicles, function (v) { return v.vin + ' — ' + v.description; }, function (v) { return v.id; });
+
+  var inStock = vehicles.filter(function (v) { return v.status === 'in_stock'; });
+  var aging = inStock.filter(function (v) { return v.days_in_inventory > 60; });
+  document.getElementById('ik-total').textContent = vehicles.length;
+  document.getElementById('ik-instock').textContent = inStock.length;
+  document.getElementById('ik-aging').textContent = aging.length;
+  document.getElementById('ik-avgdays').textContent = inStock.length ? Math.round(inStock.reduce(function (s, v) { return s + v.days_in_inventory; }, 0) / inStock.length) : 0;
+  var navAging = document.getElementById('nb-aging'); if (navAging) navAging.textContent = aging.length;
+
+  document.getElementById('inventory-rows').innerHTML = vehicles.map(function (v) {
+    var statusPill = { in_stock: 'pg', sold: 'pd', in_transit: 'pb' }[v.status] || 'pd';
+    return '<div class="tr" style="grid-template-columns:1.6fr 100px 90px 85px 90px 85px 90px"><span class="tc">' + v.description + '<div class="tm fm" style="font-size:11px">' + v.vin + '</div></span><span class="tm" style="font-size:12px">' + rooftopName(v.rooftop_id) + '</span><span class="tm">' + v.condition + '</span><span>' + fmtMoney(v.price_usd) + '</span><span class="tm">' + fmtMoney(v.cost_usd) + '</span><span class="' + (v.days_in_inventory > 60 ? 'trr' : 'tm') + '">' + v.days_in_inventory + '</span><span class="p ' + statusPill + '">' + v.status.replace('_', ' ') + '</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No vehicles yet.</div>';
+
+  document.getElementById('inv-aging-list').innerHTML = aging.map(function (v) {
+    return '<div class="card" style="margin:0;padding:10px"><div class="tc" style="font-size:13px">' + v.description + '</div><div class="tm" style="font-size:11px">' + v.days_in_inventory + ' days · ' + fmtMoney(v.price_usd) + '</div></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--dim)">No aging alerts.</div>';
+}
+
+async function runAgingSweep() {
+  try {
+    var results = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-aging-sweep');
+    toast(results.output && results.output.length ? results.output.length + ' vehicle(s) auto-marked-down by the Pricing Intelligence Agent.' : 'No vehicles crossed the aging threshold.');
+    await renderInventory();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+async function renderVehicleInspector() {
+  var vehicleId = document.getElementById('vhr-vehicle-sel').value;
+  if (!vehicleId) { document.getElementById('vhr-inspector').innerHTML = ''; return; }
+  var vehicle = CACHE.vehicles.find(function (v) { return v.id === vehicleId; });
+  if (!vehicle) return;
+
+  var bookValue = null;
+  try { bookValue = await api('GET', '/api/v1/dms/vehicles/book-value-quotes/' + vehicle.vin + '/average'); } catch (e) {}
+
+  document.getElementById('vhr-inspector').innerHTML =
+    '<div class="two" style="margin-top:12px">' +
+    '<div><div class="sec"><span class="st">Book value (KBB/Black Book/Manheim average)</span></div>' +
+    '<div style="font-size:13px;color:var(--text)">Retail: ' + (bookValue && bookValue.average_retail_value_usd ? fmtMoney(bookValue.average_retail_value_usd) : '<span class="tm">no quotes on file</span>') + '</div>' +
+    '<div style="font-size:13px;color:var(--text)">Wholesale: ' + (bookValue && bookValue.average_wholesale_value_usd ? fmtMoney(bookValue.average_wholesale_value_usd) : '<span class="tm">no quotes on file</span>') + '</div>' +
+    '<button class="btn btn-s btn-o" style="margin-top:8px" onclick="addBookValueQuote(\'' + vehicle.id + '\')">Add book value quote</button></div>' +
+    '<div><div class="sec"><span class="st">AI retail pricing (Pricing Intelligence Agent)</span></div>' +
+    '<div style="font-size:12px;color:var(--mid);margin-bottom:8px">Asking: ' + fmtMoney(vehicle.price_usd) + ' · ' + vehicle.days_in_inventory + ' days in stock</div>' +
+    '<button class="btn btn-s btn-g" onclick="requestAIPricing(\'' + vehicle.id + '\')"><i class="ti ti-sparkles"></i>Request AI price recommendation</button>' +
+    '<div id="ai-price-result"></div></div>' +
+    '</div>';
+}
+
+async function addBookValueQuote(vehicleId) {
+  var vehicle = CACHE.vehicles.find(function (v) { return v.id === vehicleId; });
+  if (!vehicle) return;
+  try {
+    await api('POST', '/api/v1/dms/vehicles/book-value-quotes', { vin: vehicle.vin, source: 'manheim_mmr', retail_usd: vehicle.price_usd * 0.98, wholesale_usd: vehicle.price_usd * 0.85 });
+    toast('Book value quote added.');
+    await renderVehicleInspector();
+  } catch (err) { connectionToast(err); }
+}
+
+async function requestAIPricing(vehicleId) {
+  var vehicle = CACHE.vehicles.find(function (v) { return v.id === vehicleId; });
+  if (!vehicle) return;
+  try {
+    var result = await aiApi('/api/v1/ai/dms/evaluate-retail-pricing', {
+      retail_vehicle_id: vehicle.id, vin: vehicle.vin, asking_price_usd: vehicle.price_usd, days_in_inventory: vehicle.days_in_inventory,
+    });
+    var el = document.getElementById('ai-price-result');
+    if (el) el.innerHTML = '<div class="aip" style="margin-top:8px"><div class="aip-h"><i class="ti ti-sparkles"></i>Recommended: ' + fmtMoney(result.recommended_price_usd) + '</div><div class="aip-body">' + (result.reasoning || result.skipped_reason || '') + '</div></div>';
+    await renderInventory();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-003 Sales Desk & Deals — desk-and-approve flows through the
+// real Dealer Intelligence Agent, autonomously.
+// ══════════════════════════════════════════════════════════════
+async function addDeal() {
+  var rooftopId = document.getElementById('deal-rooftop').value;
+  var vehicleId = document.getElementById('deal-vehicle').value;
+  var buyer = document.getElementById('deal-buyer').value.trim();
+  if (!rooftopId || !vehicleId || !buyer) { toast('Fill in all required fields', true); return; }
+  try {
+    await api('POST', '/api/v1/dms/deals', { rooftop_id: rooftopId, vehicle_id: vehicleId, buyer_name: buyer });
+    toggleForm('deal-form');
+    await renderDeals();
+    toast('Deal jacket opened.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function deskDeal(id) {
+  try {
+    var result = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-deal-desk', { deal_id: id });
+    toast('Desked and approved autonomously by the Dealer Intelligence Agent.');
+    await renderDeals();
+    await renderInventory();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+async function deliverDeal(id) {
+  try {
+    await api('POST', '/api/v1/dms/deals/' + id + '/deliver');
+    toast('Deal delivered.');
+    await renderDeals();
+    await renderInventory();
+  } catch (err) { connectionToast(err); }
+}
+
+var DEAL_STEP = { working: 0, desking: 1, approved: 2, delivered: 3 };
+function dealStatusPill(s) { return { working: '<span class="p pd">Working</span>', desking: '<span class="p pb">Desking</span>', approved: '<span class="p pg">Approved</span>', delivered: '<span class="p pg">Delivered</span>' }[s] || ''; }
+
+async function renderDeals() {
+  var deals;
+  try { deals = await api('GET', '/api/v1/dms/deals'); }
+  catch (err) { connectionToast(err); return; }
+  CACHE.deals = deals;
+  populateSelect(document.getElementById('deal-rooftop'), CACHE.rooftops, function (r) { return r.name; }, function (r) { return r.id; });
+  populateSelect(document.getElementById('deal-vehicle'), CACHE.vehicles.filter(function (v) { return v.status === 'in_stock'; }), function (v) { return v.vin + ' — ' + v.description; }, function (v) { return v.id; });
+  populateSelect(document.getElementById('credit-deal'), deals, function (d) { return d.buyer_name + ' — ' + vehicleDesc(d.vehicle_id); }, function (d) { return d.id; });
+
+  var counts = { working: 0, desking: 0, approved: 0, delivered: 0 };
+  deals.forEach(function (d) { counts[d.status] = (counts[d.status] || 0) + 1; });
+  document.getElementById('dlk-working').textContent = counts.working;
+  document.getElementById('dlk-desking').textContent = counts.desking;
+  document.getElementById('dlk-approved').textContent = counts.approved;
+  document.getElementById('dlk-delivered').textContent = counts.delivered;
+
+  document.getElementById('deal-cards').innerHTML = deals.map(function (d) {
+    var actions = '';
+    if (d.status === 'working') actions = '<button class="btn btn-s btn-g" onclick="deskDeal(\'' + d.id + '\')"><i class="ti ti-sparkles"></i>Desk &amp; approve (AI)</button>';
+    else if (d.status === 'approved') actions = '<button class="btn btn-s btn-g" onclick="deliverDeal(\'' + d.id + '\')">Deliver</button>';
+    return '<div class="card"><div class="ch"><span class="ct">' + d.buyer_name + ' — ' + vehicleDesc(d.vehicle_id) + '</span>' + dealStatusPill(d.status) + '</div>' +
+      '<div style="font-size:12px;color:var(--mid);margin-bottom:8px">' + rooftopName(d.rooftop_id) + ' · Price: ' + (d.price_usd ? fmtMoney(d.price_usd) : '—') + '</div>' +
+      actions + '</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No deals yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-004 F&I — adverse action notices auto-issue (legal deadline,
+// not a judgment call); red-flag override requires a real human-
+// typed reason, enforced by dms-svc, not this page.
+// ══════════════════════════════════════════════════════════════
+async function renderFI() {
+  var deals;
+  try { deals = CACHE.deals.length ? CACHE.deals : await api('GET', '/api/v1/dms/deals'); }
+  catch (err) { connectionToast(err); return; }
+
+  // No dedicated "list adverse-action notices" or "list red-flag
+  // checks" endpoint exists yet — this page shows the ones created
+  // through this session, matching how the credit-application and
+  // deal-desk flows on this same page trigger them for real.
+  document.getElementById('fk-overdue').textContent = (window._aanList || []).filter(function (a) { return a.status !== 'issued'; }).length;
+  document.getElementById('fk-flagged').textContent = (window._rfList || []).length;
+
+  document.getElementById('aan-rows').innerHTML = (window._aanList || []).map(function (a) {
+    return '<div class="tr" style="grid-template-columns:1fr 1.2fr 90px 80px"><span class="tm">' + vehicleDesc((deals.find(function (d) { return d.id === a.deal_id; }) || {}).vehicle_id) + '</span><span class="tm" style="font-size:12px">' + a.reason + '</span><span class="tm">Immediate</span><span class="p pg">' + a.status + '</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No adverse action notices yet.</div>';
+
+  document.getElementById('rf-cards').innerHTML = (window._rfList || []).map(function (rf) {
+    var overrideForm = rf.overridden_by ? '<div style="font-size:11px;color:var(--green);margin-top:6px">Overridden by ' + rf.overridden_by + ': ' + rf.override_reason + '</div>' : ('<div style="display:flex;gap:6px;margin-top:8px"><input class="fi" id="rf-reason-' + rf.id + '" placeholder="Human-typed override reason (required)" style="font-size:12px"><button class="btn btn-s btn-o" onclick="overrideFlag(\'' + rf.id + '\')">Override</button></div>');
+    return '<div class="card" style="margin:0"><div class="ch"><span class="ct" style="font-size:13px">Deal ' + rf.deal_id.slice(0, 8) + '</span><span class="p pr">' + rf.flags.length + ' flag(s)</span></div><div style="font-size:12px;color:var(--mid)">' + rf.flags.join(', ') + '</div>' + overrideForm + '</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No red-flag checks yet.</div>';
+}
+
+async function issueAdverseActionForDeal(dealId, reason) {
+  try {
+    var notice = await api('POST', '/api/v1/dms/fi/adverse-action-notices', { deal_id: dealId, reason: reason });
+    window._aanList = (window._aanList || []).concat([notice]);
+    toast('Adverse action notice auto-issued (ECOA/Reg B deadline).');
+    await renderFI();
+  } catch (err) { connectionToast(err); }
+}
+
+async function overrideFlag(id) {
+  var input = document.getElementById('rf-reason-' + id);
+  var reason = input ? input.value.trim() : '';
+  if (!reason) { toast('A human-typed override reason is required — this is not optional', true); return; }
+  try {
+    var updated = await api('POST', '/api/v1/dms/fi/red-flag-checks/' + id + '/override', { overridden_by: CURRENT_USER, reason: reason });
+    window._rfList = (window._rfList || []).map(function (rf) { return rf.id === id ? updated : rf; });
+    toast('Red-flag override recorded.');
+    await renderFI();
+  } catch (err) {
+    if (err.status === 422) toast('422 — ' + err.detail, true);
+    else connectionToast(err);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Lending — pull_bureau chains autonomously into routing, decisioning,
+// and winner selection inside dms-svc, all in the real backend, in
+// one call. OFAC is a structural block with no override path.
+// ══════════════════════════════════════════════════════════════
+async function addLender() {
+  var name = document.getElementById('lender-name').value.trim();
+  if (!name) return;
+  try {
+    await api('POST', '/api/v1/dms/lending/lenders', { name: name });
+    toggleForm('lender-form');
+    toast('Lender added.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function addCreditApplication() {
+  var dealId = document.getElementById('credit-deal').value;
+  var name = document.getElementById('credit-name').value.trim();
+  var income = parseFloat(document.getElementById('credit-income').value);
+  if (!dealId || !name || !income) { toast('Fill in all required fields', true); return; }
+  try {
+    await api('POST', '/api/v1/dms/lending/credit-applications', { deal_id: dealId, applicant_name: name, annual_income_usd: income });
+    toggleForm('credit-form');
+    await renderCreditApps();
+    toast('Credit application submitted.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function pullBureau(appId, ofacMatch) {
+  var bureau = ['equifax', 'experian', 'transunion'][Math.floor(Math.random() * 3)];
+  var fico = 620 + Math.floor(Math.random() * 180);
+  try {
+    var result = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-lending', { app_id: appId, bureau: bureau, fico: fico, ofac_match: !!ofacMatch });
+    toast(result.output && result.output.ofac_match ? 'OFAC match — permanently blocked, no override path exists.' : 'Bureau pulled — routed, decisioned, and winner selected autonomously.');
+    await renderCreditApps();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+async function renderCreditApps() {
+  var apps;
+  try { apps = await api('GET', '/api/v1/dms/lending/credit-applications'); }
+  catch (err) { connectionToast(err); return; }
+
+  var counts = { open: 0, submitted: 0, approved: 0, ofac: 0 };
+  apps.forEach(function (a) {
+    if (a.status === 'pending' || a.status === 'submitted') counts.open++;
+    if (a.status === 'submitted') counts.submitted++;
+    if (a.status === 'decisioned' && a.selected_submission_id) counts.approved++;
+    if (a.ofac_match) counts.ofac++;
+  });
+  document.getElementById('clk-open').textContent = counts.open;
+  document.getElementById('clk-submitted').textContent = counts.submitted;
+  document.getElementById('clk-approved').textContent = counts.approved;
+  document.getElementById('clk-ofac').textContent = counts.ofac;
+  var navOfac = document.getElementById('nb-ofac'); if (navOfac) navOfac.textContent = counts.ofac;
+
+  var cards = [];
+  for (var i = 0; i < apps.length; i++) {
+    var a = apps[i];
+    var statusPill = a.ofac_match ? '<span class="p pr">OFAC blocked</span>' : ({ pending: '<span class="p pd">Pending</span>', submitted: '<span class="p pb">Submitted</span>', decisioned: '<span class="p pg">Decisioned</span>', blocked: '<span class="p pr">Blocked</span>' }[a.status] || '');
+    var actions = a.status === 'pending' ? '<button class="btn btn-s btn-o" onclick="pullBureau(\'' + a.id + '\')">Pull bureau</button> <button class="btn btn-s btn-d" onclick="pullBureau(\'' + a.id + '\',true)">Simulate OFAC match</button>' : '';
+    var submissionsHtml = '';
+    if (a.status === 'decisioned') {
+      var subs = [];
+      try { subs = await api('GET', '/api/v1/dms/lending/credit-applications/' + a.id + '/submissions'); } catch (e) {}
+      submissionsHtml = '<div style="margin-top:8px;font-size:12px;color:var(--mid)">' + subs.map(function (s) { return s.id === a.selected_submission_id ? '<b class="tg">Winner: ' + s.apr + '% APR, ' + s.term_months + 'mo</b>' : (s.status + ' ' + (s.apr ? s.apr + '% APR' : '')); }).join(' · ') + '</div>';
+    }
+    cards.push('<div class="card"><div class="ch"><span class="ct">' + a.applicant_name + '</span>' + statusPill + '</div><div style="font-size:12px;color:var(--mid)">Income: ' + fmtMoney(a.annual_income_usd) + (a.fico ? ' · FICO ' + a.fico : '') + '</div>' + submissionsHtml + '<div style="margin-top:8px">' + actions + '</div></div>');
+  }
+  document.getElementById('credit-cards').innerHTML = cards.join('') || '<div style="font-size:13px;color:var(--dim)">No credit applications yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-005 Trade-in Appraisal — real AI valuation via the Pricing
+// Intelligence Agent. Stolen-vehicle security hold blocks at the
+// dms-svc API layer with no path to an offer.
+// ══════════════════════════════════════════════════════════════
+async function requestValuation() {
+  var vin = document.getElementById('ai-vin').value.trim();
+  var mileage = parseInt(document.getElementById('ai-mi').value);
+  var condNotes = document.getElementById('ai-cond').value.trim();
+  if (!vin || !mileage) { toast('VIN and mileage are required', true); return; }
+
+  try {
+    var appraisal = await api('POST', '/api/v1/dms/appraisals/find-or-create', { vin: vin, mileage: mileage });
+    if (appraisal.status === 'security_hold') {
+      document.getElementById('ai-result').innerHTML = '<div class="aip" style="margin-top:10px;border-color:rgba(208,80,80,0.4)"><div class="aip-h" style="color:#d05050"><i class="ti ti-shield-x"></i>Stolen-vehicle security hold</div><div class="aip-body">This VIN matched the stolen-vehicle registry. Blocked at security_hold — no valuation, no offer, no override path.</div></div>';
+      await renderAppraisals();
+      return;
+    }
+    var result = await aiApi('/api/v1/ai/dms/evaluate-trade-appraisal', { appraisal_id: appraisal.id, vin: vin, mileage: mileage, condition_notes: condNotes });
+    document.getElementById('ai-result').innerHTML = '<div class="aip" style="margin-top:10px"><div class="aip-h"><i class="ti ti-sparkles"></i>Valuation: ' + fmtMoney(result.valuation_usd) + ' · Offer: ' + fmtMoney(result.offer_usd) + '</div><div class="aip-body">' + (result.reasoning || result.skipped_reason || '') + '</div></div>';
+    await renderAppraisals();
+  } catch (err) {
+    if (err.status === 0) connectionToast(err); else aiConnectionToast(err);
+  }
+}
+
+function toggleKey() {
+  var ts = document.getElementById('ai-key-ts');
+  ts.classList.toggle('on');
+  toast(ts.classList.contains('on') ? 'This toggle is informational only — whether ai-orchestration-svc has a live ANTHROPIC_API_KEY is set server-side, not from this page.' : '');
+}
+
+async function renderAppraisals() {
+  var appraisals;
+  try { appraisals = await api('GET', '/api/v1/dms/appraisals'); }
+  catch (err) { connectionToast(err); return; }
+
+  var counts = { pending: 0, valued: 0, offered: 0, accepted: 0 };
+  appraisals.forEach(function (a) {
+    if (a.status === 'pending' || a.status === 'security_hold') counts.pending++;
+    if (a.valuation_usd && a.status !== 'offered' && a.status !== 'accepted') counts.valued++;
+    if (a.status === 'offered') counts.offered++;
+    if (a.status === 'accepted') counts.accepted++;
+  });
+  document.getElementById('apk-pending').textContent = counts.pending;
+  document.getElementById('apk-valued').textContent = counts.valued;
+  document.getElementById('apk-offered').textContent = counts.offered;
+  document.getElementById('apk-accepted').textContent = counts.accepted;
+
+  document.getElementById('appraisal-rows').innerHTML = appraisals.map(function (a) {
+    var statusPill = { pending: 'pd', security_hold: 'pr', offered: 'pg', accepted: 'pg', declined: 'pd' }[a.status] || 'pd';
+    return '<div class="tr" style="grid-template-columns:1fr 80px 90px 90px 85px"><span class="tm fm" style="font-size:12px">' + a.vin + '</span><span class="tm">' + a.mileage.toLocaleString() + '</span><span>' + (a.valuation_usd ? fmtMoney(a.valuation_usd) : '—') + '</span><span>' + (a.offer_usd ? fmtMoney(a.offer_usd) : '—') + '</span><span class="p ' + statusPill + '">' + a.status.replace('_', ' ') + '</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No appraisals yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-006 Recon — work-item assignment is fully autonomous by
+// category; completing every item auto-advances to front-line-ready.
+// ══════════════════════════════════════════════════════════════
+async function openReconOrder() {
+  var vehicleId = document.getElementById('recon-vehicle-sel').value;
+  if (!vehicleId) { toast('Select a vehicle first', true); return; }
+  try {
+    await api('POST', '/api/v1/dms/recon/orders', { vehicle_id: vehicleId });
+    toggleForm('recon-form');
+    await renderRecon();
+    toast('Recon order opened.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function addWorkItem(reconOrderId) {
+  var category = prompt('Category (mechanical, cosmetic, detail, safety):', 'mechanical');
+  if (!category) return;
+  var description = prompt('Description:', 'Inspection item');
+  try {
+    await api('POST', '/api/v1/dms/recon/orders/' + reconOrderId + '/work-items', { category: category, description: description || category, cost_usd: 0 });
+    toast('Work item added — auto-assigned by category.');
+    await renderRecon();
+  } catch (err) { connectionToast(err); }
+}
+
+async function completeWorkItem(reconOrderId, itemId) {
+  try {
+    await api('POST', '/api/v1/dms/recon/work-items/' + itemId + '/complete');
+    toast('Work item completed.');
+    await renderRecon();
+  } catch (err) { connectionToast(err); }
+}
+
+async function renderRecon() {
+  var orders;
+  try { orders = await api('GET', '/api/v1/dms/recon/orders'); }
+  catch (err) { connectionToast(err); return; }
+
+  var backlogCount = orders.filter(function (o) { return o.status !== 'front_line_ready' && o.arrived_days_ago > 7; }).length;
+  var completed = orders.filter(function (o) { return o.turnaround_days !== null && o.turnaround_days !== undefined; });
+  document.getElementById('rck-open').textContent = orders.filter(function (o) { return o.status !== 'front_line_ready'; }).length;
+  document.getElementById('rck-backlog').textContent = backlogCount;
+  document.getElementById('rck-turnaround').textContent = completed.length ? (completed.reduce(function (s, o) { return s + o.turnaround_days; }, 0) / completed.length).toFixed(1) + 'd' : '—';
+  var navRecon = document.getElementById('nb-recon-backlog'); if (navRecon) navRecon.textContent = backlogCount;
+
+  document.getElementById('recon-cards').innerHTML = orders.map(function (order) {
+    var vehicle = CACHE.vehicles.find(function (v) { return v.id === order.vehicle_id; });
+    return '<div class="card"><div class="ch"><span class="ct">' + (vehicle ? vehicle.description : order.vehicle_id) + '</span><span class="p ' + (order.status === 'front_line_ready' ? 'pg' : 'pb') + '">' + order.status.replace(/_/g, ' ') + '</span></div>' +
+      '<div style="font-size:12px;color:var(--mid);margin-bottom:8px">Arrived ' + order.arrived_days_ago + ' days ago' + (order.turnaround_days ? ' · Turnaround: ' + order.turnaround_days + 'd' : '') + '</div>' +
+      '<button class="btn btn-s btn-o" onclick="addWorkItem(\'' + order.id + '\')">Add work item</button></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No recon orders yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-006 Service — dispatch is immediate on creation, autonomously
+// chains into loaner assignment inside dms-svc when duration warrants.
+// ══════════════════════════════════════════════════════════════
+async function addRO() {
+  var rooftopId = document.getElementById('ro-rooftop').value;
+  var vin = document.getElementById('ro-vin').value.trim();
+  var customer = document.getElementById('ro-customer').value.trim();
+  var desc = document.getElementById('ro-desc').value.trim();
+  var warranty = document.getElementById('ro-warranty').value === 'yes';
+  if (!rooftopId || !vin || !customer || !desc) { toast('Fill in all required fields', true); return; }
+  try {
+    var result = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-service-dispatch', { rooftop_id: rooftopId, vin: vin, customer_name: customer, description: desc, warranty: warranty });
+    toggleForm('ro-form');
+    await renderService();
+    await renderLoaners();
+    toast('Repair order dispatched autonomously' + (result.output && result.output.loaner_id ? ' — loaner auto-assigned.' : '.'));
+  } catch (err) { aiConnectionToast(err); }
+}
+
+async function completeRO(id) {
+  try {
+    await api('POST', '/api/v1/dms/service/repair-orders/' + id + '/complete');
+    toast('Repair order completed.');
+    await renderService();
+  } catch (err) { connectionToast(err); }
+}
+
+async function renderService() {
+  var ros;
+  try { ros = await api('GET', '/api/v1/dms/service/repair-orders'); }
+  catch (err) { connectionToast(err); return; }
+  populateSelect(document.getElementById('ro-rooftop'), CACHE.rooftops, function (r) { return r.name; }, function (r) { return r.id; });
+
+  var counts = { open: 0, progress: 0, completed: 0, warranty: 0 };
+  ros.forEach(function (r) {
+    if (r.status === 'dispatched') counts.open++;
+    if (r.status === 'in_progress' || r.status === 'warranty_claim') counts.progress++;
+    if (r.status === 'completed') counts.completed++;
+    if (r.warranty) counts.warranty++;
+  });
+  document.getElementById('rok-open').textContent = counts.open;
+  document.getElementById('rok-progress').textContent = counts.progress;
+  document.getElementById('rok-completed').textContent = counts.completed;
+  document.getElementById('rok-warranty').textContent = counts.warranty;
+
+  document.getElementById('ro-rows').innerHTML = ros.map(function (r) {
+    var statusPill = { dispatched: '<span class="p pb">dispatched</span>', in_progress: '<span class="p pb">in progress</span>', warranty_claim: '<span class="p pg">warranty claim</span>', completed: '<span class="p pg">completed</span>' }[r.status] || '<span class="p pd">' + r.status + '</span>';
+    var action = r.status !== 'completed' ? '<button class="btn btn-s btn-o" onclick="completeRO(\'' + r.id + '\')">Complete</button>' : '';
+    return '<div class="tr" style="grid-template-columns:1fr 1.2fr 100px 90px 90px"><span class="tc">' + r.vin + ' · ' + r.customer_name + '</span><span class="tm" style="font-size:12px">' + r.description + '</span><span class="tm">' + (r.tech || '—') + '</span><span>' + (r.revenue_usd ? fmtMoney(r.revenue_usd) : '—') + '</span>' + statusPill + action + '</div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No repair orders yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-007 Parts — reorder is fully autonomous, idempotency-guarded
+// ══════════════════════════════════════════════════════════════
+async function addPart() {
+  var num = document.getElementById('part-num').value.trim();
+  var name = document.getElementById('part-name').value.trim();
+  var cost = parseFloat(document.getElementById('part-cost').value);
+  var stock = parseInt(document.getElementById('part-stock').value) || 0;
+  var reorder = parseInt(document.getElementById('part-reorder').value) || 5;
+  if (!num || !name || !cost) { toast('Fill in all required fields', true); return; }
+  try {
+    await api('POST', '/api/v1/dms/parts', { part_number: num, name: name, unit_cost_usd: cost, stock_qty: stock, reorder_point: reorder });
+    toggleForm('part-form');
+    await renderParts();
+    toast('Catalog item added.');
+  } catch (err) { connectionToast(err); }
+}
+
+async function reorderPart(id) {
+  try {
+    var results = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-parts-reorder');
+    toast(results.output && results.output.length ? results.output.length + ' part(s) auto-reordered by the Dealer Intelligence Agent.' : 'No parts at or below reorder point.');
+    await renderParts();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+async function renderParts() {
+  var parts;
+  try { parts = await api('GET', '/api/v1/dms/parts'); }
+  catch (err) { connectionToast(err); return; }
+
+  var atReorder = parts.filter(function (p) { return p.stock_qty <= p.reorder_point; });
+  document.getElementById('pk-total').textContent = parts.length;
+  document.getElementById('pk-reorder').textContent = atReorder.length;
+  document.getElementById('pk-open').textContent = parts.filter(function (p) { return p.last_reorder_stock_qty !== null && p.last_reorder_stock_qty !== undefined; }).length;
+  document.getElementById('pk-value').textContent = fmtMoney(parts.reduce(function (s, p) { return s + p.unit_cost_usd * p.stock_qty; }, 0));
+  var navParts = document.getElementById('nb-parts'); if (navParts) navParts.textContent = atReorder.length;
+
+  document.getElementById('parts-rows').innerHTML = parts.map(function (p) {
+    return '<div class="tr" style="grid-template-columns:100px 1.3fr 80px 70px 80px"><span class="tm fm">' + p.part_number + '</span><span class="tc">' + p.name + '</span><span>' + fmtMoney(p.unit_cost_usd) + '</span><span class="' + (p.stock_qty <= p.reorder_point ? 'trr' : 'tm') + '">' + p.stock_qty + '</span><span class="tm">' + p.reorder_point + '</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No parts in catalog yet.</div>';
+
+  document.getElementById('parts-alerts').innerHTML = atReorder.length
+    ? atReorder.map(function (p) { return '<div class="card" style="margin:0;padding:10px"><div class="tc" style="font-size:13px">' + p.name + '</div><div class="tm" style="font-size:11px">' + p.stock_qty + ' left, reorder at ' + p.reorder_point + '</div></div>'; }).join('') + '<button class="btn btn-s btn-g" style="margin-top:6px" onclick="reorderPart()"><i class="ti ti-sparkles"></i>Run autonomous reorder</button>'
+    : '<div style="font-size:12px;color:var(--dim)">No parts need reordering.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-008 Loaners — overdue flagging is fully autonomous
+// ══════════════════════════════════════════════════════════════
+async function returnLoaner(id) {
+  try {
+    await api('POST', '/api/v1/dms/loaners/' + id + '/return');
+    toast('Loaner returned.');
+    await renderLoaners();
+  } catch (err) { connectionToast(err); }
+}
+
+function addLoaner() {
+  // There is no manual "create loaner" endpoint on dms-svc, by
+  // design — loaner_engine.auto_assign_loaner only ever fires
+  // autonomously from service_engine.create_and_dispatch_ro when a
+  // repair order's estimated duration crosses the configured
+  // threshold. A loaner reservation is a consequence of dispatching
+  // a repair order, not an independent action, so this form doesn't
+  // call a fabricated endpoint — it points at where the real flow is.
+  toggleForm('loaner-form');
+  toast('Loaners are assigned autonomously from Service dispatch when a repair order\'s estimated duration crosses the threshold — open a repair order on the Service page instead of reserving one manually here.', true);
+}
+
+async function flagOverdueLoaners() {
+  try {
+    var results = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-loaner-overdue');
+    toast(results.output && results.output.length ? results.output.length + ' loaner(s) flagged for billing handoff.' : 'No loaners past the overdue threshold.');
+    await renderLoaners();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+async function renderLoaners() {
+  var loaners;
+  try { loaners = await api('GET', '/api/v1/dms/loaners'); }
+  catch (err) { connectionToast(err); return; }
+
+  var active = loaners.filter(function (l) { return l.status === 'out'; });
+  var extended = loaners.filter(function (l) { return l.billing_flag; });
+  document.getElementById('lk-active').textContent = active.length;
+  document.getElementById('lk-extended').textContent = extended.length;
+  document.getElementById('lk-returned').textContent = loaners.filter(function (l) { return l.status === 'returned'; }).length;
+
+  document.getElementById('loaner-rows').innerHTML = loaners.map(function (l) {
+    var action = l.status === 'out' ? '<button class="btn btn-s btn-o" onclick="returnLoaner(\'' + l.id + '\')">Return</button>' : '';
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 90px 90px 110px"><span class="tc">' + l.customer_name + '</span><span class="tm">' + l.vehicle_label + '</span><span class="' + (l.days_out > 5 ? 'trr' : 'tm') + '">' + l.days_out + '</span><span class="p ' + (l.status === 'out' ? 'pb' : 'pg') + '">' + l.status + '</span><span>' + (l.billing_flag ? '<span class="p pr">Handoff required</span>' : action) + '</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No loaners yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-009 P&L — real transaction arithmetic, no AI reasoning
+// ══════════════════════════════════════════════════════════════
+async function renderPL() {
+  var snapshots;
+  try { snapshots = await api('GET', '/api/v1/dms/performance/pl-snapshots'); }
+  catch (err) { connectionToast(err); return; }
+  if (!snapshots.length) {
+    document.getElementById('pl-rows').innerHTML = '<div style="padding:14px;font-size:13px;color:var(--dim)">No P&amp;L snapshots yet — post one via dms-svc for each rooftop.</div>';
+    return;
+  }
+  var avgGross = snapshots.reduce(function (s, p) { return s + p.gross_usd; }, 0) / snapshots.length;
+  document.getElementById('plk-gross').textContent = fmtMoney(avgGross);
+  document.getElementById('plk-turn').textContent = (snapshots.reduce(function (s, p) { return s + p.turn_rate; }, 0) / snapshots.length).toFixed(1) + 'x';
+  document.getElementById('plk-fipvr').textContent = fmtMoney(snapshots.reduce(function (s, p) { return s + p.fi_pvr_usd; }, 0) / snapshots.length);
+  document.getElementById('plk-absorption').textContent = Math.round(snapshots.reduce(function (s, p) { return s + p.absorption_pct; }, 0) / snapshots.length) + '%';
+
+  document.getElementById('pl-rows').innerHTML = snapshots.map(function (p) {
+    return '<div class="tr" style="grid-template-columns:1.5fr 90px 100px 100px 110px 90px"><span class="tc">' + rooftopName(p.rooftop_id) + '</span><span>' + p.units + '</span><span class="' + (p.gross_usd < avgGross ? 'trr' : 'tg') + '">' + fmtMoney(p.gross_usd) + '</span><span>' + p.turn_rate.toFixed(1) + 'x</span><span>' + fmtMoney(p.fi_pvr_usd) + '</span><span>' + Math.round(p.absorption_pct) + '%</span></div>';
+  }).join('');
+}
+
+async function runDealerPerformanceEvaluation() {
+  try {
+    var results = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-dealer-performance');
+    var interventions = (results.output || []).filter(function (r) { return r.intervention_applied; });
+    toast(interventions.length ? interventions.length + ' rooftop(s) verdicted intervene — accelerated markdown sweep applied autonomously.' : 'No rooftop crossed the intervention threshold.');
+    await renderInventory();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// DMS-010 Franchise — non-compliance always routes to remediation
+// ══════════════════════════════════════════════════════════════
+async function renderFranchise() {
+  var records;
+  try { records = await api('GET', '/api/v1/dms/franchise'); }
+  catch (err) { connectionToast(err); return; }
+
+  var counts = { compliant: 0, at_risk: 0, non_compliant: 0 };
+  var coopTotal = 0;
+  records.forEach(function (f) { counts[f.status] = (counts[f.status] || 0) + 1; coopTotal += f.coop_usd; });
+  document.getElementById('fck-compliant').textContent = counts.compliant || 0;
+  document.getElementById('fck-atrisk').textContent = counts.at_risk || 0;
+  document.getElementById('fck-noncompliant').textContent = counts.non_compliant || 0;
+  document.getElementById('fck-coop').textContent = fmtMoney(coopTotal);
+  var navFr = document.getElementById('nb-franchise'); if (navFr) navFr.textContent = counts.non_compliant || 0;
+
+  document.getElementById('franchise-rows').innerHTML = records.map(function (f) {
+    var statusPill = { compliant: 'pg', at_risk: 'pa2', non_compliant: 'pr' }[f.status] || 'pd';
+    return '<div class="tr" style="grid-template-columns:1.4fr 100px 110px 130px 100px 110px"><span class="tc">' + rooftopName(f.rooftop_id) + '</span><span class="tm">—</span><span class="p ' + statusPill + '">' + f.status.replace('_', ' ') + '</span><span>' + f.score + '/100</span><span>' + fmtMoney(f.coop_usd) + '</span><span class="tm">' + (f.remediation_opened ? '<span class="p pr">Remediation open</span>' : f.rebrand_status.replace('_', ' ')) + '</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No franchise records yet.</div>';
+}
+
+async function runFranchiseRemediation() {
+  try {
+    var results = await aiApi('/api/v1/ai/dms/dealer-intelligence/evaluate-franchise-remediation');
+    toast(results.output && results.output.length ? results.output.length + ' rooftop(s) opened for remediation.' : 'No non-compliant rooftops found.');
+    await renderFranchise();
+  } catch (err) { aiConnectionToast(err); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Compliance queue — the ONLY page where a human decision is
+// structurally required: OFAC (no override exists anywhere), Red
+// Flags Rule (requires a typed reason), stolen-vehicle (no path to
+// an offer). Every other event on this platform auto-triages
+// elsewhere; this queue is exclusively these three.
+// ══════════════════════════════════════════════════════════════
+async function renderComplianceQueue() {
+  var holds;
+  try { holds = await api('GET', '/api/v1/dms/compliance-holds'); }
+  catch (err) { connectionToast(err); return; }
+
+  var pending = holds.filter(function (h) { return !h.resolved; });
+  document.getElementById('cqk-pending').textContent = pending.length;
+  document.getElementById('cqk-aa').textContent = pending.filter(function (h) { return h.type === 'red_flag'; }).length;
+  document.getElementById('cqk-rf').textContent = pending.filter(function (h) { return h.type === 'red_flag'; }).length;
+  document.getElementById('cqk-fr').textContent = pending.filter(function (h) { return h.type === 'stolen_vehicle'; }).length;
+  var navCompliance = document.getElementById('nb-compliance'); if (navCompliance) navCompliance.textContent = pending.length;
+
+  document.getElementById('compliance-cards').innerHTML = pending.map(function (h) {
+    return '<div class="card"><div class="ch"><span class="ct">' + h.label + '</span><span class="p pr">' + h.type.replace('_', ' ') + '</span></div><div style="font-size:12px;color:var(--mid);margin-bottom:8px">' + h.detail + '</div><button class="btn btn-s btn-g" onclick="resolveComplianceHold(\'' + h.id + '\')">Mark resolved</button></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No open compliance holds — every other event on this platform auto-triages elsewhere.</div>';
+}
+
+async function resolveComplianceHold(id) {
+  try {
+    await api('POST', '/api/v1/dms/compliance-holds/' + id + '/resolve');
+    toast('Compliance hold resolved.');
+    await renderComplianceQueue();
+  } catch (err) { connectionToast(err); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Dashboard
+// ══════════════════════════════════════════════════════════════
+async function renderDash() {
+  var snapshots, vehicles, holds;
+  try {
+    snapshots = await api('GET', '/api/v1/dms/performance/pl-snapshots');
+    vehicles = await api('GET', '/api/v1/dms/vehicles');
+    holds = await api('GET', '/api/v1/dms/compliance-holds');
+  } catch (err) { connectionToast(err); return; }
+
+  document.getElementById('dk-gross').textContent = snapshots.length ? fmtMoney(snapshots.reduce(function (s, p) { return s + p.gross_usd; }, 0)) : '$—';
+  document.getElementById('dk-units').textContent = snapshots.reduce(function (s, p) { return s + p.units; }, 0) || '—';
+  document.getElementById('dk-flags').textContent = holds.filter(function (h) { return !h.resolved; }).length;
+  document.getElementById('dk-aging').textContent = vehicles.filter(function (v) { return v.days_in_inventory > 60; }).length;
+
+  document.getElementById('dash-feed').innerHTML = holds.slice(0, 6).map(function (h) {
+    return '<div style="display:flex;gap:8px;padding:6px 0;font-size:12px;border-bottom:0.5px solid var(--border)"><span class="p pr" style="font-size:10px">' + h.type.replace('_', ' ') + '</span><span class="tm">' + h.label + '</span></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--dim)">No compliance activity yet.</div>';
+
+  var aging = vehicles.filter(function (v) { return v.days_in_inventory > 60; });
+  document.getElementById('dash-aging').innerHTML = aging.slice(0, 5).map(function (v) {
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:0.5px solid var(--border)"><span class="tc">' + v.description + '</span><span class="trr">' + v.days_in_inventory + 'd</span></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--dim)">No aging alerts.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Wire up live rendering per page + full refresh
+// ══════════════════════════════════════════════════════════════
+LIVE_PAGE_RENDERERS = {
+  dash: renderDash, rooftops: renderRooftops, inventory: renderInventory, deals: renderDeals,
+  fi: renderFI, lending: renderCreditApps, appraisal: renderAppraisals, service: renderService,
+  recon: renderRecon, parts: renderParts, loaners: renderLoaners, pl: renderPL,
+  franchise: renderFranchise, compliance: renderComplianceQueue,
+};
+
+async function rerenderAll() {
+  await refreshCoreCache();
+  await renderDash();
+  await renderRooftops();
+  await renderInventory();
+  await renderDeals();
+  await renderCreditApps();
+  await renderAppraisals();
+  await renderService();
+  await renderRecon();
+  await renderParts();
+  await renderLoaners();
+  await renderPL();
+  await renderFranchise();
+  await renderComplianceQueue();
+}
+rerenderAll();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI — Fleet Management</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --amber:#c9a84c;--purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --sw:224px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.wordmark span{color:var(--mid);font-weight:500;letter-spacing:.04em;margin-left:6px;font-size:12px}
+.tb-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim);flex-shrink:0}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.tbx{width:30px;height:30px;border-radius:7px;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+.tbx:hover{background:var(--surface3)}
+.tbx i{font-size:15px;color:var(--mid)}
+.nbadge{position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--gold);border-radius:50%;border:1.5px solid var(--surface)}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;cursor:pointer}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.sfoot{margin-top:auto;padding:10px 13px;border-top:0.5px solid var(--border)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:10px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center;transition:background .1s}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:var(--surface2)}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pp{background:var(--purple-dim);color:var(--purple);border:0.5px solid rgba(123,108,212,.3)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-gh{background:none;border:0.5px solid var(--border);color:var(--dim)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--gold-border)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.at{font-family:monospace;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.dv{height:0.5px;background:var(--border);margin:13px 0}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:14px}
+.aip-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--gold)}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.noai{background:var(--surface2);border:0.5px dashed var(--border2);border-radius:10px;padding:12px;font-size:12px;color:var(--dim)}
+.heat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.heat-cell{border-radius:8px;padding:10px;text-align:center;border:0.5px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI<span>Fleet Management</span></span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx">AI-Native Fleet Operations</span>
+  <div class="tb-right">
+    <div class="tbx" onclick="sp('maintenance')"><i class="ti ti-tools"></i><div class="nbadge" id="topbar-badge"></div></div>
+    <div class="tbx"><i class="ti ti-settings"></i></div>
+    <div class="upill"><div class="uav">FO</div><div><div class="uname">Fleet Ops</div><div class="urole">fleet_admin</div></div></div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Overview</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+
+  <div class="ss">FLT-001</div>
+  <div class="ni" id="n-inventory" onclick="sp('inventory')"><i class="ti ti-car"></i>Inventory &amp; intake</div>
+
+  <div class="ss">FLT-003</div>
+  <div class="ni" id="n-staging" onclick="sp('staging')"><i class="ti ti-map-2"></i>Staging &amp; hub board</div>
+
+  <div class="ss">FLT-004</div>
+  <div class="ni" id="n-maintenance" onclick="sp('maintenance')"><i class="ti ti-tools"></i>Maintenance<span class="nb nb-r" id="nb-maint">0</span></div>
+
+  <div class="ss">FLT-005</div>
+  <div class="ni" id="n-incidents" onclick="sp('incidents')"><i class="ti ti-alert-triangle"></i>Incidents &amp; claims</div>
+
+  <div class="ss">FLT-002</div>
+  <div class="ni" id="n-telematics" onclick="sp('telematics')"><i class="ti ti-satellite"></i>Telematics</div>
+
+  <div class="ss">FLT-010</div>
+  <div class="ni" id="n-safety" onclick="sp('safety')"><i class="ti ti-steering-wheel"></i>Driving safety<span class="nb nb-r" id="nb-safety">0</span></div>
+
+  <div class="ss">FLT-006 / 007</div>
+  <div class="ni" id="n-lifecycle" onclick="sp('lifecycle')"><i class="ti ti-recycle"></i>Depreciation &amp; disposition</div>
+
+  <div class="ss">FLT-008 / 009</div>
+  <div class="ni" id="n-floorplan" onclick="sp('floorplan')"><i class="ti ti-building-bank"></i>Floorplan financing</div>
+
+  <div class="ss">FLT-011</div>
+  <div class="ni" id="n-fuel" onclick="sp('fuel')"><i class="ti ti-gas-station"></i>Fuel &amp; energy cost</div>
+
+  <div class="ss">FLT-012</div>
+  <div class="ni" id="n-evcharging" onclick="sp('evcharging')"><i class="ti ti-battery-charging"></i>EV charging &amp; battery<span class="nb nb-r" id="nb-battery">0</span></div>
+
+  <div class="ss">FLT-013</div>
+  <div class="ni" id="n-analytics" onclick="sp('analytics')"><i class="ti ti-chart-bar"></i>Utilization, TCO &amp; AI optimizer</div>
+
+  <div class="sfoot">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="uav" style="width:26px;height:26px;font-size:10px">FO</div>
+      <div><div style="font-size:12px;font-weight:500;color:var(--text)">Fleet Ops</div><div style="font-size:11px;color:var(--dim)">fleet_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+
+<!-- ============ DASHBOARD ============ -->
+<div class="page on" id="p-dash">
+<div class="ph"><div class="pt">Fleet Management dashboard</div><div class="ps">Inventory · Staging · Maintenance · Incidents · Telematics · Safety · Lifecycle · Floorplan · Fuel · EV/Battery · Analytics — all 13 FLT modules AI-first — <span class="ld"></span>Live</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Total vehicles</div><div class="kv" id="dk-vehicles">—</div><div class="kd tg">Across all classes</div></div>
+  <div class="kpi kpi-red"><div class="kl">Open maintenance alerts</div><div class="kv" id="dk-alerts">—</div><div class="kd trr">Urgent + predictive</div></div>
+  <div class="kpi kpi-b"><div class="kl">Open incidents</div><div class="kv" id="dk-incidents">—</div><div class="kd tb2">Awaiting assessment</div></div>
+  <div class="kpi kpi-green"><div class="kl">Disposition-eligible</div><div class="kv" id="dk-disposition">—</div><div class="kd tr2">Age or mileage threshold</div></div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Fleet Intelligence Agent activity</span></div>
+    <div id="dash-feed" style="display:flex;flex-direction:column;gap:1px;max-height:280px;overflow-y:auto"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Fleet by status</span></div>
+    <div style="position:relative;height:230px"><canvas id="chartStatus" role="img" aria-label="Vehicles by status">Status chart</canvas></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ FLT-001 INVENTORY & INTAKE ============ -->
+<div class="page" id="p-inventory">
+<div class="ph"><div class="pt">Vehicle Inventory &amp; Intake</div><div class="ps">FLT-001 · Purchase order → receive → inspect → provision, all deterministic facts. Inspector pass/fail is never AI-judged — but fully autonomous from there: every passed inspection gets an AI readiness review, and the verdict is the action. Ready or flagged auto-provisions straight to staged; hold_for_review actually blocks the vehicle, no human has to intervene first.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('po-form')"><i class="ti ti-plus"></i>New purchase order</button></div></div>
+<div class="card" id="po-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">VIN</label><input class="fi" id="pof-vin" placeholder="1HGCM82633A123456"></div>
+    <div class="fg"><label class="fl">Vehicle class</label><select class="fs" id="pof-class"><option value="urban">Urban</option><option value="family">Family</option><option value="executive">Executive</option><option value="luxury">Luxury</option><option value="performance">Performance</option><option value="adventure">Adventure</option></select></div>
+    <div class="fg"><label class="fl">Cost ($)</label><input class="fi" id="pof-cost" placeholder="42000"></div>
+  </div>
+  <button class="btn btn-g" onclick="createPO()"><i class="ti ti-check"></i>Create purchase order</button>
+</div>
+<div class="two" style="align-items:start;margin-bottom:14px">
+  <div>
+    <div class="sec"><span class="st">Purchase orders</span></div>
+    <div id="po-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Vehicle fleet</span></div>
+    <div class="tw">
+      <div class="th" style="grid-template-columns:1fr 1fr 1fr 90px"><span>VIN</span><span>Class</span><span>Status</span><span></span></div>
+      <div id="vehicle-rows"></div>
+    </div>
+  </div>
+</div>
+<div class="sec"><span class="st">AI intake readiness assessments</span></div>
+<div id="readiness-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ FLT-003 STAGING & HUB BOARD ============ -->
+<div class="page" id="p-staging">
+<div class="ph"><div class="pt">Staging &amp; Hub Allocation Board</div><div class="ps">FLT-003 · Fully autonomous: when a hub is short on a class, the Fleet Intelligence Agent creates AND dispatches the transfer in one action — the vehicle moves immediately. No separate human dispatch step; the decision log is the audit trail.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('hub-form')"><i class="ti ti-plus"></i>New hub</button></div></div>
+<div class="card" id="hub-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Hub name</label><input class="fi" id="hf-name" placeholder="Miami Beach Hub"></div>
+    <div class="fg"><label class="fl">Region</label><input class="fi" id="hf-region" placeholder="South Florida"></div>
+  </div>
+  <button class="btn btn-g" onclick="createHub()"><i class="ti ti-check"></i>Create hub</button>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div>
+    <div class="sec"><span class="st">Hub supply heatmap</span></div>
+    <div id="hub-heatmap" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Request AI staging recommendation</span></div>
+    <div class="card">
+      <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="sf-vehicle"></select></div>
+      <div class="fg"><label class="fl">Destination hub</label><select class="fs" id="sf-hub"></select></div>
+      <button class="btn btn-s btn-g" onclick="requestStagingRecommendation()"><i class="ti ti-sparkles"></i>Evaluate (AI recommends automatically)</button>
+      <div id="staging-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+<div class="sec"><span class="st">Transfer orders</span></div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1fr 1fr 1fr 130px"><span>Vehicle</span><span>Destination</span><span>Status</span><span></span></div>
+  <div id="transfer-rows"></div>
+</div>
+</div>
+
+<!-- ============ FLT-004 MAINTENANCE ============ -->
+<div class="page" id="p-maintenance">
+<div class="ph"><div class="pt">Maintenance &amp; Service Scheduler</div><div class="ps">FLT-004 · Alert severity is a plain threshold check — DTC codes present means urgent, deterministic on purpose. Fully autonomous: once 3+ alerts are open at once, the Fleet Intelligence Agent prioritizes them by severity and DTC count, then immediately opens a real work order for the top-priority alert — no human has to read the list and dispatch it.</div></div>
+<div class="krow">
+  <div class="kpi kpi-red"><div class="kl">Urgent alerts</div><div class="kv" id="mk-urgent">—</div><div class="kd trr">DTC codes present</div></div>
+  <div class="kpi kpi-g"><div class="kl">Predictive alerts</div><div class="kv" id="mk-predictive">—</div><div class="kd tg">Mileage threshold reached</div></div>
+  <div class="kpi kpi-b"><div class="kl">Open work orders</div><div class="kv" id="mk-workorders">—</div><div class="kd tb2">In progress</div></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="sec"><span class="st">Evaluate maintenance need</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="mf-vehicle"></select></div>
+    <div class="fg"><label class="fl">Miles since last service</label><input class="fi" id="mf-miles" placeholder="5200"></div>
+    <div class="fg"><label class="fl">DTC codes (comma-separated, optional)</label><input class="fi" id="mf-dtc" placeholder="P0301"></div>
+  </div>
+  <button class="btn btn-g" onclick="evaluateMaintenance()"><i class="ti ti-check"></i>Evaluate (deterministic threshold check)</button>
+  <div id="maintenance-result" style="margin-top:10px"></div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Alerts</span></div>
+    <div id="alert-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Work orders</span></div>
+    <div id="workorder-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+<div class="sec" style="margin-top:14px"><span class="st">AI maintenance triage</span></div>
+<div class="aip" id="triage-panel"><div class="aip-h"><i class="ti ti-sparkles"></i>Fleet-wide priority order</div><div class="aip-body" id="triage-body">Not yet triaged — accumulates automatically once 3+ open alerts exist.</div></div>
+</div>
+
+<!-- ============ FLT-005 INCIDENTS & CLAIMS ============ -->
+<div class="page" id="p-incidents">
+<div class="ph"><div class="pt">Incident &amp; Claims Management</div><div class="ps">FLT-005 · Liability is always a human call, recorded exactly as entered — the AI has no path to that field, structurally, and never did. Fully autonomous for its own output: every reported incident gets an AI severity triage, and SEVERE immediately opens a repair order — no human has to notice and start it.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('incident-form')"><i class="ti ti-plus"></i>Report incident</button></div></div>
+<div class="card" id="incident-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="incf-vehicle"></select></div>
+    <div class="fg"><label class="fl">Incident type</label><select class="fs" id="incf-type"><option value="collision">Collision</option><option value="theft">Theft</option><option value="vandalism">Vandalism</option><option value="weather_damage">Weather damage</option><option value="mechanical_failure">Mechanical failure</option></select></div>
+  </div>
+  <div class="fg"><label class="fl">Description</label><input class="fi" id="incf-desc" placeholder="Rear-end collision at intersection"></div>
+  <button class="btn btn-g" onclick="reportIncident()"><i class="ti ti-check"></i>Report incident</button>
+</div>
+<div id="incident-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ FLT-002 TELEMATICS ============ -->
+<div class="page" id="p-telematics">
+<div class="ph"><div class="pt">Telematics &amp; Device Management</div><div class="ps">FLT-002 · Fully autonomous: every geofence excursion beyond 50mi gets an AI anomaly read, and NEEDS_INVESTIGATION immediately pulls the vehicle to MAINTENANCE and flags it — no human has to act first. Tamper events are a categorically different, more severe signal — they always escalate straight to human security review and are never routed through this AI at all.</div></div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="sec"><span class="st">Geofence check</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="gf-vehicle"></select></div>
+    <div class="fg"><label class="fl">Distance beyond geofence (miles)</label><input class="fi" id="gf-distance" placeholder="180"></div>
+    <button class="btn btn-s btn-g" onclick="checkGeofence()"><i class="ti ti-map-pin"></i>Check (alerts only past 50mi)</button>
+    <div id="geofence-result" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="st">Report tamper event</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="tampf-vehicle"></select></div>
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="tampf-desc" placeholder="Device disconnected unexpectedly"></div>
+    <button class="btn btn-s btn-d" onclick="reportTamper()"><i class="ti ti-alert-triangle"></i>Report tamper event (always human review, no AI)</button>
+  </div>
+</div>
+<div class="sec"><span class="st">Recent alerts</span></div>
+<div id="telematics-alert-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<!-- ============ FLT-010 DRIVING SAFETY ============ -->
+<div class="page" id="p-safety">
+<div class="ph"><div class="pt">Driving Safety &amp; Behavior Scoring</div><div class="ps">FLT-010 · Each driving event has a fixed point weight — harsh braking and rapid acceleration -5, speeding -10, phone usage -15, forward collision warning -20, floor at 0. The score itself is deterministic arithmetic; the Fleet Intelligence Agent's role is re-scoring automatically every 5th event and flagging anything under 60 for review.</div></div>
+<div class="card" style="margin-bottom:14px">
+  <div class="sec"><span class="st">Log driving event</span></div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="def-vehicle"></select></div>
+    <div class="fg"><label class="fl">Event type</label><select class="fs" id="def-type">
+      <option value="harsh_braking">Harsh braking (−5)</option>
+      <option value="rapid_acceleration">Rapid acceleration (−5)</option>
+      <option value="speeding">Speeding (−10)</option>
+      <option value="phone_usage_detected">Phone usage detected (−15)</option>
+      <option value="forward_collision_warning">Forward collision warning (−20)</option>
+    </select></div>
+  </div>
+  <button class="btn btn-g" onclick="logDrivingEvent()"><i class="ti ti-check"></i>Log event</button>
+  <div id="safety-log-result" style="margin-top:10px"></div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Safety scores by vehicle</span></div>
+    <div id="safety-score-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Watchlist (score &lt; 60)</span></div>
+    <div id="safety-watchlist-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ FLT-006/007 LIFECYCLE ============ -->
+<div class="page" id="p-lifecycle">
+<div class="ph"><div class="pt">Depreciation &amp; Disposition</div><div class="ps">FLT-006/007 · Depreciation is plain straight-line arithmetic; eligibility is a fixed age/mileage threshold. The Fleet Intelligence Agent is fully autonomous here: a flagged market valuation, or a direct request below, runs the disposition-channel cascade (rideshare → local rental → export → parts) and creates the real order immediately — no approval step.</div></div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="sec"><span class="st">Create depreciation schedule</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="df-vehicle"></select></div>
+    <div class="fr3">
+      <div class="fg"><label class="fl">Acquisition cost ($)</label><input class="fi" id="df-cost" placeholder="42000"></div>
+      <div class="fg"><label class="fl">Salvage value ($)</label><input class="fi" id="df-salvage" placeholder="12000"></div>
+      <div class="fg"><label class="fl">Useful life (months)</label><input class="fi" id="df-life" placeholder="60"></div>
+    </div>
+    <button class="btn btn-s btn-g" onclick="createDepreciationSchedule()"><i class="ti ti-check"></i>Create schedule</button>
+    <div id="depreciation-result" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="st">Check disposition eligibility</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="ef-vehicle"></select></div>
+    <button class="btn btn-s btn-g" onclick="checkDispositionEligibility()"><i class="ti ti-check"></i>Check (age ≥ 36mo or mileage ≥ 60,000)</button>
+    <div id="eligibility-result" style="margin-top:10px"></div>
+  </div>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="sec"><span class="st">Record market valuation</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="mvf-vehicle"></select></div>
+    <div class="fg"><label class="fl">Market valuation ($)</label><input class="fi" id="mvf-amount" placeholder="18500"></div>
+    <button class="btn btn-s btn-g" onclick="recordMarketValuation()"><i class="ti ti-sparkles"></i>Record (AI flags ≥20% deviation from book)</button>
+    <div id="valuation-result" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="st">Request disposition channel evaluation</span></div>
+    <div class="fg"><label class="fl">Vehicle (must be disposition-eligible)</label><select class="fs" id="dcf-vehicle"></select></div>
+    <button class="btn btn-s btn-g" onclick="requestDispositionChannel()"><i class="ti ti-sparkles"></i>Evaluate &amp; create order autonomously</button>
+    <div id="channel-rec-result" style="margin-top:10px"></div>
+  </div>
+</div>
+<div class="sec"><span class="st">Paused-agent advisory notes</span></div>
+<div id="channel-rec-cards" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+<div class="sec"><span class="st">Disposition orders</span></div>
+<div id="disposition-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ FLT-011 FUEL & ENERGY COST ============ -->
+<div class="page" id="p-fuel">
+<div class="ph"><div class="pt">Fuel &amp; Energy Cost Management</div><div class="ps">FLT-011 · Cost-per-mile and efficiency are plain arithmetic. Fully autonomous, chained into FLT-004: from the 2nd fill-up on, a FLAGGED anomaly (implausible efficiency, a cost spike, or a sharp deviation from the vehicle's own running average) immediately opens a real maintenance alert — no human has to notice it first.</div></div>
+<div class="card" style="margin-bottom:14px">
+  <div class="sec"><span class="st">Log fuel / energy entry</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="fef-vehicle"></select></div>
+    <div class="fg"><label class="fl">Energy type</label><select class="fs" id="fef-type"><option value="gasoline">Gasoline</option><option value="electric">Electric</option></select></div>
+    <div class="fg"><label class="fl">Miles since last fill</label><input class="fi" id="fef-miles" placeholder="320"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Quantity (gallons or kWh)</label><input class="fi" id="fef-qty" placeholder="12.4"></div>
+    <div class="fg"><label class="fl">Total cost ($)</label><input class="fi" id="fef-cost" placeholder="44.80"></div>
+  </div>
+  <button class="btn btn-g" onclick="logFuelEntry()"><i class="ti ti-check"></i>Log entry</button>
+  <div id="fuel-log-result" style="margin-top:10px"></div>
+</div>
+<div class="sec"><span class="st">Fuel/energy log</span></div>
+<div id="fuel-entry-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ FLT-012 EV CHARGING & BATTERY HEALTH ============ -->
+<div class="page" id="p-evcharging">
+<div class="ph"><div class="pt">EV Charging &amp; Battery Health</div><div class="ps">FLT-012 · Charging-session costs are plain facts. The SOH &lt; 80% watchlist below stays a fixed reactive threshold check, deliberately deterministic. Fully autonomous, chained into FLT-004: once a vehicle has 2+ health readings, the Fleet Intelligence Agent projects the trend forward, and when it's urgent (crossing the threshold within 30 days), immediately opens a real maintenance alert — proactive, before the reactive alert would even fire.</div></div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="sec"><span class="st">Charging session</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="csf-vehicle"></select></div>
+    <div class="fg"><label class="fl">Station location</label><input class="fi" id="csf-location" placeholder="Miami Beach Hub — Bay 3"></div>
+    <button class="btn btn-s btn-g" onclick="startChargingSession()"><i class="ti ti-plug"></i>Start session</button>
+    <div id="charging-active" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="st">Record battery health reading</span></div>
+    <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="bhf-vehicle"></select></div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">State of charge (%)</label><input class="fi" id="bhf-soc" placeholder="72"></div>
+      <div class="fg"><label class="fl">State of health (%)</label><input class="fi" id="bhf-soh" placeholder="91"></div>
+    </div>
+    <button class="btn btn-s btn-g" onclick="recordBatteryHealth()"><i class="ti ti-heart"></i>Record reading (alert if SOH &lt; 80%)</button>
+    <div id="battery-health-result" style="margin-top:10px"></div>
+  </div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Charging sessions</span></div>
+    <div id="charging-session-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Battery degradation watchlist (SOH &lt; 80%)</span></div>
+    <div id="battery-watchlist-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+    <div class="sec"><span class="st">AI degradation trend forecasts</span></div>
+    <div id="degradation-trend-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ FLT-013 UTILIZATION & TCO ANALYTICS ============ -->
+<div class="page" id="p-analytics">
+<div class="ph"><div class="pt">Fleet Utilization, TCO &amp; AI Optimizer</div><div class="ps">FLT-013 · TCO and availability below are the same deterministic aggregation as always. The capstone: on request, the Fleet Intelligence Agent pulls together every other module's signal for a vehicle — TCO, availability, disposition eligibility, and the latest valuation flag — into one retain / review / prioritize-for-disposition read. It never creates a disposition order itself; that's still FLT-007's channel-recommendation flow, always human-gated.</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Fleet size</div><div class="kv" id="ak-total">—</div><div class="kd tg">All classes, all statuses</div></div>
+  <div class="kpi kpi-b"><div class="kl">Avg availability</div><div class="kv" id="ak-availability">—</div><div class="kd tb2">Time not in maintenance downtime</div></div>
+  <div class="kpi kpi-red"><div class="kl">Battery watchlist</div><div class="kv" id="ak-battery">—</div><div class="kd trr">SOH below 80% threshold</div></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="sec"><span class="st">Per-vehicle TCO &amp; availability lookup</span></div>
+  <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="tcof-vehicle"></select></div>
+  <button class="btn btn-s btn-g" onclick="lookupVehicleTco()"><i class="ti ti-calculator"></i>Calculate</button>
+  <div id="tco-result" style="margin-top:12px"></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="sec"><span class="st">AI fleet optimization recommendation (FLT-013 capstone)</span></div>
+  <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="foptf-vehicle"></select></div>
+  <button class="btn btn-s btn-g" onclick="requestFleetOptimization()"><i class="ti ti-sparkles"></i>Request review (gathers all 4 signals)</button>
+  <div id="fleet-optimization-result" style="margin-top:12px"></div>
+</div>
+<div class="sec"><span class="st">Fleet composition</span></div>
+<div class="two">
+  <div class="card">
+    <div class="ct" style="margin-bottom:8px">By status</div>
+    <div id="fleet-by-status" style="font-size:13px"></div>
+  </div>
+  <div class="card">
+    <div class="ct" style="margin-bottom:8px">By class</div>
+    <div id="fleet-by-class" style="font-size:13px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ FLOORPLAN FINANCING ============ -->
+<div class="page" id="p-floorplan">
+<div class="ph"><div class="pt">Floorplan Financing</div><div class="ps">FLT-008/009 · Facilities and per-VIN collateral pledges are plain facts — VIN collateral status is never AI-judged. Fully autonomous: every pledge gets an AI covenant-risk read, and a BREACHED verdict immediately freezes the facility — a real block on further pledges, not just a warning. Unfreezing stays the one deliberate human-only action, since clearing a lender covenant breach is an attestation a human needs to make.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('facility-form')"><i class="ti ti-plus"></i>New facility</button></div></div>
+<div class="card" id="facility-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Lender name</label><input class="fi" id="ff-lender" placeholder="Westlake Financial"></div>
+    <div class="fg"><label class="fl">Credit limit ($)</label><input class="fi" id="ff-limit" placeholder="2000000"></div>
+  </div>
+  <button class="btn btn-g" onclick="createFacility()"><i class="ti ti-check"></i>Create facility</button>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Facilities</span></div>
+    <div id="facility-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Pledge VIN collateral</span></div>
+    <div class="card">
+      <div class="fg"><label class="fl">Vehicle</label><select class="fs" id="cf-vehicle"></select></div>
+      <div class="fg"><label class="fl">Facility</label><select class="fs" id="cf-facility"></select></div>
+      <button class="btn btn-s btn-g" onclick="pledgeCollateral()"><i class="ti ti-check"></i>Pledge (AI covenant check runs automatically)</button>
+      <div id="covenant-result" style="margin-top:10px"></div>
+    </div>
+    <div class="sec" style="margin-top:14px"><span class="st">Pledged VINs</span></div>
+    <div id="collateral-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+var PAGES=['dash','inventory','staging','maintenance','incidents','telematics','safety','lifecycle','floorplan','fuel','evcharging','analytics'];
+function sp(id){
+  PAGES.forEach(function(p){
+    var pg=document.getElementById('p-'+p);
+    var nv=document.getElementById('n-'+p);
+    if(pg)pg.classList.remove('on');
+    if(nv)nv.classList.remove('on');
+  });
+  document.getElementById('p-'+id).classList.add('on');
+  var nv=document.getElementById('n-'+id);
+  if(nv)nv.classList.add('on');
+  document.querySelector('.workspace').scrollTop=0;
+}
+function toggleForm(id){var el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+var uid=1000;
+function nextId(){return 'id-'+(uid++);}
+function populateSelect(sel,items,labelFn,valueFn){
+  var prior=sel.value;
+  sel.innerHTML=items.map(function(it){return '<option value="'+valueFn(it)+'">'+labelFn(it)+'</option>';}).join('');
+  if(prior)sel.value=prior;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Sample data mirroring fleet-svc's schema
+// ══════════════════════════════════════════════════════════════
+var CLASS_LABELS={urban:'Urban',family:'Family',executive:'Executive',luxury:'Luxury',performance:'Performance',adventure:'Adventure'};
+var STATUS_LABELS={in_transit:'In Transit',staged:'Staged',rented:'Rented',maintenance:'Maintenance',disposed:'Disposed'};
+
+var VEHICLES=[
+  {id:'veh-1',vin:'1HGCM82633A123456',vehicle_class:'family',status:'staged',current_hub_id:'hub-1',odometer_miles:24500,acquired_at:daysAgo(400)},
+  {id:'veh-2',vin:'2FMZA51643A654321',vehicle_class:'executive',status:'staged',current_hub_id:'hub-1',odometer_miles:8200,acquired_at:daysAgo(90)},
+  {id:'veh-3',vin:'3VWFE21C04M000111',vehicle_class:'urban',status:'rented',current_hub_id:'hub-2',odometer_miles:61000,acquired_at:daysAgo(1200)},
+];
+var PURCHASE_ORDERS=[]; // {id, vin, vehicle_class, cost, status}
+var HUBS=[{id:'hub-1',name:'Miami Beach Hub',region:'South Florida'},{id:'hub-2',name:'Austin Downtown Hub',region:'Central Texas'}];
+var TRANSFER_ORDERS=[]; // {id, vehicle_id, destination_hub_id, status}
+var MAINTENANCE_MILEAGE_INTERVAL=5000;
+var ALERTS=[]; // {id, vehicle_id, severity, reason}
+var WORK_ORDERS=[]; // {id, vehicle_id, alert_id, vendor, status, cost_usd}
+var INCIDENTS=[]; // {id, vehicle_id, incident_type, description, liability_assessment, status}
+var TELEMETRY_ALERTS=[]; // {id, type, vehicle_id, detail, ts}
+var DEPRECIATION_SCHEDULES={}; // vehicle_id -> {acquisition_cost_usd, salvage_value_usd, useful_life_months, created_at}
+var DISPOSITION_ORDERS=[]; // {id, vehicle_id, channel, recovery_amount_usd, status}
+var FLOORPLAN_FACILITIES=[]; // {id, lender_name, credit_limit_usd, outstanding_usd}
+var VIN_COLLATERAL=[]; // {id, vehicle_id, facility_id, status}
+var CHARGING_SESSIONS=[]; // {id, vehicle_id, station_location, energy_added_kwh, cost_usd, status}
+var BATTERY_HEALTH_READINGS=[]; // {id, vehicle_id, state_of_charge_pct, state_of_health_pct, recorded_at}
+var BATTERY_HEALTH_ALERT_THRESHOLD_PCT=80.0;
+
+var DISPOSITION_AGE_MONTHS=36, DISPOSITION_MILEAGE=60000;
+
+var DFEED=[
+  {a:'fleet-intelligence-agent',m:'Staging evaluated — no transfer proposed, hub-1 supply adequate',ts:'2h ago'},
+];
+
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d;}
+function vehicleById(id){return VEHICLES.find(function(v){return v.id===id;});}
+function hubById(id){return HUBS.find(function(h){return h.id===id;});}
+function vehicleLabel(v){return v.vin+' ('+CLASS_LABELS[v.vehicle_class]+')';}
+
+function populateVehicleSelects(){
+  ['sf-vehicle','mf-vehicle','incf-vehicle','gf-vehicle','tampf-vehicle','def-vehicle','df-vehicle','ef-vehicle','mvf-vehicle','dcf-vehicle','cf-vehicle','fef-vehicle','csf-vehicle','bhf-vehicle','tcof-vehicle','foptf-vehicle'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)populateSelect(el,VEHICLES,vehicleLabel,function(v){return v.id;});
+  });
+  var hubSel=document.getElementById('sf-hub');
+  if(hubSel)populateSelect(hubSel,HUBS,function(h){return h.name;},function(h){return h.id;});
+  var facSel=document.getElementById('cf-facility');
+  if(facSel)populateSelect(facSel,FLOORPLAN_FACILITIES,function(f){return f.lender_name;},function(f){return f.id;});
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-001 Inventory & Intake (deterministic, no AI)
+// ══════════════════════════════════════════════════════════════
+function renderInventory(){
+  document.getElementById('po-cards').innerHTML=PURCHASE_ORDERS.map(function(po){
+    var statusPill={pending:'pb',received:'pa2',inspected:'pg',failed:'pr'}[po.status];
+    var actions='';
+    if(po.status==='pending')actions='<button class="btn btn-s btn-g" onclick="receivePO(\''+po.id+'\')">Receive</button>';
+    else if(po.status==='received')actions='<input class="fi" id="notes-'+po.id+'" placeholder="Inspection notes (optional)" style="margin-bottom:8px"><button class="btn btn-s btn-g" onclick="inspectPO(\''+po.id+'\',true)">Inspect &amp; pass</button> <button class="btn btn-s btn-d" onclick="inspectPO(\''+po.id+'\',false)">Fail inspection</button>';
+    return '<div class="card"><div class="ch"><span class="ct">'+po.vin+'</span><span class="p '+statusPill+'">'+po.status+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">'+CLASS_LABELS[po.vehicle_class]+' · $'+Math.round(po.cost).toLocaleString()+'</div>'
+      +(actions?'<div>'+actions+'</div>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No purchase orders yet.</div>';
+
+  document.getElementById('vehicle-rows').innerHTML=VEHICLES.map(function(v){
+    var statusPill={in_transit:'pb',staged:'pg',rented:'pa2',maintenance:'pr',disposed:'pd'}[v.status];
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 1fr 90px">'
+      +'<span class="tc fm" style="font-size:12px">'+v.vin+'</span>'
+      +'<span class="tm" style="font-size:12px">'+CLASS_LABELS[v.vehicle_class]+'</span>'
+      +'<span class="p '+statusPill+'">'+STATUS_LABELS[v.status]+'</span>'
+      +'<span class="tm" style="font-size:11px">'+v.odometer_miles.toLocaleString()+' mi</span>'
+      +'</div>';
+  }).join('');
+
+  document.getElementById('dk-vehicles').textContent=VEHICLES.length;
+  renderReadinessAssessments();
+  renderStatusChart();
+}
+function createPO(){
+  var vin=document.getElementById('pof-vin').value.trim();
+  if(!vin)return;
+  var vclass=document.getElementById('pof-class').value;
+  var cost=parseFloat(document.getElementById('pof-cost').value)||0;
+  PURCHASE_ORDERS.push({id:nextId(),vin:vin,vehicle_class:vclass,cost:cost,status:'pending'});
+  toggleForm('po-form');
+  document.getElementById('pof-vin').value='';document.getElementById('pof-cost').value='';
+  renderInventory();
+}
+function receivePO(id){var po=PURCHASE_ORDERS.find(function(x){return x.id===id;});po.status='received';renderInventory();}
+function inspectPO(id,passed){
+  var po=PURCHASE_ORDERS.find(function(x){return x.id===id;});
+  var notesEl=document.getElementById('notes-'+id);
+  var notes=notesEl?notesEl.value.trim():'';
+  po.status=passed?'inspected':'failed';
+  var vehicle={id:nextId(),vin:po.vin,vehicle_class:po.vehicle_class,status:'in_transit',current_hub_id:null,odometer_miles:0,acquired_at:new Date(),held_for_review:false};
+  VEHICLES.push(vehicle);
+  // Fully autonomous FLT-001: the readiness verdict IS the action.
+  // A failed inspection always holds for review (blocked, never
+  // auto-provisioned) regardless of notes; a passed inspection
+  // auto-provisions straight to staged unless notes carry a concern
+  // keyword, which flags but does not block.
+  var readiness=deterministicIntakeReadiness(passed,notes);
+  READINESS_ASSESSMENTS.push({id:nextId(),vehicle_id:vehicle.id,vin:po.vin,recommendation:readiness.recommendation,reasoning:readiness.reasoning});
+  if(readiness.recommendation==='hold_for_review'){
+    vehicle.held_for_review=true;
+    vehicle.held_for_review_reason=readiness.reasoning;
+  } else {
+    vehicle.status='staged';
+    vehicle.current_hub_id=HUBS.length?HUBS[0].id:null;
+  }
+  DFEED.unshift({a:'fleet-intelligence-agent',m:'Intake readiness: '+readiness.recommendation.replace(/_/g,' ')+' — '+(readiness.recommendation==='hold_for_review'?'held for review':'auto-provisioned')+' — '+po.vin,ts:'now'});
+  renderInventory();populateVehicleSelects();renderFeed();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-001 AI intake readiness (mirrors the backend's exact keyword
+// scan — a failed inspection is never overridden by AI, but every
+// inspection routed here already passed)
+// ══════════════════════════════════════════════════════════════
+var INTAKE_CONCERN_KEYWORDS=['leak','damage','worn','crack','warning','issue','scuff','dent','noise'];
+var READINESS_ASSESSMENTS=[]; // {id, vehicle_id, vin, recommendation, reasoning}
+function deterministicIntakeReadiness(passed,notes){
+  if(!passed)return {recommendation:'hold_for_review',reasoning:'[deterministic fallback] Inspection failed — always holds for review regardless of notes.'};
+  var notesLower=notes.toLowerCase();
+  var matched=INTAKE_CONCERN_KEYWORDS.filter(function(kw){return notesLower.indexOf(kw)>=0;});
+  if(matched.length)return {recommendation:'provision_with_flag',reasoning:'[deterministic fallback] Inspection passed, but notes mention '+matched.join(', ')+' — flagged for tracking, not blocking.'};
+  return {recommendation:'provision_ready',reasoning:'[deterministic fallback] Inspection passed with no concern keywords in notes.'};
+}
+function renderReadinessAssessments(){
+  var el=document.getElementById('readiness-cards');
+  if(!el)return;
+  el.innerHTML=READINESS_ASSESSMENTS.slice().reverse().map(function(r){
+    var pill={provision_ready:'pg',provision_with_flag:'pa2',hold_for_review:'pr'}[r.recommendation];
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+r.vin+'</div><div class="aip-body"><span class="p '+pill+'">'+r.recommendation.replace(/_/g,' ')+'</span><br>'+r.reasoning+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No readiness assessments yet — inspect a purchase order to see one.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-003 Staging & Hub Board (mirrors Fleet Intelligence Agent's
+// deterministic supply-shortage fallback exactly)
+// ══════════════════════════════════════════════════════════════
+function getHubSupply(hubId){
+  var supply={};
+  VEHICLES.filter(function(v){return v.current_hub_id===hubId&&v.status==='staged';}).forEach(function(v){
+    supply[v.vehicle_class]=(supply[v.vehicle_class]||0)+1;
+  });
+  return supply;
+}
+function deterministicStagingFallback(vehicleClass,destinationHubId){
+  var destSupply=getHubSupply(destinationHubId)[vehicleClass]||0;
+  if(destSupply>0){
+    return {proposed:false,reasoning:'[deterministic fallback] Destination hub already has '+destSupply+' '+CLASS_LABELS[vehicleClass]+' vehicle(s) staged — no shortage, no transfer proposed.'};
+  }
+  // find a hub with surplus of that class
+  var surplusHub=null;
+  HUBS.forEach(function(h){
+    if(h.id===destinationHubId)return;
+    var supply=getHubSupply(h.id)[vehicleClass]||0;
+    if(supply>0&&!surplusHub)surplusHub=h;
+  });
+  if(surplusHub){
+    return {proposed:true,sourceHub:surplusHub,reasoning:'[deterministic fallback] Destination hub has zero '+CLASS_LABELS[vehicleClass]+' vehicles staged — proposing transfer from '+surplusHub.name+', which has surplus.'};
+  }
+  return {proposed:false,reasoning:'[deterministic fallback] Destination hub is short on '+CLASS_LABELS[vehicleClass]+', but no other hub has surplus to draw from.'};
+}
+function renderStaging(){
+  document.getElementById('hub-heatmap').innerHTML=HUBS.map(function(h){
+    var supply=getHubSupply(h.id);
+    var cells=Object.keys(CLASS_LABELS).map(function(c){
+      var count=supply[c]||0;
+      var color=count===0?'var(--red-dim)':count<2?'var(--gold-dim)':'var(--green-dim)';
+      var border=count===0?'var(--red-border)':count<2?'var(--gold-border)':'var(--green-border)';
+      return '<div class="heat-cell" style="background:'+color+';border-color:'+border+'"><div style="font-size:11px;color:var(--dim)">'+CLASS_LABELS[c]+'</div><div style="font-size:16px;font-weight:700;color:var(--cream)">'+count+'</div></div>';
+    }).join('');
+    return '<div class="card"><div class="ct" style="margin-bottom:8px">'+h.name+' <span class="tm" style="font-size:11px">('+h.region+')</span></div><div class="heat">'+cells+'</div></div>';
+  }).join('');
+
+  document.getElementById('transfer-rows').innerHTML=TRANSFER_ORDERS.map(function(t){
+    var statusPill={dispatched:'pb',completed:'pg',cancelled:'pd'}[t.status];
+    var actions='';
+    if(t.status==='dispatched')actions='<button class="btn btn-s btn-g" onclick="completeTransfer(\''+t.id+'\')">Complete</button><button class="btn btn-s btn-gh" onclick="cancelTransfer(\''+t.id+'\')">Cancel</button>';
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 1fr 130px">'
+      +'<span class="tc fm" style="font-size:12px">'+vehicleById(t.vehicle_id).vin+'</span>'
+      +'<span class="tm" style="font-size:12px">'+hubById(t.destination_hub_id).name+'</span>'
+      +'<span class="p '+statusPill+'">'+t.status+'</span>'
+      +'<span>'+actions+'</span>'
+      +'</div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No transfer orders yet.</div>';
+}
+function createHub(){
+  var name=document.getElementById('hf-name').value.trim();
+  if(!name)return;
+  HUBS.push({id:nextId(),name:name,region:document.getElementById('hf-region').value.trim()});
+  toggleForm('hub-form');
+  document.getElementById('hf-name').value='';document.getElementById('hf-region').value='';
+  renderStaging();populateVehicleSelects();
+}
+function requestStagingRecommendation(){
+  var vehicleId=document.getElementById('sf-vehicle').value;
+  var destHubId=document.getElementById('sf-hub').value;
+  var vehicle=vehicleById(vehicleId);
+  var resultEl=document.getElementById('staging-result');
+  var result=deterministicStagingFallback(vehicle.vehicle_class,destHubId);
+  if(result.proposed){
+    // Fully autonomous: create AND dispatch in the same action — the
+    // vehicle moves immediately, no separate human dispatch click.
+    var order={id:nextId(),vehicle_id:vehicleId,destination_hub_id:destHubId,status:'dispatched'};
+    TRANSFER_ORDERS.push(order);
+    vehicle.status='in_transit';
+    resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Fleet Intelligence Agent — staging</div><div class="aip-body">Transfer dispatched autonomously from <b style="color:var(--gold)">'+result.sourceHub.name+'</b> — vehicle is now in transit.<br><br>'+result.reasoning+'</div></div>';
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Staging — dispatched transfer of '+vehicle.vin+' to '+hubById(destHubId).name,ts:'now'});
+  } else {
+    resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Fleet Intelligence Agent — staging</div><div class="aip-body">No transfer needed.<br><br>'+result.reasoning+'</div></div>';
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Staging evaluated — no transfer needed for '+vehicle.vin,ts:'now'});
+  }
+  renderStaging();renderFeed();renderInventory();
+}
+function completeTransfer(id){
+  var t=TRANSFER_ORDERS.find(function(x){return x.id===id;});
+  t.status='completed';
+  vehicleById(t.vehicle_id).current_hub_id=t.destination_hub_id;
+  vehicleById(t.vehicle_id).status='staged';
+  renderStaging();renderInventory();
+}
+function cancelTransfer(id){var t=TRANSFER_ORDERS.find(function(x){return x.id===id;});t.status='cancelled';renderStaging();}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-004 Maintenance (mirrors evaluate_maintenance_need exactly:
+// DTC codes -> URGENT, mileage >= interval -> PREDICTIVE, else none)
+// ══════════════════════════════════════════════════════════════
+function deterministicMaintenanceCheck(milesSinceService,dtcCodes){
+  if(dtcCodes.length){
+    return {severity:'urgent',reason:'DTC code(s) present: '+dtcCodes.join(', ')};
+  }
+  if(milesSinceService>=MAINTENANCE_MILEAGE_INTERVAL){
+    return {severity:'predictive',reason:milesSinceService+' miles since last service (interval: '+MAINTENANCE_MILEAGE_INTERVAL+')'};
+  }
+  return null;
+}
+function evaluateMaintenance(){
+  var vehicleId=document.getElementById('mf-vehicle').value;
+  var miles=parseInt(document.getElementById('mf-miles').value)||0;
+  var dtcRaw=document.getElementById('mf-dtc').value.trim();
+  var dtcCodes=dtcRaw?dtcRaw.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
+  var result=deterministicMaintenanceCheck(miles,dtcCodes);
+  var resultEl=document.getElementById('maintenance-result');
+  if(result){
+    var alert={id:nextId(),vehicle_id:vehicleId,severity:result.severity,reason:result.reason,dtc_codes:dtcCodes,acknowledged:false};
+    ALERTS.push(alert);
+    if(result.severity==='urgent'){
+      vehicleById(vehicleId).status='maintenance';
+    }
+    resultEl.innerHTML='<div style="background:'+(result.severity==='urgent'?'var(--red-dim)':'var(--gold-dim)')+';border:0.5px solid '+(result.severity==='urgent'?'var(--red-border)':'var(--gold-border)')+';border-radius:8px;padding:10px;font-size:12px">Alert created: <b>'+result.severity+'</b> — '+result.reason+(result.severity==='urgent'?' (vehicle moved to MAINTENANCE status automatically)':'')+'</div>';
+    // AI-first, not on every alert — re-triage automatically once
+    // enough open alerts have accumulated, the same principle as
+    // safety scoring's every-5th-event reassessment.
+    var openAlerts=ALERTS.filter(function(a){return !a.acknowledged;});
+    if(openAlerts.length>=MAINTENANCE_TRIAGE_THRESHOLD){
+      runMaintenanceTriage(openAlerts);
+    }
+  } else {
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">No alert — below mileage threshold and no DTC codes.</div>';
+  }
+  renderMaintenance();renderInventory();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-004 AI maintenance triage (mirrors the backend's exact
+// severity-then-DTC-count priority sort)
+// ══════════════════════════════════════════════════════════════
+var MAINTENANCE_TRIAGE_THRESHOLD=3;
+var SEVERITY_RANK={urgent:0,predictive:1,routine:2};
+var LATEST_TRIAGE=null;
+function runMaintenanceTriage(openAlerts){
+  var sorted=openAlerts.slice().sort(function(a,b){
+    var rankDiff=(SEVERITY_RANK[a.severity]||2)-(SEVERITY_RANK[b.severity]||2);
+    if(rankDiff!==0)return rankDiff;
+    return (b.dtc_codes||[]).length-(a.dtc_codes||[]).length;
+  });
+  var priorityOrder=sorted.map(function(a){return a.vehicle_id;});
+  var counts={};
+  openAlerts.forEach(function(a){counts[a.severity]=(counts[a.severity]||0)+1;});
+  var countsStr=Object.keys(counts).map(function(k){return counts[k]+' '+k;}).join(', ');
+  var reasoning='[deterministic fallback] Sorted by severity ('+countsStr+'), DTC code count as tiebreaker within severity.';
+  LATEST_TRIAGE={priority_order:priorityOrder,reasoning:reasoning};
+  // Fully autonomous FLT-004: after triage, immediately open a work
+  // order for the single highest-priority alert and acknowledge it —
+  // no human has to read the priority list and manually dispatch.
+  var topAlert=sorted[0];
+  var dispatchedOrder=null;
+  if(topAlert){
+    dispatchedOrder=createWorkOrder(topAlert.id);
+    topAlert.acknowledged=true;
+  }
+  DFEED.unshift({a:'fleet-intelligence-agent',m:'Maintenance triage: '+openAlerts.length+' alerts prioritized'+(dispatchedOrder?' — work order auto-dispatched for top priority':''),ts:'now'});
+  renderTriagePanel();renderFeed();
+}
+function renderTriagePanel(){
+  var el=document.getElementById('triage-body');
+  if(!el)return;
+  if(!LATEST_TRIAGE){el.textContent='Not yet triaged — accumulates automatically once 3+ open alerts exist.';return;}
+  el.innerHTML='<b style="color:var(--gold)">Priority order:</b><br>'+LATEST_TRIAGE.priority_order.map(function(vid,i){
+    var v=vehicleById(vid);
+    return (i+1)+'. '+(v?v.vin:vid);
+  }).join('<br>')+'<br><br>'+LATEST_TRIAGE.reasoning;
+}
+function renderMaintenance(){
+  document.getElementById('alert-cards').innerHTML=ALERTS.map(function(a){
+    var pill=a.severity==='urgent'?'pr':'pa2';
+    return '<div class="card"><div class="ch"><span class="ct">'+vehicleById(a.vehicle_id).vin+'</span><span class="p '+pill+'">'+a.severity+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">'+a.reason+'</div>'
+      +'<button class="btn btn-s btn-g" onclick="createWorkOrder(\''+a.id+'\')">Create work order</button></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No alerts yet.</div>';
+
+  document.getElementById('workorder-cards').innerHTML=WORK_ORDERS.map(function(w){
+    var pill={open:'pb',in_progress:'pa2',completed:'pg'}[w.status];
+    return '<div class="card"><div class="ch"><span class="ct">'+vehicleById(w.vehicle_id).vin+'</span><span class="p '+pill+'">'+w.status+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">Vendor: '+w.vendor+'</div>'
+      +(w.status!=='completed'?'<button class="btn btn-s btn-g" onclick="completeWorkOrder(\''+w.id+'\')">Mark complete</button>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No work orders yet.</div>';
+
+  document.getElementById('mk-urgent').textContent=ALERTS.filter(function(a){return a.severity==='urgent';}).length;
+  document.getElementById('mk-predictive').textContent=ALERTS.filter(function(a){return a.severity==='predictive';}).length;
+  document.getElementById('mk-workorders').textContent=WORK_ORDERS.filter(function(w){return w.status!=='completed';}).length;
+  var openAlerts=ALERTS.length;
+  document.getElementById('dk-alerts').textContent=openAlerts;
+  document.getElementById('nb-maint').textContent=openAlerts;
+  renderTriagePanel();
+  document.getElementById('topbar-badge').style.display=openAlerts?'block':'none';
+}
+function createWorkOrder(alertId){
+  var alert=ALERTS.find(function(a){return a.id===alertId;});
+  WORK_ORDERS.push({id:nextId(),vehicle_id:alert.vehicle_id,alert_id:alertId,vendor:'VOYQI Certified Service',status:'open',cost_usd:0,downtime_start:new Date(),downtime_end:null});
+  ALERTS=ALERTS.filter(function(a){return a.id!==alertId;});
+  renderMaintenance();
+}
+function completeWorkOrder(id){
+  var w=WORK_ORDERS.find(function(x){return x.id===id;});
+  var costInput=prompt('Repair cost ($):','0');
+  var cost=parseFloat(costInput);
+  w.cost_usd=isNaN(cost)?0:cost;
+  w.status='completed';
+  w.downtime_end=new Date();
+  var v=vehicleById(w.vehicle_id);
+  if(v.status==='maintenance')v.status='staged';
+  renderMaintenance();renderInventory();renderAnalytics();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-005 Incidents (liability assessment always human-entered)
+// ══════════════════════════════════════════════════════════════
+function renderIncidents(){
+  document.getElementById('incident-cards').innerHTML=INCIDENTS.map(function(inc){
+    var statusPill={reported:'pb',repairing:'pb',assessed:'pa2',repaired:'pg',total_loss:'pr'}[inc.status];
+    var liabilityBlock=inc.liability_assessment?('<div style="font-size:12px;color:var(--mid);margin:6px 0">Liability: <b style="color:var(--text)">'+inc.liability_assessment+'</b> <span style="color:var(--dim)">(human-assessed)</span></div>'):'';
+    var severityPill={minor:'pg',moderate:'pa2',severe:'pr'}[inc.ai_severity];
+    var severityBlock=inc.ai_severity?('<div class="aip" style="margin:8px 0;padding:9px 11px"><div class="aip-h" style="margin-bottom:4px"><i class="ti ti-sparkles"></i>AI triage <span class="p '+severityPill+'" style="margin-left:4px">'+inc.ai_severity+'</span>'+(inc.repair_vendor?' <span class="p pd" style="margin-left:4px">repair order auto-opened</span>':'')+'</div><div class="aip-body" style="font-size:12px">'+inc.ai_reasoning+'</div></div>'):'';
+    var actions='';
+    if(!inc.liability_assessment&&inc.status!=='total_loss'){
+      actions='<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +['at_fault','not_at_fault','shared_fault','undetermined'].map(function(l){return '<button class="btn btn-s btn-o" onclick="assessLiability(\''+inc.id+'\',\''+l+'\')">'+l.replace(/_/g,' ')+'</button>';}).join('')
+        +'</div>';
+    } else if(inc.status==='assessed'){
+      actions='<div style="display:flex;gap:6px"><button class="btn btn-s btn-g" onclick="insuranceHandoff(\''+inc.id+'\')">Insurance handoff</button><button class="btn btn-s btn-d" onclick="declareTotalLoss(\''+inc.id+'\')">Declare total loss</button></div>';
+    }
+    return '<div class="card"><div class="ch"><div><div class="ct">'+vehicleById(inc.vehicle_id).vin+'</div><div style="font-size:12px;color:var(--mid);margin-top:2px">'+inc.incident_type.replace(/_/g,' ')+' — '+inc.description+'</div></div>'
+      +'<span class="p '+statusPill+'">'+inc.status.replace(/_/g,' ')+'</span></div>'
+      +severityBlock+liabilityBlock+(actions?'<div style="margin-top:8px">'+actions+'</div>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No incidents reported.</div>';
+
+  document.getElementById('dk-incidents').textContent=INCIDENTS.filter(function(i){return i.status==='reported'||i.status==='repairing';}).length;
+}
+function reportIncident(){
+  var vehicleId=document.getElementById('incf-vehicle').value;
+  var incidentType=document.getElementById('incf-type').value;
+  var desc=document.getElementById('incf-desc').value.trim();
+  if(!desc)return;
+  var incident={id:nextId(),vehicle_id:vehicleId,incident_type:incidentType,description:desc,liability_assessment:null,status:'reported'};
+  INCIDENTS.push(incident);
+  toggleForm('incident-form');
+  document.getElementById('incf-desc').value='';
+  // Fully autonomous FLT-005: every incident gets a severity triage
+  // automatically, and SEVERE immediately opens a repair order,
+  // moving the incident into the repair pipeline — no human has to
+  // notice and manually start it. This never touches
+  // liability_assessment, which stays exclusively set by
+  // assessLiability below — a distinct, always-human legal judgment
+  // call that was never part of this agent's output to begin with.
+  var severity=deterministicIncidentSeverity(desc);
+  incident.ai_severity=severity.severity;
+  incident.ai_reasoning=severity.reasoning;
+  var chainNote='';
+  if(severity.severity==='severe'){
+    incident.status='repairing';
+    incident.repair_vendor='pending-assignment';
+    chainNote=' Repair order opened automatically.';
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Severe incident — repair order auto-opened — '+vehicleById(vehicleId).vin,ts:'now'});
+  }
+  DFEED.unshift({a:'fleet-intelligence-agent',m:'Incident severity: '+severity.severity+' — '+vehicleById(vehicleId).vin+'.'+chainNote,ts:'now'});
+  renderIncidents();renderFeed();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-005 AI incident severity (mirrors the backend's exact keyword
+// scan — severe keywords always win a tie; this never has any path
+// to liability_assessment, structurally, not just by convention)
+// ══════════════════════════════════════════════════════════════
+var SEVERE_KEYWORDS=['injury','injured','airbag','hospital','ambulance','fire','totaled','rollover'];
+var MINOR_KEYWORDS=['scratch','scuff','dent','cosmetic','minor','parking lot'];
+function deterministicIncidentSeverity(description){
+  var descLower=description.toLowerCase();
+  var severeMatches=SEVERE_KEYWORDS.filter(function(kw){return descLower.indexOf(kw)>=0;});
+  if(severeMatches.length)return {severity:'severe',reasoning:'[deterministic fallback] Description mentions '+severeMatches.join(', ')+' — treated as severe regardless of other wording.'};
+  var minorMatches=MINOR_KEYWORDS.filter(function(kw){return descLower.indexOf(kw)>=0;});
+  if(minorMatches.length)return {severity:'minor',reasoning:'[deterministic fallback] Description mentions '+minorMatches.join(', ')+' with no severe-incident keywords found.'};
+  return {severity:'moderate',reasoning:'[deterministic fallback] No minor or severe keywords matched — defaulting to moderate pending human review.'};
+}
+function assessLiability(id,liability){
+  var inc=INCIDENTS.find(function(x){return x.id===id;});
+  inc.liability_assessment=liability;
+  inc.status='assessed';
+  renderIncidents();
+}
+function insuranceHandoff(id){
+  var inc=INCIDENTS.find(function(x){return x.id===id;});
+  WORK_ORDERS; // repair orders would live in a similar list; kept simple here
+  inc.status='repaired';
+  renderIncidents();
+}
+function declareTotalLoss(id){
+  var inc=INCIDENTS.find(function(x){return x.id===id;});
+  inc.status='total_loss';
+  vehicleById(inc.vehicle_id).status='disposed';
+  renderIncidents();renderInventory();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-002 Telematics (deterministic geofence facts + AI anomaly read)
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// FLT-002 Geofence check + AI telemetry anomaly (mirrors the
+// backend's exact 150-mile investigation threshold — tamper events
+// never reach this function at all, by design, not by convention)
+// ══════════════════════════════════════════════════════════════
+var GEOFENCE_RADIUS_MILES=50.0;
+var INVESTIGATION_DISTANCE_THRESHOLD_MILES=150.0;
+function deterministicTelemetryAnomaly(distanceMiles){
+  if(distanceMiles>=INVESTIGATION_DISTANCE_THRESHOLD_MILES){
+    return {assessment:'needs_investigation',reasoning:'[deterministic fallback] '+Math.round(distanceMiles)+' miles beyond the geofence — well past a plausible local detour, warrants a look.'};
+  }
+  return {assessment:'benign',reasoning:'[deterministic fallback] '+Math.round(distanceMiles)+' miles beyond the geofence — within range of a plausible local detour or supported route.'};
+}
+function checkGeofence(){
+  var vehicleId=document.getElementById('gf-vehicle').value;
+  var distanceMiles=parseFloat(document.getElementById('gf-distance').value)||0;
+  var resultEl=document.getElementById('geofence-result');
+  if(distanceMiles<=GEOFENCE_RADIUS_MILES){
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">Within the '+GEOFENCE_RADIUS_MILES+'-mile geofence radius — no alert created.</div>';
+    return;
+  }
+  // Fully autonomous FLT-002: every geofence alert gets an anomaly
+  // assessment automatically, and NEEDS_INVESTIGATION immediately
+  // pulls the vehicle to MAINTENANCE and flags it — no human has to
+  // notice the alert first. Tamper events (reportTamper below) never
+  // go through this at all — they always escalate to human security
+  // review through their own separate, deterministic path.
+  var anomaly=deterministicTelemetryAnomaly(distanceMiles);
+  TELEMETRY_ALERTS.unshift({id:nextId(),type:'geofence',vehicle_id:vehicleId,detail:Math.round(distanceMiles)+' miles beyond geofence',ts:'now',ai_assessment:anomaly.assessment,ai_reasoning:anomaly.reasoning});
+  var actionNote='';
+  if(anomaly.assessment==='needs_investigation'){
+    var v=vehicleById(vehicleId);
+    v.status='maintenance';
+    v.flagged_for_investigation=true;
+    actionNote='<br><b style="color:var(--red)">→ Vehicle pulled to MAINTENANCE and flagged automatically.</b>';
+  }
+  resultEl.innerHTML='<div style="background:'+(anomaly.assessment==='needs_investigation'?'var(--red-dim)':'var(--gold-dim)')+';border:0.5px solid '+(anomaly.assessment==='needs_investigation'?'var(--red-border)':'var(--gold-border)')+';border-radius:8px;padding:10px;font-size:12px">Alert created — AI assessment: <b>'+anomaly.assessment.replace(/_/g,' ')+'</b><br><span style="color:var(--dim);font-size:11px">'+anomaly.reasoning+'</span>'+actionNote+'</div>';
+  DFEED.unshift({a:'fleet-intelligence-agent',m:'Telemetry anomaly: '+anomaly.assessment.replace(/_/g,' ')+' — '+vehicleById(vehicleId).vin,ts:'now'});
+  renderTelematics();renderFeed();renderInventory();
+}
+function reportTamper(){
+  var vehicleId=document.getElementById('tampf-vehicle').value;
+  var desc=document.getElementById('tampf-desc').value.trim();
+  if(!desc)return;
+  // Deliberately NOT AI-assessed — always a human security escalation,
+  // structurally separate from the geofence anomaly path above.
+  TELEMETRY_ALERTS.unshift({id:nextId(),type:'tamper',vehicle_id:vehicleId,detail:desc,ts:'now'});
+  document.getElementById('tampf-desc').value='';
+  renderTelematics();
+}
+function renderTelematics(){
+  document.getElementById('telematics-alert-rows').innerHTML=TELEMETRY_ALERTS.map(function(a){
+    var pill=a.type==='tamper'?'pr':(a.ai_assessment==='needs_investigation'?'pr':'pa2');
+    var aiTag=a.ai_assessment?' <span class="p '+(a.ai_assessment==='needs_investigation'?'pr':'pg')+'" style="margin-left:4px;font-size:9px">AI: '+a.ai_assessment.replace(/_/g,' ')+'</span>':(a.type==='tamper'?' <span class="p pd" style="margin-left:4px;font-size:9px">no AI — human security review</span>':'');
+    return '<div class="tr" style="grid-template-columns:100px 1fr 1fr 60px"><span class="p '+pill+'">'+a.type+'</span><span class="tc" style="font-size:12px">'+vehicleById(a.vehicle_id).vin+'</span><span class="tm" style="font-size:12px">'+a.detail+aiTag+'</span><span class="td" style="font-size:11px">'+a.ts+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No telematics alerts yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-010 Driving Safety & Behavior Scoring (mirrors the backend's
+// exact event weights and the every-5th-event reassessment trigger)
+// ══════════════════════════════════════════════════════════════
+var EVENT_WEIGHTS={harsh_braking:-5,rapid_acceleration:-5,speeding:-10,phone_usage_detected:-15,forward_collision_warning:-20};
+var EVENT_LABELS={harsh_braking:'Harsh braking',rapid_acceleration:'Rapid acceleration',speeding:'Speeding',phone_usage_detected:'Phone usage detected',forward_collision_warning:'Forward collision warning'};
+var REASSESSMENT_EVENT_INTERVAL=5;
+var DRIVING_EVENTS=[]; // {id, vehicle_id, event_type, ts}
+var SAFETY_SCORES={}; // vehicle_id -> {score, reasoning, event_count}
+var SAFETY_WATCHLIST_THRESHOLD=60;
+function computeSafetyScore(vehicleId){
+  var events=DRIVING_EVENTS.filter(function(e){return e.vehicle_id===vehicleId;});
+  var score=100;
+  events.forEach(function(e){score+=EVENT_WEIGHTS[e.event_type]||0;});
+  score=Math.max(0,score);
+  var counts={};
+  events.forEach(function(e){counts[e.event_type]=(counts[e.event_type]||0)+1;});
+  var countsStr=Object.keys(counts).map(function(k){return counts[k]+' '+EVENT_LABELS[k].toLowerCase();}).join(', ')||'no events';
+  return {score:score,event_count:events.length,reasoning:'[deterministic fallback] Starting from 100, floored at 0: '+countsStr+'.'};
+}
+function logDrivingEvent(){
+  var vehicleId=document.getElementById('def-vehicle').value;
+  var eventType=document.getElementById('def-type').value;
+  DRIVING_EVENTS.push({id:nextId(),vehicle_id:vehicleId,event_type:eventType,ts:new Date()});
+  var resultEl=document.getElementById('safety-log-result');
+  resultEl.innerHTML='<div style="font-size:12px;color:var(--mid)">Logged: '+EVENT_LABELS[eventType]+' ('+EVENT_WEIGHTS[eventType]+' pts)</div>';
+  // AI-first, but not on every single event — re-score automatically
+  // every 5th event, the same threshold the backend uses, so a driver
+  // isn't re-flagged on every minor blip.
+  var eventCount=DRIVING_EVENTS.filter(function(e){return e.vehicle_id===vehicleId;}).length;
+  if(eventCount%REASSESSMENT_EVENT_INTERVAL===0){
+    var result=computeSafetyScore(vehicleId);
+    SAFETY_SCORES[vehicleId]=result;
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Safety score recalculated: '+result.score+' — '+vehicleById(vehicleId).vin,ts:'now'});
+    renderFeed();
+  }
+  renderSafety();
+}
+function renderSafety(){
+  var vehicleIds=Object.keys(SAFETY_SCORES);
+  document.getElementById('safety-score-cards').innerHTML=vehicleIds.map(function(vid){
+    var v=vehicleById(vid);
+    if(!v)return '';
+    var s=SAFETY_SCORES[vid];
+    var pill=s.score<SAFETY_WATCHLIST_THRESHOLD?'pr':(s.score<80?'pa2':'pg');
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+v.vin+' <span class="p '+pill+'" style="margin-left:4px">'+s.score+'</span></div><div class="aip-body" style="font-size:12px">'+s.reasoning+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No scores yet — a vehicle is re-scored automatically every 5th logged event.</div>';
+
+  var watchlist=vehicleIds.filter(function(vid){return SAFETY_SCORES[vid].score<SAFETY_WATCHLIST_THRESHOLD;});
+  document.getElementById('safety-watchlist-rows').innerHTML=watchlist.map(function(vid){
+    var v=vehicleById(vid);
+    return '<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tc fm" style="font-size:12px">'+(v?v.vin:vid)+'</span><span class="trr">'+SAFETY_SCORES[vid].score+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No vehicles below the watchlist threshold.</div>';
+  document.getElementById('nb-safety').textContent=watchlist.length;
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-006/007 Depreciation & Disposition (mirrors compute_book_value
+// and evaluate_disposition_eligibility exactly)
+// ══════════════════════════════════════════════════════════════
+function computeBookValue(schedule,monthsElapsed){
+  var monthlyDep=(schedule.acquisition_cost_usd-schedule.salvage_value_usd)/schedule.useful_life_months;
+  monthsElapsed=Math.min(monthsElapsed,schedule.useful_life_months);
+  var bookValue=schedule.acquisition_cost_usd-(monthlyDep*monthsElapsed);
+  return Math.max(bookValue,schedule.salvage_value_usd);
+}
+function createDepreciationSchedule(){
+  var vehicleId=document.getElementById('df-vehicle').value;
+  var cost=parseFloat(document.getElementById('df-cost').value)||0;
+  var salvage=parseFloat(document.getElementById('df-salvage').value)||0;
+  var life=parseInt(document.getElementById('df-life').value)||60;
+  DEPRECIATION_SCHEDULES[vehicleId]={acquisition_cost_usd:cost,salvage_value_usd:salvage,useful_life_months:life,created_at:new Date()};
+  var monthsElapsed=0;
+  var bookValue=computeBookValue(DEPRECIATION_SCHEDULES[vehicleId],monthsElapsed);
+  document.getElementById('depreciation-result').innerHTML='<div class="aip-body" style="font-size:12px">Schedule created. Current book value: <b style="color:var(--gold)">$'+Math.round(bookValue).toLocaleString()+'</b> (straight-line, '+monthsElapsed+' months elapsed).</div>';
+}
+function checkDispositionEligibility(){
+  var vehicleId=document.getElementById('ef-vehicle').value;
+  var v=vehicleById(vehicleId);
+  var ageMonths=Math.floor((new Date()-new Date(v.acquired_at))/(1000*60*60*24*30));
+  var reasons=[];
+  if(ageMonths>=DISPOSITION_AGE_MONTHS)reasons.push('age '+ageMonths+' months >= threshold '+DISPOSITION_AGE_MONTHS);
+  if(v.odometer_miles>=DISPOSITION_MILEAGE)reasons.push('mileage '+v.odometer_miles.toLocaleString()+' >= threshold '+DISPOSITION_MILEAGE.toLocaleString());
+  var resultEl=document.getElementById('eligibility-result');
+  if(reasons.length){
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">Eligible — '+reasons.join('; ')+'.</div>';
+  } else {
+    resultEl.innerHTML='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--mid)">Not yet eligible — age '+ageMonths+'mo, '+v.odometer_miles.toLocaleString()+' miles, both below threshold.</div>';
+  }
+  renderLifecycle();
+}
+function renderLifecycle(){
+  var eligibleCount=VEHICLES.filter(function(v){
+    var ageMonths=Math.floor((new Date()-new Date(v.acquired_at))/(1000*60*60*24*30));
+    return ageMonths>=DISPOSITION_AGE_MONTHS||v.odometer_miles>=DISPOSITION_MILEAGE;
+  }).length;
+  document.getElementById('dk-disposition').textContent=eligibleCount;
+
+  document.getElementById('disposition-cards').innerHTML=DISPOSITION_ORDERS.map(function(d){
+    var pill={pending:'pb',sold:'pg'}[d.status];
+    return '<div class="card"><div class="ch"><span class="ct">'+vehicleById(d.vehicle_id).vin+'</span><span class="p '+pill+'">'+d.status+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid)">Channel: '+d.channel+(d.recovery_amount_usd?' · Recovery: $'+Math.round(d.recovery_amount_usd).toLocaleString():'')+'</div>'
+      +(d.status==='pending'?'<button class="btn btn-s btn-g" style="margin-top:8px" onclick="recordRecovery(\''+d.id+'\')">Record recovery ($'+Math.round((DEPRECIATION_SCHEDULES[d.vehicle_id]?computeBookValue(DEPRECIATION_SCHEDULES[d.vehicle_id],0):15000)).toLocaleString()+')</button>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No disposition orders yet.</div>';
+  renderChannelRecommendations();
+}
+function recordRecovery(id){
+  var d=DISPOSITION_ORDERS.find(function(x){return x.id===id;});
+  var schedule=DEPRECIATION_SCHEDULES[d.vehicle_id];
+  d.recovery_amount_usd=schedule?computeBookValue(schedule,0):15000;
+  d.status='sold';
+  renderLifecycle();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-006 AI valuation anomaly (mirrors the backend's exact ±20%
+// deviation threshold vs. book value — depreciation math itself is
+// untouched, this only reads it)
+// ══════════════════════════════════════════════════════════════
+var VALUATION_ANOMALY_THRESHOLD_PCT=0.20;
+var MARKET_VALUATIONS=[]; // {id, vehicle_id, amount_usd, book_value_usd, deviation_pct, assessment, reasoning}
+function deterministicValuationAnomaly(marketValue,bookValue){
+  if(!bookValue)return {assessment:'not_evaluated',reasoning:'[deterministic fallback] No depreciation schedule on file — nothing to compare against.'};
+  var deviationPct=(marketValue-bookValue)/bookValue;
+  if(Math.abs(deviationPct)>=VALUATION_ANOMALY_THRESHOLD_PCT){
+    return {assessment:'flagged',deviation_pct:deviationPct,reasoning:'[deterministic fallback] Market value is '+(Math.round(deviationPct*1000)/10)+'% '+(deviationPct<0?'below':'above')+' book value — past the '+(VALUATION_ANOMALY_THRESHOLD_PCT*100)+'% threshold.'};
+  }
+  return {assessment:'normal',deviation_pct:deviationPct,reasoning:'[deterministic fallback] Market value is within '+(VALUATION_ANOMALY_THRESHOLD_PCT*100)+'% of book value.'};
+}
+function recordMarketValuation(){
+  var vehicleId=document.getElementById('mvf-vehicle').value;
+  var amount=parseFloat(document.getElementById('mvf-amount').value)||0;
+  var schedule=DEPRECIATION_SCHEDULES[vehicleId];
+  var bookValue=schedule?computeBookValue(schedule,0):null;
+  var anomaly=deterministicValuationAnomaly(amount,bookValue);
+  var valuation={id:nextId(),vehicle_id:vehicleId,amount_usd:amount,book_value_usd:bookValue,assessment:anomaly.assessment,reasoning:anomaly.reasoning};
+  MARKET_VALUATIONS.push(valuation);
+  var resultEl=document.getElementById('valuation-result');
+  var pill=anomaly.assessment==='flagged'?'pr':(anomaly.assessment==='normal'?'pg':'pd');
+  var chainNote='';
+  // Fully autonomous chain: a flagged valuation doesn't just sit as a
+  // note — it immediately triggers a full FLT-013 fleet-optimization
+  // review, which can itself chain straight into a real FLT-007
+  // disposition order. No human has to notice the flag.
+  if(anomaly.assessment==='flagged'){
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Valuation flagged — '+vehicleById(vehicleId).vin,ts:'now'});
+    var outcome=runFleetOptimizationFor(vehicleId);
+    chainNote='<br><br><b style="color:var(--gold)">→ Chained fleet optimization: '+outcome.result.recommendation.replace(/_/g,' ')+'</b>'+(outcome.result.recommendation==='prioritize_disposition'&&outcome.eligible?' — disposition order created autonomously.':'');
+  }
+  resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>AI valuation anomaly <span class="p '+pill+'" style="margin-left:4px">'+anomaly.assessment.replace(/_/g,' ')+'</span></div><div class="aip-body">'+anomaly.reasoning+(bookValue?' (book: $'+Math.round(bookValue).toLocaleString()+', market: $'+Math.round(amount).toLocaleString()+')':'')+chainNote+'</div></div>';
+  renderFeed();
+}
+function latestValuationFlagged(vehicleId){
+  var vals=MARKET_VALUATIONS.filter(function(v){return v.vehicle_id===vehicleId;});
+  if(!vals.length)return false;
+  return vals[vals.length-1].assessment==='flagged';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-007 AI disposition channel cascade (mirrors the backend's
+// exact mileage-band routing — subscription-worthy vehicles never
+// reach this path at all, since it only runs on disposition-eligible
+// vehicles; the human always accepts, overrides, or rejects)
+// ══════════════════════════════════════════════════════════════
+var CHANNEL_LABELS={rideshare:'Rideshare',local_rental:'Local short-term rental',export:'Export (UAE / LatAm)',parts:'Parts',auction:'Auction',wholesale:'Wholesale',retail_voyqi_auto_group:'Retail — VOYQI Auto Group'};
+var DISPOSITION_CHANNEL_RECOMMENDATIONS=[]; // {id, vehicle_id, recommended_channel, reasoning, status}
+function isDispositionEligible(v){
+  var ageMonths=Math.floor((new Date()-new Date(v.acquired_at))/(1000*60*60*24*30));
+  return ageMonths>=DISPOSITION_AGE_MONTHS||v.odometer_miles>=DISPOSITION_MILEAGE;
+}
+function deterministicDispositionChannel(mileage){
+  if(mileage<75000)return {channel:'rideshare',reasoning:'[deterministic fallback] '+mileage.toLocaleString()+' miles — still strong rideshare-condition, first stop in the cascade.'};
+  if(mileage<90000)return {channel:'local_rental',reasoning:'[deterministic fallback] '+mileage.toLocaleString()+' miles — past prime rideshare condition, well suited to local short-term rental.'};
+  if(mileage<120000)return {channel:'export',reasoning:'[deterministic fallback] '+mileage.toLocaleString()+' miles — domestic resale value has faded; export markets (UAE, LatAm) still value this mileage band.'};
+  return {channel:'parts',reasoning:'[deterministic fallback] '+mileage.toLocaleString()+' miles — beyond viable resale in any market; parts recovery is the remaining value.'};
+}
+function requestDispositionChannel(){
+  var vehicleId=document.getElementById('dcf-vehicle').value;
+  var v=vehicleById(vehicleId);
+  var resultEl=document.getElementById('channel-rec-result');
+  if(!isDispositionEligible(v)){
+    resultEl.innerHTML='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--mid)">Not disposition-eligible yet — the cascade only runs once a vehicle clears the age/mileage threshold.</div>';
+    return;
+  }
+  // Fully autonomous: the agent's channel choice becomes a real
+  // disposition order immediately, in the same action that records
+  // the decision — no accept/reject step, no PENDING state.
+  var rec=deterministicDispositionChannel(v.odometer_miles);
+  var recommendation={id:nextId(),vehicle_id:vehicleId,recommended_channel:rec.channel,reasoning:rec.reasoning,status:'accepted'};
+  DISPOSITION_CHANNEL_RECOMMENDATIONS.push(recommendation);
+  var order={id:nextId(),vehicle_id:vehicleId,channel:rec.channel,recovery_amount_usd:null,status:'pending'};
+  DISPOSITION_ORDERS.push(order);
+  v.status='remarketing';
+  resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Order created autonomously <span class="p pa2" style="margin-left:4px">'+CHANNEL_LABELS[rec.channel]+'</span></div><div class="aip-body">'+rec.reasoning+'</div></div>';
+  DFEED.unshift({a:'fleet-intelligence-agent',m:'Disposition order created — '+CHANNEL_LABELS[rec.channel]+' — '+v.vin,ts:'now'});
+  renderLifecycle();renderFeed();renderInventory();
+}
+function renderChannelRecommendations(){
+  var el=document.getElementById('channel-rec-cards');
+  if(!el)return;
+  // Under normal (ACTIVE) operation nothing is ever left pending —
+  // requestDispositionChannel above already created the real order.
+  // This list exists for the one deliberate fallback: an agent that's
+  // PAUSED can still leave an advisory note without creating an order.
+  var pending=DISPOSITION_CHANNEL_RECOMMENDATIONS.filter(function(r){return r.status==='pending';});
+  el.innerHTML=pending.map(function(r){
+    var v=vehicleById(r.vehicle_id);
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+v.vin+' <span class="p pa2" style="margin-left:4px">'+CHANNEL_LABELS[r.recommended_channel]+'</span></div>'
+      +'<div class="aip-body">'+r.reasoning+' <span style="color:var(--dim)">(agent paused — advisory only, no order created)</span></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">Nothing pending — the agent creates orders directly. This only shows advisory notes left while the agent was paused.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Floorplan financing (deterministic facts)
+// ══════════════════════════════════════════════════════════════
+function renderFloorplan(){
+  document.getElementById('facility-cards').innerHTML=FLOORPLAN_FACILITIES.map(function(f){
+    var utilization=f.credit_limit_usd?Math.round((f.outstanding_usd/f.credit_limit_usd)*100):0;
+    var risk=deterministicCovenantRisk(f.outstanding_usd,f.credit_limit_usd);
+    var riskPill={safe:'pg',approaching:'pa2',breached:'pr'}[risk.tier];
+    var frozenBanner=f.frozen?'<div style="background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--red);margin-bottom:8px">🔒 FROZEN — '+f.frozen_reason+' <button class="btn btn-s btn-o" style="margin-top:6px" onclick="unfreezeFacility(\''+f.id+'\')">Unfreeze (human action)</button></div>':'';
+    return '<div class="card"><div class="ch"><span class="ct">'+f.lender_name+'</span><span class="p '+riskPill+'">'+risk.tier+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:6px">Limit: $'+Math.round(f.credit_limit_usd).toLocaleString()+' · Outstanding: $'+Math.round(f.outstanding_usd).toLocaleString()+' ('+utilization+'%)</div>'
+      +frozenBanner
+      +'<div class="aip" style="padding:8px 10px"><div class="aip-h" style="margin-bottom:2px;font-size:11px"><i class="ti ti-sparkles"></i>AI covenant risk</div><div class="aip-body" style="font-size:11px">'+risk.reasoning+'</div></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No floorplan facilities yet.</div>';
+
+  document.getElementById('collateral-rows').innerHTML=VIN_COLLATERAL.map(function(c){
+    var facility=FLOORPLAN_FACILITIES.find(function(f){return f.id===c.facility_id;});
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 80px"><span class="tc fm" style="font-size:12px">'+vehicleById(c.vehicle_id).vin+'</span><span class="tm" style="font-size:12px">'+(facility?facility.lender_name:'')+'</span>'
+      +'<span>'+(c.status==='pledged'?'<button class="btn btn-s btn-gh" onclick="releaseCollateral(\''+c.id+'\')">Release</button>':'<span class="p pd">released</span>')+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No VINs pledged yet.</div>';
+}
+function createFacility(){
+  var lender=document.getElementById('ff-lender').value.trim();
+  if(!lender)return;
+  FLOORPLAN_FACILITIES.push({id:nextId(),lender_name:lender,credit_limit_usd:parseFloat(document.getElementById('ff-limit').value)||0,outstanding_usd:0,frozen:false,frozen_reason:''});
+  toggleForm('facility-form');
+  document.getElementById('ff-lender').value='';document.getElementById('ff-limit').value='';
+  renderFloorplan();populateVehicleSelects();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-008/009 AI covenant risk (mirrors the backend's exact tiers —
+// strictly-greater-than for breached, so exactly-at-limit reads as
+// "approaching," not "breached"; VIN collateral status itself is
+// never AI-judged, only read)
+// ══════════════════════════════════════════════════════════════
+var COVENANT_WARNING_RATIO=0.80;
+function deterministicCovenantRisk(outstanding,creditLimit){
+  if(!creditLimit)return {tier:'safe',reasoning:'[deterministic fallback] No credit limit on file.'};
+  var utilization=outstanding/creditLimit;
+  if(outstanding>creditLimit){
+    return {tier:'breached',reasoning:'[deterministic fallback] Outstanding $'+Math.round(outstanding).toLocaleString()+' exceeds the $'+Math.round(creditLimit).toLocaleString()+' limit.'};
+  }
+  if(utilization>=COVENANT_WARNING_RATIO){
+    return {tier:'approaching',reasoning:'[deterministic fallback] Utilization at '+Math.round(utilization*100)+'% — past the '+(COVENANT_WARNING_RATIO*100)+'% early-warning line but not yet over the limit.'};
+  }
+  return {tier:'safe',reasoning:'[deterministic fallback] Utilization at '+Math.round(utilization*100)+'%, comfortably under the '+(COVENANT_WARNING_RATIO*100)+'% early-warning line.'};
+}
+function pledgeCollateral(){
+  var vehicleId=document.getElementById('cf-vehicle').value;
+  var facilityId=document.getElementById('cf-facility').value;
+  if(!facilityId)return;
+  var facility=FLOORPLAN_FACILITIES.find(function(f){return f.id===facilityId;});
+  var resultEl=document.getElementById('covenant-result');
+  if(facility.frozen){
+    resultEl.innerHTML='<div style="background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:8px;padding:10px;font-size:12px;color:var(--red)">Facility is frozen ('+facility.frozen_reason+') — no further pledges until a human unfreezes it.</div>';
+    return;
+  }
+  VIN_COLLATERAL.push({id:nextId(),vehicle_id:vehicleId,facility_id:facilityId,status:'pledged'});
+  facility.outstanding_usd+=25000;
+  // Fully autonomous FLT-008/009: every pledge gets a covenant-risk
+  // read automatically, and BREACHED immediately freezes the facility
+  // — a real block on further pledges, not just a logged warning.
+  // Unfreezing stays the one deliberate human-only action here.
+  var risk=deterministicCovenantRisk(facility.outstanding_usd,facility.credit_limit_usd);
+  var pill={safe:'pg',approaching:'pa2',breached:'pr'}[risk.tier];
+  var freezeNote='';
+  if(risk.tier==='breached'){
+    facility.frozen=true;
+    facility.frozen_reason='[auto-frozen by fleet-intelligence-agent] '+risk.reasoning;
+    freezeNote='<br><b style="color:var(--red)">→ Facility frozen automatically — no further pledges until a human unfreezes it.</b>';
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Facility auto-frozen — '+facility.lender_name,ts:'now'});
+  }
+  resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>AI covenant risk <span class="p '+pill+'" style="margin-left:4px">'+risk.tier+'</span></div><div class="aip-body">'+risk.reasoning+freezeNote+'</div></div>';
+  if(risk.tier!=='safe'&&risk.tier!=='breached')DFEED.unshift({a:'fleet-intelligence-agent',m:'Covenant risk: '+risk.tier+' — '+facility.lender_name,ts:'now'});
+  renderFloorplan();renderFeed();
+}
+function unfreezeFacility(facilityId){
+  var facility=FLOORPLAN_FACILITIES.find(function(f){return f.id===facilityId;});
+  facility.frozen=false;
+  facility.frozen_reason='';
+  DFEED.unshift({a:'fleet-ops',m:'Facility unfrozen (human action) — '+facility.lender_name,ts:'now'});
+  renderFloorplan();renderFeed();
+}
+function releaseCollateral(id){
+  var c=VIN_COLLATERAL.find(function(x){return x.id===id;});
+  c.status='released';
+  var facility=FLOORPLAN_FACILITIES.find(function(f){return f.id===c.facility_id;});
+  facility.outstanding_usd=Math.max(0,facility.outstanding_usd-25000);
+  renderFloorplan();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-011 AI fuel/energy anomaly (mirrors the backend's exact
+// plausibility bands per energy type, plus a running-average
+// deviation check — missing history never false-flags, since the
+// running-average check simply doesn't run on the first entry)
+// ══════════════════════════════════════════════════════════════
+var FUEL_ENTRIES=[]; // {id, vehicle_id, energy_type, miles_since_last, quantity, cost_usd, implied_efficiency, cost_per_unit, ai_assessment, ai_reasoning}
+var PLAUSIBILITY_BANDS={
+  gasoline:{minEfficiency:8,maxEfficiency:60,unit:'MPG',minCostPerUnit:2.00,maxCostPerUnit:6.00,costUnit:'$/gal'},
+  electric:{minEfficiency:1.5,maxEfficiency:6.0,unit:'mi/kWh',minCostPerUnit:0.08,maxCostPerUnit:0.60,costUnit:'$/kWh'}
+};
+var FUEL_RUNNING_AVERAGE_DEVIATION_THRESHOLD=0.40;
+function computeImpliedEfficiency(milesSinceLast,quantity){
+  if(!quantity)return null;
+  return milesSinceLast/quantity;
+}
+function deterministicFuelAnomaly(energyType,impliedEfficiency,costPerUnit,priorEfficiencies){
+  var band=PLAUSIBILITY_BANDS[energyType];
+  if(impliedEfficiency===null){
+    return {assessment:'not_evaluated',reasoning:'[deterministic fallback] Quantity was zero — nothing to compute.'};
+  }
+  if(impliedEfficiency<band.minEfficiency||impliedEfficiency>band.maxEfficiency){
+    return {assessment:'flagged',reasoning:'[deterministic fallback] Implied efficiency '+(Math.round(impliedEfficiency*100)/100)+' '+band.unit+' is outside the plausible '+band.minEfficiency+'–'+band.maxEfficiency+' '+band.unit+' band for '+energyType+'.'};
+  }
+  if(costPerUnit<band.minCostPerUnit||costPerUnit>band.maxCostPerUnit){
+    return {assessment:'flagged',reasoning:'[deterministic fallback] Cost of $'+(Math.round(costPerUnit*100)/100)+'/unit is outside the plausible '+band.costUnit+' '+band.minCostPerUnit+'–'+band.maxCostPerUnit+' band.'};
+  }
+  if(priorEfficiencies&&priorEfficiencies.length){
+    var avg=priorEfficiencies.reduce(function(a,b){return a+b;},0)/priorEfficiencies.length;
+    var deviation=Math.abs(impliedEfficiency-avg)/avg;
+    if(deviation>=FUEL_RUNNING_AVERAGE_DEVIATION_THRESHOLD){
+      return {assessment:'flagged',reasoning:'[deterministic fallback] This fill\'s '+(Math.round(impliedEfficiency*100)/100)+' '+band.unit+' deviates '+Math.round(deviation*100)+'% from this vehicle\'s running average of '+(Math.round(avg*100)/100)+' '+band.unit+' — past the '+(FUEL_RUNNING_AVERAGE_DEVIATION_THRESHOLD*100)+'% threshold.'};
+    }
+  }
+  return {assessment:'normal',reasoning:'[deterministic fallback] '+(Math.round(impliedEfficiency*100)/100)+' '+band.unit+' at $'+(Math.round(costPerUnit*100)/100)+'/unit — within plausible range'+(priorEfficiencies&&priorEfficiencies.length?' and consistent with this vehicle\'s history.':'.')};
+}
+function logFuelEntry(){
+  var vehicleId=document.getElementById('fef-vehicle').value;
+  var energyType=document.getElementById('fef-type').value;
+  var miles=parseFloat(document.getElementById('fef-miles').value)||0;
+  var qty=parseFloat(document.getElementById('fef-qty').value)||0;
+  var cost=parseFloat(document.getElementById('fef-cost').value)||0;
+  var impliedEfficiency=computeImpliedEfficiency(miles,qty);
+  var costPerUnit=qty?cost/qty:0;
+  // Fully autonomous FLT-011, chained straight into FLT-004: from the
+  // 2nd entry on, a FLAGGED anomaly (implausible efficiency, a cost
+  // spike, or a sharp deviation from the vehicle's own running
+  // average) immediately opens a real maintenance alert — no human
+  // has to notice the flag first. The very first entry for a vehicle
+  // has no running average to compare against, so it only gets the
+  // plausibility-band check — missing history never gets treated as
+  // a red flag.
+  var priorEfficiencies=FUEL_ENTRIES.filter(function(e){return e.vehicle_id===vehicleId&&e.implied_efficiency!==null;}).map(function(e){return e.implied_efficiency;});
+  var anomaly=deterministicFuelAnomaly(energyType,impliedEfficiency,costPerUnit,priorEfficiencies);
+  var entry={id:nextId(),vehicle_id:vehicleId,energy_type:energyType,miles_since_last:miles,quantity:qty,cost_usd:cost,implied_efficiency:impliedEfficiency,cost_per_unit:costPerUnit,ai_assessment:anomaly.assessment,ai_reasoning:anomaly.reasoning};
+  FUEL_ENTRIES.unshift(entry);
+  document.getElementById('fef-miles').value='';document.getElementById('fef-qty').value='';document.getElementById('fef-cost').value='';
+  var chainNote='';
+  if(anomaly.assessment==='flagged'){
+    ALERTS.push({id:nextId(),vehicle_id:vehicleId,severity:'predictive',reason:'Fuel/energy anomaly flagged by Fleet Intelligence Agent: '+anomaly.reasoning,dtc_codes:[],acknowledged:false});
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Fuel anomaly flagged — maintenance alert auto-opened — '+vehicleById(vehicleId).vin,ts:'now'});
+    chainNote=' Maintenance alert opened automatically.';
+    renderFeed();renderMaintenance();
+  }
+  document.getElementById('fuel-log-result').innerHTML='<div style="font-size:12px;color:var(--mid)">Entry logged.'+chainNote+'</div>';
+  renderFuel();renderAnalytics();
+}
+function renderFuel(){
+  var el=document.getElementById('fuel-entry-cards');
+  if(!el)return;
+  el.innerHTML=FUEL_ENTRIES.map(function(e){
+    var v=vehicleById(e.vehicle_id);
+    var pill={flagged:'pr',normal:'pg',not_evaluated:'pd'}[e.ai_assessment];
+    return '<div class="card"><div class="ch"><span class="ct">'+(v?v.vin:e.vehicle_id)+'</span><span class="p '+pill+'">'+e.ai_assessment.replace(/_/g,' ')+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:6px">'+e.energy_type+' · '+e.miles_since_last+' mi · '+e.quantity+' units · $'+e.cost_usd.toFixed(2)+'</div>'
+      +'<div class="aip" style="padding:8px 10px"><div class="aip-h" style="margin-bottom:2px;font-size:11px"><i class="ti ti-sparkles"></i>AI fuel anomaly</div><div class="aip-body" style="font-size:11px">'+e.ai_reasoning+'</div></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No fuel/energy entries yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-012 EV Charging & Battery Health (mirrors the backend's exact
+// deterministic degradation threshold — SOH < 80% triggers an alert,
+// the same principle as FLT-004's maintenance alerts)
+// ══════════════════════════════════════════════════════════════
+function startChargingSession(){
+  var vehicleId=document.getElementById('csf-vehicle').value;
+  var location=document.getElementById('csf-location').value.trim();
+  var session={id:nextId(),vehicle_id:vehicleId,station_location:location,energy_added_kwh:0,cost_usd:0,status:'in_progress'};
+  CHARGING_SESSIONS.push(session);
+  document.getElementById('csf-location').value='';
+  renderEvCharging();
+}
+function completeChargingSession(id){
+  var s=CHARGING_SESSIONS.find(function(x){return x.id===id;});
+  var kwh=parseFloat(prompt('Energy added (kWh):','40'))||0;
+  var cost=parseFloat(prompt('Session cost ($):','12'))||0;
+  s.energy_added_kwh=kwh;s.cost_usd=cost;s.status='completed';
+  renderEvCharging();renderAnalytics();
+}
+function isDegradationAlert(soh){return soh<BATTERY_HEALTH_ALERT_THRESHOLD_PCT;}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-012 AI battery degradation TREND forecast (mirrors the
+// backend's exact linear-projection math — threshold is passed
+// explicitly, never hardcoded, matching the fix made when this was
+// first built: ai-orchestration-svc has no battery setting of its
+// own, fleet-svc always supplies it)
+// ══════════════════════════════════════════════════════════════
+var DEGRADATION_TREND_FORECASTS={}; // vehicle_id -> {estimated_days_to_threshold, reasoning}
+var DEGRADATION_URGENCY_WINDOW_DAYS=30;
+function deterministicBatteryDegradationTrend(firstSoh,latestSoh,daysElapsed,thresholdPct){
+  if(daysElapsed<=0||firstSoh<=latestSoh){
+    return {estimated_days_to_threshold:null,reasoning:'[deterministic fallback] SOH is flat or improving across readings — no meaningful decline to project.'};
+  }
+  var dailyRate=(firstSoh-latestSoh)/daysElapsed;
+  if(latestSoh<=thresholdPct){
+    return {estimated_days_to_threshold:0,reasoning:'[deterministic fallback] Already at or below the '+thresholdPct+'% threshold.'};
+  }
+  var daysToThreshold=Math.round((latestSoh-thresholdPct)/dailyRate);
+  return {estimated_days_to_threshold:daysToThreshold,reasoning:'[deterministic fallback] Declining ~'+(Math.round(dailyRate*1000)/1000)+'%/day over '+daysElapsed+' days — projected to cross '+thresholdPct+'% SOH in ~'+daysToThreshold+' days.'};
+}
+function computeDegradationTrend(vehicleId){
+  var readings=BATTERY_HEALTH_READINGS.filter(function(r){return r.vehicle_id===vehicleId;}).sort(function(a,b){return a.recorded_at-b.recorded_at;});
+  if(readings.length<2)return null;
+  var first=readings[0],latest=readings[readings.length-1];
+  var daysElapsed=Math.max(0,(latest.recorded_at-first.recorded_at)/(1000*60*60*24));
+  return deterministicBatteryDegradationTrend(first.state_of_health_pct,latest.state_of_health_pct,daysElapsed,BATTERY_HEALTH_ALERT_THRESHOLD_PCT);
+}
+function recordBatteryHealth(){
+  var vehicleId=document.getElementById('bhf-vehicle').value;
+  var soc=parseFloat(document.getElementById('bhf-soc').value)||0;
+  var soh=parseFloat(document.getElementById('bhf-soh').value)||100;
+  BATTERY_HEALTH_READINGS.push({id:nextId(),vehicle_id:vehicleId,state_of_charge_pct:soc,state_of_health_pct:soh,recorded_at:new Date()});
+  var resultEl=document.getElementById('battery-health-result');
+  if(isDegradationAlert(soh)){
+    resultEl.innerHTML='<div style="background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:8px;padding:10px;font-size:12px;color:var(--red)">Degradation alert — SOH '+soh+'% is below the '+BATTERY_HEALTH_ALERT_THRESHOLD_PCT+'% threshold.</div>';
+  } else {
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">Reading recorded — SOH '+soh+'% is within normal range.</div>';
+  }
+  // Fully autonomous FLT-012, chained straight into FLT-004: once 2+
+  // readings exist, project the trend automatically, and when the
+  // projection is urgent (within DEGRADATION_URGENCY_WINDOW_DAYS),
+  // immediately open a real maintenance alert — proactive, before the
+  // reactive single-reading threshold check above would even fire.
+  var trend=computeDegradationTrend(vehicleId);
+  if(trend){
+    DEGRADATION_TREND_FORECASTS[vehicleId]=trend;
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Degradation trend updated — '+vehicleById(vehicleId).vin,ts:'now'});
+    if(trend.estimated_days_to_threshold!==null&&trend.estimated_days_to_threshold<=DEGRADATION_URGENCY_WINDOW_DAYS){
+      ALERTS.push({id:nextId(),vehicle_id:vehicleId,severity:'predictive',reason:'Battery degradation trend projects SOH threshold crossing in ~'+trend.estimated_days_to_threshold+' days: '+trend.reasoning,dtc_codes:[],acknowledged:false});
+      DFEED.unshift({a:'fleet-intelligence-agent',m:'Degradation forecast urgent — maintenance alert auto-opened — '+vehicleById(vehicleId).vin,ts:'now'});
+      renderMaintenance();
+    }
+  }
+  document.getElementById('bhf-soc').value='';document.getElementById('bhf-soh').value='';
+  renderEvCharging();renderAnalytics();renderFeed();
+}
+function getLatestBatteryHealthByVehicle(){
+  var latest={};
+  BATTERY_HEALTH_READINGS.forEach(function(r){
+    if(!latest[r.vehicle_id]||r.recorded_at>latest[r.vehicle_id].recorded_at)latest[r.vehicle_id]=r;
+  });
+  return latest;
+}
+function renderEvCharging(){
+  var active=CHARGING_SESSIONS.filter(function(s){return s.status==='in_progress';});
+  document.getElementById('charging-active').innerHTML=active.length?('<div style="font-size:12px;color:var(--gold)">'+active.length+' session(s) in progress</div>'):'';
+
+  document.getElementById('charging-session-cards').innerHTML=CHARGING_SESSIONS.slice().reverse().map(function(s){
+    var pill={in_progress:'pb',completed:'pg',interrupted:'pr'}[s.status];
+    return '<div class="card"><div class="ch"><span class="ct">'+vehicleById(s.vehicle_id).vin+'</span><span class="p '+pill+'">'+s.status+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">'+(s.station_location||'(no location)')+(s.status==='completed'?' · '+s.energy_added_kwh+' kWh · $'+s.cost_usd.toFixed(2):'')+'</div>'
+      +(s.status==='in_progress'?'<button class="btn btn-s btn-g" onclick="completeChargingSession(\''+s.id+'\')">Complete session</button>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No charging sessions yet.</div>';
+
+  var latestByVehicle=getLatestBatteryHealthByVehicle();
+  var watchlist=Object.values(latestByVehicle).filter(function(r){return isDegradationAlert(r.state_of_health_pct);});
+  document.getElementById('battery-watchlist-rows').innerHTML=watchlist.map(function(r){
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 1fr"><span class="tc fm" style="font-size:12px">'+vehicleById(r.vehicle_id).vin+'</span><span class="trr">SOH '+r.state_of_health_pct+'%</span><span class="tm" style="font-size:11px">SOC '+r.state_of_charge_pct+'%</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No vehicles below the degradation threshold.</div>';
+
+  document.getElementById('nb-battery').textContent=watchlist.length;
+  var badge=document.getElementById('topbar-badge');
+  if(watchlist.length)badge.style.display='block';
+  renderDegradationTrends();
+}
+function renderDegradationTrends(){
+  var el=document.getElementById('degradation-trend-cards');
+  if(!el)return;
+  var vehicleIds=Object.keys(DEGRADATION_TREND_FORECASTS);
+  el.innerHTML=vehicleIds.map(function(vid){
+    var f=DEGRADATION_TREND_FORECASTS[vid];
+    var v=vehicleById(vid);
+    if(!v)return '';
+    var pill=f.estimated_days_to_threshold===null?'pd':(f.estimated_days_to_threshold<=30?'pr':'pa2');
+    var label=f.estimated_days_to_threshold===null?'no decline detected':(f.estimated_days_to_threshold+' days to threshold');
+    return '<div class="aip" style="padding:10px 12px"><div class="aip-h" style="margin-bottom:4px"><i class="ti ti-sparkles"></i>'+v.vin+' <span class="p '+pill+'" style="margin-left:4px">'+label+'</span></div><div class="aip-body" style="font-size:12px">'+f.reasoning+'</div></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No trend forecasts yet — needs 2+ battery health readings for a vehicle.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-013 Utilization & TCO Analytics (mirrors the backend's exact
+// deterministic aggregation — depreciation-to-date + maintenance +
+// energy cost; "availability" is explicitly not rental utilization)
+// ══════════════════════════════════════════════════════════════
+function computeVehicleTco(vehicleId){
+  var schedule=DEPRECIATION_SCHEDULES[vehicleId];
+  var depreciationToDate=null;
+  if(schedule){
+    var bookValue=computeBookValue(schedule,0); // 0 months elapsed in this demo session
+    depreciationToDate=Math.round((schedule.acquisition_cost_usd-bookValue)*100)/100;
+  }
+  var maintenanceCost=WORK_ORDERS.filter(function(w){return w.vehicle_id===vehicleId&&w.status==='completed';}).reduce(function(a,w){return a+(w.cost_usd||0);},0);
+  var chargingCost=CHARGING_SESSIONS.filter(function(s){return s.vehicle_id===vehicleId&&s.status==='completed';}).reduce(function(a,s){return a+s.cost_usd;},0);
+  var fuelCost=FUEL_ENTRIES.filter(function(e){return e.vehicle_id===vehicleId;}).reduce(function(a,e){return a+e.cost_usd;},0);
+  var energyCost=chargingCost+fuelCost;
+  var totalTco=depreciationToDate!==null?Math.round((depreciationToDate+maintenanceCost+energyCost)*100)/100:null;
+  return {depreciation_to_date_usd:depreciationToDate,maintenance_cost_usd:Math.round(maintenanceCost*100)/100,energy_cost_usd:Math.round(energyCost*100)/100,total_tco_usd:totalTco};
+}
+function computeVehicleAvailability(vehicleId){
+  var v=vehicleById(vehicleId);
+  var totalHours=Math.max(0,(new Date()-new Date(v.acquired_at))/(1000*60*60));
+  var downtimeHours=WORK_ORDERS.filter(function(w){return w.vehicle_id===vehicleId;}).reduce(function(sum,w){
+    var end=w.downtime_end||new Date();
+    var start=w.downtime_start||end;
+    return sum+Math.max(0,(end-start)/(1000*60*60));
+  },0);
+  var availabilityPct=totalHours>0?Math.round((1-(downtimeHours/totalHours))*1000)/10:null;
+  return {total_hours_since_acquisition:Math.round(totalHours*10)/10,maintenance_downtime_hours:Math.round(downtimeHours*100)/100,availability_pct:availabilityPct};
+}
+function lookupVehicleTco(){
+  var vehicleId=document.getElementById('tcof-vehicle').value;
+  var tco=computeVehicleTco(vehicleId);
+  var availability=computeVehicleAvailability(vehicleId);
+  var resultEl=document.getElementById('tco-result');
+  resultEl.innerHTML='<div class="tw"><div class="th" style="grid-template-columns:1fr 1fr"><span>Metric</span><span>Value</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Depreciation to date</span><span class="tc">'+(tco.depreciation_to_date_usd!==null?'$'+tco.depreciation_to_date_usd.toLocaleString():'— no schedule on file')+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Maintenance cost</span><span class="tc">$'+tco.maintenance_cost_usd.toLocaleString()+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Energy cost (charging + fuel)</span><span class="tc">$'+tco.energy_cost_usd.toLocaleString()+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Total TCO</span><span class="tg" style="font-weight:700">'+(tco.total_tco_usd!==null?'$'+tco.total_tco_usd.toLocaleString():'—')+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Availability</span><span class="tc">'+(availability.availability_pct!==null?availability.availability_pct+'%':'—')+'</span></div>'
+    +'</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FLT-013 AI Fleet Optimization capstone (mirrors the backend's
+// exact 0–3 point multi-signal score: disposition-eligible +1,
+// availability < 85% +1, valuation flagged +1 → 0=retain,
+// 1=review_for_disposition, 2+=prioritize_disposition. Pure data
+// gathering across FLT-006, FLT-007, FLT-013 itself — it creates
+// nothing, a human still runs the FLT-007 channel flow separately.)
+// ══════════════════════════════════════════════════════════════
+function deterministicFleetOptimization(availabilityPct,isEligible,valuationFlagged){
+  var points=0;
+  var reasons=[];
+  if(isEligible){points+=1;reasons.push('disposition-eligible');}
+  if(availabilityPct!==null&&availabilityPct<85){points+=1;reasons.push('availability '+availabilityPct+'% is below 85%');}
+  if(valuationFlagged){points+=1;reasons.push('latest market valuation was flagged as anomalous');}
+  var recommendation=points===0?'retain':(points===1?'review_for_disposition':'prioritize_disposition');
+  var reasonStr=reasons.length?reasons.join('; '):'none of the three signals triggered';
+  return {recommendation:recommendation,points:points,reasoning:'[deterministic fallback] '+points+'/3 signals triggered ('+reasonStr+').'};
+}
+function runFleetOptimizationFor(vehicleId){
+  var v=vehicleById(vehicleId);
+  var tco=computeVehicleTco(vehicleId);
+  var availability=computeVehicleAvailability(vehicleId);
+  var eligible=isDispositionEligible(v);
+  var valuationFlagged=latestValuationFlagged(vehicleId);
+  var result=deterministicFleetOptimization(availability.availability_pct,eligible,valuationFlagged);
+  DFEED.unshift({a:'fleet-intelligence-agent',m:'Fleet optimization: '+result.recommendation.replace(/_/g,' ')+' — '+v.vin,ts:'now'});
+  // Fully autonomous chain: prioritize_disposition doesn't just sit as
+  // a recommendation — it immediately runs the FLT-007 cascade for
+  // this vehicle, which (if eligible) creates a real disposition
+  // order with no further human step.
+  if(result.recommendation==='prioritize_disposition'&&eligible){
+    var rec=deterministicDispositionChannel(v.odometer_miles);
+    DISPOSITION_CHANNEL_RECOMMENDATIONS.push({id:nextId(),vehicle_id:vehicleId,recommended_channel:rec.channel,reasoning:'[chained from fleet optimization] '+rec.reasoning,status:'accepted'});
+    DISPOSITION_ORDERS.push({id:nextId(),vehicle_id:vehicleId,channel:rec.channel,recovery_amount_usd:null,status:'pending'});
+    v.status='remarketing';
+    DFEED.unshift({a:'fleet-intelligence-agent',m:'Chained disposition order created — '+CHANNEL_LABELS[rec.channel]+' — '+v.vin,ts:'now'});
+    renderLifecycle();renderInventory();
+  }
+  renderFeed();
+  return {result:result,tco:tco,availability:availability,eligible:eligible,valuationFlagged:valuationFlagged};
+}
+function requestFleetOptimization(){
+  var vehicleId=document.getElementById('foptf-vehicle').value;
+  var v=vehicleById(vehicleId);
+  var outcome=runFleetOptimizationFor(vehicleId);
+  var pill={retain:'pg',review_for_disposition:'pa2',prioritize_disposition:'pr'}[outcome.result.recommendation];
+  var resultEl=document.getElementById('fleet-optimization-result');
+  resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+v.vin+' <span class="p '+pill+'" style="margin-left:4px">'+outcome.result.recommendation.replace(/_/g,' ')+'</span></div>'
+    +'<div class="aip-body">'+outcome.result.reasoning+'<br><br>Signals gathered: TCO '+(outcome.tco.total_tco_usd!==null?'$'+outcome.tco.total_tco_usd.toLocaleString():'n/a')+' · availability '+(outcome.availability.availability_pct!==null?outcome.availability.availability_pct+'%':'n/a')+' · disposition-eligible '+outcome.eligible+' · valuation flagged '+outcome.valuationFlagged
+    +(outcome.result.recommendation==='prioritize_disposition'&&outcome.eligible?'<br><br><b style="color:var(--gold)">→ Disposition order created autonomously — see Depreciation &amp; Disposition.</b>':'')+'</div></div>';
+}
+function renderAnalytics(){
+  document.getElementById('ak-total').textContent=VEHICLES.length;
+
+  var availabilities=VEHICLES.map(function(v){return computeVehicleAvailability(v.id).availability_pct;}).filter(function(a){return a!==null;});
+  var avgAvailability=availabilities.length?Math.round((availabilities.reduce(function(a,b){return a+b;},0)/availabilities.length)*10)/10:null;
+  document.getElementById('ak-availability').textContent=avgAvailability!==null?avgAvailability+'%':'—';
+
+  var latestByVehicle=getLatestBatteryHealthByVehicle();
+  var watchlistCount=Object.values(latestByVehicle).filter(function(r){return isDegradationAlert(r.state_of_health_pct);}).length;
+  document.getElementById('ak-battery').textContent=watchlistCount;
+
+  var byStatus={},byClass={};
+  VEHICLES.forEach(function(v){
+    byStatus[v.status]=(byStatus[v.status]||0)+1;
+    byClass[v.vehicle_class]=(byClass[v.vehicle_class]||0)+1;
+  });
+  document.getElementById('fleet-by-status').innerHTML=Object.keys(byStatus).map(function(s){
+    return '<div style="display:flex;justify-content:space-between;padding:4px 0"><span class="tm">'+STATUS_LABELS[s]+'</span><span class="tc">'+byStatus[s]+'</span></div>';
+  }).join('');
+  document.getElementById('fleet-by-class').innerHTML=Object.keys(byClass).map(function(c){
+    return '<div style="display:flex;justify-content:space-between;padding:4px 0"><span class="tm">'+CLASS_LABELS[c]+'</span><span class="tc">'+byClass[c]+'</span></div>';
+  }).join('');
+}
+
+function renderFeed(){
+  document.getElementById('dash-feed').innerHTML=DFEED.slice(0,10).map(function(d){
+    return '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--border)"><span class="at" style="flex-shrink:0">'+d.a+'</span><span style="font-size:12px;color:var(--text);flex:1">'+d.m+'</span><span style="font-size:11px;color:var(--dim);flex-shrink:0">'+d.ts+'</span></div>';
+  }).join('');
+}
+
+var statusChart=null;
+function renderStatusChart(){
+  var statuses=['in_transit','staged','rented','maintenance','disposed'];
+  var counts=statuses.map(function(s){return VEHICLES.filter(function(v){return v.status===s;}).length;});
+  var ctx=document.getElementById('chartStatus');
+  if(!ctx)return;
+  if(statusChart)statusChart.destroy();
+  statusChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:['In Transit','Staged','Rented','Maintenance','Disposed'],datasets:[{data:counts,backgroundColor:'rgba(201,168,76,0.65)',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(110,128,150,0.8)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(110,128,150,0.8)',font:{size:11},stepSize:1}}}}
+  });
+}
+
+function rerenderAll(){
+  populateVehicleSelects();
+  renderInventory();
+  renderStaging();
+  renderMaintenance();
+  renderIncidents();
+  renderTelematics();
+  renderSafety();
+  renderLifecycle();
+  renderFloorplan();
+  renderFuel();
+  renderEvCharging();
+  renderAnalytics();
+  renderFeed();
+}
+rerenderAll();
+</script>
+</body>
+</html>

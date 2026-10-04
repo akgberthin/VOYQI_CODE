@@ -1,0 +1,151 @@
+# VOYQI Mobility OS — Service Catalog
+# Single source of truth for all 26 microservices. scripts/generate_service_
+# manifests.py reads this file and clones _service-template/ into
+# kubernetes/base/services/<name>/ for every entry (excluding api-gateway
+# and the AI orchestration nucleus (ai-orchestration-realtime,
+# ai-orchestration-batch), which are hand-authored — see
+# base/gateway/ and base/ai-orchestration/ — because they carry
+# platform-specific concerns the generic template doesn't cover: Ingress
+# for the gateway, node-pool taints/tolerations/PriorityClass for AI
+# orchestration.
+#
+# service_account values map to the 4 GSAs in terraform/modules/iam.
+#
+# status values: READY (deployed, tested), ACTIVE_DEV (in progress this
+# quarter), PLANNED (scoped, not started). Matches the honest per-service
+# build-status discipline used throughout VOYQI documentation — nothing is
+# marked READY unless it actually is.
+
+layer_0_platform_infrastructure:
+  - name: api-gateway
+    port: 8000
+    service_account: gateway-ksa
+    status: READY
+    note: "Hand-authored manifest — see base/gateway/. Sole ingress point."
+  - name: auth-service
+    port: 8001
+    service_account: core-svc-ksa
+    status: READY
+    note: "JWT (HttpOnly cookie only), MFA, sessions."
+
+layer_1_core_execution_services:
+  - name: user-service
+    port: 8002
+    service_account: core-svc-ksa
+    status: READY
+  - name: subscription-service
+    port: 8003
+    service_account: core-svc-ksa
+    status: READY
+    note: "Lifecycle execution for all 8 mobility classes."
+  - name: fleet-service
+    port: 8004
+    service_account: core-svc-ksa
+    status: READY
+    note: "Backs the completed FLT-001..013 Fleet Management UI (887+ tests). Promoted to full automation in tier-policy.yaml — all fleet-intelligence actions are Tier 1 except incident.liability_assessment and telematics.tamper_event_flag (Tier 3, structurally human-only, not eligible for promotion). See docs/AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md §2. Not yet applied to the live server; scheduled separately, and the 4 promoted action types still need their historical approval/override rate pulled per §2 before deployment."
+  - name: rental-service
+    port: 8005
+    service_account: core-svc-ksa
+    status: READY
+  - name: payment-service
+    port: 8006
+    service_account: core-svc-ksa
+    status: READY
+    note: "Stripe charges, invoices, deposit holds."
+  - name: marketing-service
+    port: 8007
+    service_account: core-svc-ksa
+    status: READY
+  - name: sales-service
+    port: 8009
+    service_account: core-svc-ksa
+    status: READY
+    note: "Dealership origination execution; activated alongside originations-svc. Powered by the Sales & Originations Intelligence agent (batch tier)."
+  - name: pricing-service
+    port: 8010
+    service_account: core-svc-ksa
+    status: READY
+  - name: rbac-service
+    port: 8011
+    service_account: core-svc-ksa
+    status: READY
+  - name: notification-service
+    port: 8012
+    service_account: core-svc-ksa
+    status: READY
+  - name: global-mobility-svc
+    port: 8013
+    service_account: core-svc-ksa
+    status: READY
+    note: "Hub network, VOYQI Card, cross-city continuity."
+  - name: ai-orchestration-realtime
+    port: 8020
+    service_account: ai-orch-ksa
+    status: READY
+    note: "Hand-authored manifest — see base/ai-orchestration/. Supervisor, Member Experience, Concierge, Relationship Intelligence. REV D split — see docs/AI_ORCHESTRATION_SCALING.md. Shares DB + Redis checkpoint with ai-orchestration-batch; still one logical service."
+  - name: ai-orchestration-batch
+    port: 8014
+    service_account: ai-orch-ksa
+    status: READY
+    note: "Hand-authored manifest — see base/ai-orchestration/. Fleet Intelligence, Pricing Intelligence, Revenue, Retention, Sales & Originations Intelligence, Talent & Workforce Intelligence, Compliance & Risk Intelligence, Portfolio Intelligence. REV D split — see docs/AI_ORCHESTRATION_SCALING.md. Shares DB + Redis checkpoint with ai-orchestration-realtime; still one logical service."
+
+layer_2_admin_panel_backing_services:
+  - name: super-admin-svc
+    port: 8021
+    service_account: admin-svc-ksa
+    status: ACTIVE_DEV
+    note: "RBAC/ABAC authoring, panel distribution console, global directory, CMS, audit."
+  - name: crm-svc
+    port: 8022
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "AI-Native Enterprise CRM — single relationship graph across all customer types. Powered by the Relationship Intelligence agent (realtime tier — CRM-003 Conversational Engagement Hub needs in-session drafting)."
+  - name: dms-svc
+    port: 8023
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Dealer Center Management System — rooftop, inventory, deal desk, F&I. Powered by the Sales & Originations Intelligence agent (batch tier)."
+  - name: originations-svc
+    port: 8024
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Sales & Originations — pipeline, decisioning, lender mgmt, e-contracting. Powered by the Sales & Originations Intelligence agent (batch tier)."
+  - name: executive-svc
+    port: 8025
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Executive Command Center — cross-subsidiary consolidated dashboards. Powered by the Portfolio Intelligence agent (batch tier)."
+  - name: management-svc
+    port: 8026
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Shared services (Management panel). Powered by the Portfolio Intelligence agent (batch tier)."
+  - name: real-estate-svc
+    port: 8027
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Powered by the Portfolio Intelligence agent (batch tier)."
+  - name: capital-finance-svc
+    port: 8028
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Powered by the Portfolio Intelligence agent (batch tier)."
+  - name: insurance-risk-svc
+    port: 8029
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Powered by the Compliance & Risk Intelligence agent (batch tier)."
+  - name: technology-ip-svc
+    port: 8030
+    service_account: admin-svc-ksa
+    status: PLANNED
+  - name: security-compliance-svc
+    port: 8031
+    service_account: admin-svc-ksa
+    status: PLANNED
+    note: "Tenant isolation mgmt, audit log explorer, compliance calendar (SEC-001..005). Powered by the Compliance & Risk Intelligence agent (batch tier)."
+  - name: hrm-svc
+    port: 8101
+    service_account: admin-svc-ksa
+    status: ACTIVE_DEV
+    note: "AI-Native Talent CRM + HRM. Port intentionally outside the 8021-8031 admin block (historical allocation). Academy (HRM-006) and Notices & Communication (HRM-008) in active development. Powered by the Talent & Workforce Intelligence agent (batch tier) — this formalizes what was previously a bolted-on AI call inside the HRM module itself, per docs/AI_ORCHESTRATION_SCALING.md."

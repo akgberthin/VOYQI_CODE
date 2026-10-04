@@ -1,0 +1,88 @@
+# VOYQI Mobility OS — API Gateway (Layer 0, port 8000)
+# Sole ingress point for all client traffic (mobile app, operator web app).
+# JWT validation, rate limiting, reverse proxy to all 25 other services.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: voyqi
+  labels:
+    app: api-gateway
+    voyqi-layer: "0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        voyqi-layer: "0"
+    spec:
+      serviceAccountName: gateway-ksa
+      containers:
+        - name: api-gateway
+          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: gateway-config
+            - secretRef:
+                name: gateway-secrets
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "250m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: voyqi
+  labels:
+    app: api-gateway
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: voyqi
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-pdb
+  namespace: voyqi
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: api-gateway

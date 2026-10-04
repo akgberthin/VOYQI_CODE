@@ -1,0 +1,149 @@
+# VOYQI Mobility OS — Autonomy Tier Policy
+#
+# This is the mechanism, not just documentation: both ai-orchestration-
+# realtime and ai-orchestration-batch mount this ConfigMap as a file and
+# consult it before executing ANY agent action. It replaces the blanket
+# "AI proposes, human approves" rule with three tiers, so the platform is
+# actually automated for the actions that don't need a person, while
+# keeping a human in the loop exactly where reversibility, cost, or
+# regulation requires one.
+#
+# Tier definitions:
+#   1 = Fully autonomous. Executes immediately, logs to DFEED/decision log,
+#       reviewable after the fact. No approval card ever renders.
+#   2 = Approval gate required. Low confidence, above a cost/scale
+#       threshold, or otherwise flagged — creates a pending recommendation
+#       in AI-002 (Recommendation Review & Override) and waits.
+#   3 = Always human, no exceptions. Regulatorily required accountable
+#       human decision (fair lending, employment law, access-policy
+#       grants). Never auto-executes regardless of model confidence —
+#       this is a compliance boundary, not a UX preference, and must not
+#       be reachable via any threshold change in AI-005.
+#
+# default_tier is deliberately conservative (2) — an action type not yet
+# explicitly listed here requires approval until someone makes the
+# deliberate decision to add it. Silence should never mean "automated."
+#
+# Graduation path: use AI-004 (AI Audit & Explainability Log) approval-rate
+# and override-rate data per action type as evidence to move a Tier 2
+# action type to Tier 1 — through the same evaluation-suite-before-
+# promotion gate the Prompt & Policy Manager (AI-003) already uses for
+# prompt changes. Never promote directly to Tier 1 without that evidence.
+# Tier 3 action types are never eligible for promotion, by definition.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-orchestration-tier-policy
+  namespace: voyqi
+data:
+  tier-policy.yaml: |
+    version: 1
+    default_tier: 2
+
+    tiers:
+      1:
+        name: "Fully autonomous"
+        approval_required: false
+        audit: "log-only (DFEED / decision log), reviewable after the fact"
+      2:
+        name: "Approval gate required"
+        approval_required: true
+        surfaces_in: "AI-002 Recommendation Review & Override"
+      3:
+        name: "Always human"
+        approval_required: true
+        surfaces_in: "AI-002 Recommendation Review & Override"
+        promotable: false   # can never be moved to Tier 1 or 2 by threshold change
+        requires_accountable_role: true
+
+    agents:
+
+      # ---- REALTIME TIER --------------------------------------------------
+      concierge:
+        actions:
+          logistics.routine: { tier: 1 }
+          journey.schedule_change: { tier: 1 }
+          journey.premium_reroute: { tier: 2, threshold: "cost_delta_usd > 150" }
+
+      member-experience:
+        actions:
+          preference.silent_learning_update: { tier: 1 }
+          upgrade.recommendation_surface: { tier: 1 }
+          churn.risk_flag: { tier: 1 }
+          plan.auto_upgrade_execute: { tier: 2 }
+
+      relationship-intelligence:
+        actions:
+          reply.routine_intent: { tier: 1, whitelist: ["hours", "location", "status_check", "faq"] }
+          lead.route: { tier: 1 }
+          reply.negotiation_or_commitment: { tier: 2 }
+          reply.pricing_quote: { tier: 2 }
+
+      # ---- BATCH TIER -------------------------------------------------------
+      # fleet-intelligence: promoted to full automation (directed promotion,
+      # not a 90-day-evidence graduation — see AUTONOMY_TIERING_ENGINEER_
+      # INSTRUCTIONS.md §2 "Full automation promotion" for the record of this
+      # decision and the verification still owed before it ships).
+      # incident.liability_assessment and telematics.tamper_event_flag are
+      # UNCHANGED at tier 3 — these are not an approval-gate question at all.
+      # They're human-only fields structurally excluded from the AI decision
+      # path per the platform's data model (liability and tamper-evidence
+      # findings are never AI-adjudicated, full automation or not).
+      fleet-intelligence:
+        actions:
+          staging.recommend_prestage: { tier: 1 }
+          staging.rebalance_within_threshold: { tier: 1 }
+          staging.reassign_cross_region: { tier: 1 }
+          staging.reassign_large_scale: { tier: 1 }
+          maintenance.predictive_alert: { tier: 1 }
+          maintenance.auto_schedule: { tier: 1 }
+          maintenance.auto_schedule_high_cost: { tier: 1 }
+          incident.severity_triage: { tier: 1 }
+          incident.liability_assessment: { tier: 3 }   # human-only field, structurally excluded from AI path — see FLT-008. NOT eligible for automation regardless of tiering policy.
+          remarketing.disposition_recommend: { tier: 1 }
+          remarketing.disposition_execute: { tier: 1 }
+          financing.covenant_early_warning: { tier: 1 }
+          telematics.tamper_event_flag: { tier: 3 }    # human-only, never AI-adjudicated — see FLT-005. NOT eligible for automation regardless of tiering policy.
+
+      pricing-intelligence:
+        actions:
+          pricing.adjust_within_band: { tier: 1 }
+          pricing.demand_multiplier_apply: { tier: 1, threshold: "within AI-005 guardrails" }
+          pricing.breach_guardrail: { tier: 2 }
+
+      revenue:
+        actions:
+          idle_inventory.recommend_channel: { tier: 1 }
+          term_conversion.offer_standard: { tier: 1 }
+          term_conversion.offer_high_value: { tier: 2, threshold: "annual_value_usd > 10000" }
+
+      retention:
+        actions:
+          winback.offer_standard: { tier: 1 }
+          winback.offer_high_value: { tier: 2, threshold: "offer_value_usd > 500" }
+          cancellation.intervention_standard: { tier: 1 }
+
+      sales-originations-intelligence:
+        actions:
+          lead.score_and_route: { tier: 1 }
+          lender.match_recommend: { tier: 1 }
+          deal.structure_recommend: { tier: 2 }
+          credit.decision: { tier: 3 }   # fair-lending — accountable human required, not just a click
+
+      talent-workforce-intelligence:
+        actions:
+          course.draft_generate: { tier: 1 }
+          notice.draft_generate: { tier: 1 }
+          candidate.screen_score: { tier: 1 }
+          hire_reject_discipline.decision: { tier: 3 }   # employment law
+
+      compliance-risk-intelligence:
+        actions:
+          audit.flag_anomaly: { tier: 1 }
+          policy.simulate: { tier: 1 }   # simulation only — nothing executes
+          abac.policy_grant_apply: { tier: 3 }   # never auto-applies an access-policy change
+
+      portfolio-intelligence:
+        actions:
+          rollup.generate_report: { tier: 1 }   # reporting only — nothing to approve, ever

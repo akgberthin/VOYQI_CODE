@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI Corporate Portal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --amber:#c9a84c;--purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --sw:220px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.tb-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim);flex-shrink:0}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center}
+.tr:last-child{border-bottom:none}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-o:hover{background:var(--surface2);color:var(--text)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none}
+.fi:focus{border-color:var(--gold-border)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:12px 14px}
+.aip-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gold);margin-bottom:6px}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.progressbar{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-top:6px}
+.progressbar-fill{height:100%;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI</span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx" id="topbar-company">Corporate Portal</span>
+  <div class="tb-right">
+    <div class="upill">
+      <div class="uav">CA</div>
+      <div><div class="uname">Corporate Admin</div><div class="urole">account manager</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Corporate Account</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-building"></i>Dashboard</div>
+  <div class="ni" id="n-employees" onclick="sp('employees')"><i class="ti ti-users"></i>Employees</div>
+  <div class="ni" id="n-utilization" onclick="sp('utilization')"><i class="ti ti-chart-bar"></i>Utilization<span class="nb nb-r" id="nb-utilization">0</span></div>
+  <div class="ni" id="n-billing" onclick="sp('billing')"><i class="ti ti-file-invoice"></i>Billing</div>
+</div>
+
+<div class="workspace">
+
+<div id="global-error" style="display:none;margin:22px 26px 0;background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:9px;padding:10px 14px;font-size:13px;color:var(--red)"></div>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="page on" id="p-dash">
+<div class="ph"><div class="pt" id="dash-title">Corporate Account</div><div class="ps">Your company's VOYQI membership — seats, billing, and per-employee utilization in one place. Every number here comes from a live call to subscription-svc; nothing is computed locally.</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Seats used</div><div class="kv" id="dk-seats-used">—</div><div class="kd tm" id="dk-seats-sub">of — seats</div></div>
+  <div class="kpi kpi-b"><div class="kl">Billing type</div><div class="kv" id="dk-billing-type" style="font-size:16px">—</div><div class="kd tm">Set at account creation</div></div>
+  <div class="kpi kpi-red"><div class="kl">Utilization flags</div><div class="kv" id="dk-flags">—</div><div class="kd trr">Awaiting your review</div></div>
+  <div class="kpi kpi-green"><div class="kl">Total lifetime value</div><div class="kv" id="dk-ltv">—</div><div class="kd tr2">Across all employees</div></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="ch"><span class="ct">Seat utilization</span></div>
+  <div class="progressbar"><div class="progressbar-fill" id="dash-seat-bar" style="width:0%;background:var(--gold)"></div></div>
+  <div style="font-size:12px;color:var(--mid);margin-top:8px" id="dash-seat-text">—</div>
+</div>
+<div class="sec"><span class="st">Recent utilization flags</span></div>
+<div id="dash-flag-preview" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<!-- ============ EMPLOYEES ============ -->
+<div class="page" id="p-employees">
+<div class="ph"><div class="pt">Employees</div><div class="ps">Add or remove employee seats. Adding beyond your seat limit is refused outright by the backend — not a soft warning, a hard rule.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('employee-form')"><i class="ti ti-plus"></i>Add employee</button></div></div>
+<div class="card" id="employee-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Full name</label><input class="fi" id="ef-name" placeholder="Jane Doe"></div>
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="ef-email" placeholder="jane@company.com"></div>
+    <div class="fg"><label class="fl">User ID</label><input class="fi" id="ef-userid" placeholder="jane.doe"></div>
+  </div>
+  <button class="btn btn-g" onclick="addEmployee()"><i class="ti ti-check"></i>Add to account</button>
+  <div id="employee-form-err" style="display:none;font-size:12px;color:var(--red);margin-top:8px"></div>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.4fr 1fr 90px 90px 90px"><span>Employee</span><span>Class</span><span>GU Balance</span><span>LTV</span><span>Action</span></div>
+  <div id="employee-rows"></div>
+</div>
+</div>
+
+<!-- ============ UTILIZATION ============ -->
+<div class="page" id="p-utilization">
+<div class="ph"><div class="pt">Employee Utilization</div><div class="ps">The AI-driven per-employee monitoring — scans every employee's trip activity and flags anyone outside the normal band, autonomously. Resolving a flag (reallocating a seat, approving an upgrade) is your own cost decision about your company's account, so that stays with you.</div>
+<div class="pa"><button class="btn btn-g" onclick="runUtilizationEvaluation()"><i class="ti ti-refresh"></i>Run utilization scan</button></div></div>
+<div class="card" style="margin-bottom:14px">
+  <div class="ch"><span class="ct">Simulate trip counts (demo input — a real deployment pulls this from fleet/rental trip history)</span></div>
+  <div id="trip-count-inputs" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+<div class="sec"><span class="st">Open flags</span></div>
+<div id="utilization-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ BILLING ============ -->
+<div class="page" id="p-billing">
+<div class="ph"><div class="pt">Billing</div><div class="ps">Real transaction arithmetic — no AI reasoning belongs on a billing summary, same principle as every other financial rollup on this platform.</div></div>
+<div class="two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div class="card">
+    <div class="ch"><span class="ct">Account</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px" id="billing-account-details"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Seat allocation</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px" id="billing-seat-details"></div>
+  </div>
+</div>
+</div>
+
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Thin API client — corporate_engine.py in subscription-svc is the
+// single source of truth. Seat-limit enforcement, utilization
+// scoring, and billing arithmetic all live there; this only calls
+// the real endpoints and renders what comes back.
+// ══════════════════════════════════════════════════════════════
+var SUB_API_BASE = window.SUB_API_BASE || 'http://localhost:8003';
+var TENANT_ID = 'voyqi-holdings';
+var CURRENT_USER = 'corporate-admin-1';
+
+// The organization this portal manages — in a real deployment this
+// comes from the logged-in corporate admin's own session, not a
+// hardcoded constant. Set via URL param ?org=<id> for this demo, or
+// resolved from the first account found for the tenant.
+var ORGANIZATION_ID = new URLSearchParams(window.location.search).get('org') || null;
+var ACCOUNT = null;
+
+async function api(method, path, body){
+  var opts={method:method,headers:{'Content-Type':'application/json','X-Tenant-Id':TENANT_ID}};
+  if(body!==undefined)opts.body=JSON.stringify(body);
+  var resp;
+  try{
+    resp=await fetch(SUB_API_BASE+path, opts);
+  }catch(networkErr){
+    throw {status:0, detail:'Cannot reach subscription-svc at '+SUB_API_BASE+'. Is it running? ('+networkErr.message+')'};
+  }
+  var data=null;
+  try{data=await resp.json();}catch(e){}
+  if(!resp.ok){throw {status:resp.status, detail:(data&&data.detail)||resp.statusText};}
+  return data;
+}
+
+function showBanner(containerId, message, isError){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  el.style.display='block';
+  el.style.color=isError?'var(--red)':'var(--green)';
+  el.textContent=message;
+  setTimeout(function(){el.style.display='none';}, isError?6000:3000);
+}
+function connectionBanner(err, containerId){
+  var msg=err.status===0?err.detail:('subscription-svc error '+err.status+': '+err.detail);
+  showBanner(containerId||'global-error', msg, true);
+}
+
+function sp(id){
+  ['dash','employees','utilization','billing'].forEach(function(p){
+    var pg=document.getElementById('p-'+p);var nv=document.getElementById('n-'+p);
+    if(pg)pg.classList.remove('on');if(nv)nv.classList.remove('on');
+  });
+  document.getElementById('p-'+id).classList.add('on');
+  var nv=document.getElementById('n-'+id);if(nv)nv.classList.add('on');
+}
+function toggleForm(id){var el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+function fmtMoney(n){return '$'+Number(n||0).toLocaleString();}
+function fmtClassName(cls){if(!cls)return '—';return cls.split('_').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');}
+
+// ══════════════════════════════════════════════════════════════
+// Resolve which corporate account this portal is managing
+// ══════════════════════════════════════════════════════════════
+async function resolveAccount(){
+  if(ORGANIZATION_ID){
+    try{ACCOUNT=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID);return true;}
+    catch(err){connectionBanner(err);return false;}
+  }
+  try{
+    var accounts=await api('GET','/api/v1/subscription/corporate/accounts');
+    if(accounts.length){ACCOUNT=accounts[0];ORGANIZATION_ID=ACCOUNT.id;return true;}
+    showBanner('global-error','No corporate account found for this tenant. Create one via POST /api/v1/subscription/corporate/accounts first.',true);
+    return false;
+  }catch(err){connectionBanner(err);return false;}
+}
+
+// ══════════════════════════════════════════════════════════════
+// Dashboard
+// ══════════════════════════════════════════════════════════════
+async function renderDash(){
+  if(!ACCOUNT)return;
+  document.getElementById('dash-title').textContent=ACCOUNT.company_name;
+  document.getElementById('topbar-company').textContent=ACCOUNT.company_name+' · Corporate Portal';
+
+  var summary;
+  try{summary=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/billing-summary');}
+  catch(err){connectionBanner(err);return;}
+
+  document.getElementById('dk-seats-used').textContent=summary.seats_used;
+  document.getElementById('dk-seats-sub').textContent='of '+summary.seat_limit+' seats';
+  document.getElementById('dk-billing-type').textContent=fmtClassName(summary.billing_type);
+  document.getElementById('dk-ltv').textContent=fmtMoney(summary.total_lifetime_value_usd);
+
+  var pct=summary.seat_limit?Math.round((summary.seats_used/summary.seat_limit)*100):0;
+  document.getElementById('dash-seat-bar').style.width=pct+'%';
+  document.getElementById('dash-seat-bar').style.background=pct>=90?'var(--red)':(pct>=70?'var(--gold)':'var(--green)');
+  document.getElementById('dash-seat-text').textContent=summary.seats_used+' of '+summary.seat_limit+' seats used ('+summary.seats_available+' available)';
+
+  try{
+    var flags=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/utilization-flags');
+    document.getElementById('dk-flags').textContent=flags.length;
+    document.getElementById('nb-utilization').textContent=flags.length;
+    document.getElementById('dash-flag-preview').innerHTML=flags.slice(0,3).map(renderFlagCard).join('')||'<div style="font-size:13px;color:var(--dim)">No open flags — every employee is within the normal utilization band.</div>';
+  }catch(err){connectionBanner(err);}
+}
+
+// ══════════════════════════════════════════════════════════════
+// Employees
+// ══════════════════════════════════════════════════════════════
+async function addEmployee(){
+  if(!ACCOUNT)return;
+  var name=document.getElementById('ef-name').value.trim();
+  var email=document.getElementById('ef-email').value.trim();
+  var userId=document.getElementById('ef-userid').value.trim()||email;
+  if(!name||!email){return;}
+  var errEl=document.getElementById('employee-form-err');
+  errEl.style.display='none';
+  try{
+    await api('POST','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/employees',{user_id:userId,full_name:name,email:email});
+    toggleForm('employee-form');
+    document.getElementById('ef-name').value='';document.getElementById('ef-email').value='';document.getElementById('ef-userid').value='';
+    await renderEmployees();await renderDash();
+  }catch(err){
+    if(err.status===409){
+      errEl.style.display='block';
+      errEl.textContent='409 — '+err.detail;
+    } else {
+      connectionBanner(err);
+    }
+  }
+}
+
+async function removeEmployee(memberProfileId){
+  try{
+    await api('POST','/api/v1/subscription/corporate/employees/'+memberProfileId+'/remove');
+    await renderEmployees();await renderDash();
+  }catch(err){connectionBanner(err);}
+}
+
+async function renderEmployees(){
+  if(!ACCOUNT)return;
+  var employees;
+  try{employees=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/employees');}
+  catch(err){connectionBanner(err);return;}
+
+  document.getElementById('employee-rows').innerHTML=employees.map(function(e){
+    return '<div class="tr" style="grid-template-columns:1.4fr 1fr 90px 90px 90px">'
+      +'<div><div class="tc" style="font-size:13px">'+e.full_name+'</div><div class="tm" style="font-size:11px">'+e.email+'</div></div>'
+      +'<span class="tm">'+fmtClassName(e.mobility_class)+'</span>'
+      +'<span class="tc">'+e.gu_balance.toLocaleString()+'</span>'
+      +'<span class="tc">'+fmtMoney(e.lifetime_value_usd)+'</span>'
+      +'<button class="btn btn-s btn-d" onclick="removeEmployee(\''+e.id+'\')">Remove</button>'
+      +'</div>';
+  }).join('')||'<div style="padding:14px;font-size:13px;color:var(--dim)">No employees on this account yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Utilization — the AI-native piece. The scan itself is autonomous;
+// resolving a flag is the corporate admin's own cost decision.
+// ══════════════════════════════════════════════════════════════
+function renderFlagCard(f){
+  var pill=f.flag_type==='underutilizing'?'<span class="p pa2">Underutilizing</span>':'<span class="p pb">Overutilizing</span>';
+  return '<div class="card"><div class="ch"><span class="ct">Employee '+f.member_profile_id.slice(0,8)+'</span>'+pill+'</div>'
+    +'<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+f.trips_last_30d+' trip(s) in the last 30 days</div><div class="aip-body">'+f.reasoning+'</div></div>'
+    +'<button class="btn btn-s btn-g" style="margin-top:10px" onclick="resolveFlag(\''+f.id+'\')">Mark resolved</button></div>';
+}
+
+async function renderUtilization(){
+  if(!ACCOUNT)return;
+  var employees;
+  try{employees=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/employees');}
+  catch(err){connectionBanner(err);return;}
+
+  document.getElementById('trip-count-inputs').innerHTML=employees.map(function(e){
+    return '<div style="display:flex;align-items:center;gap:10px"><span class="tm" style="flex:1;font-size:13px">'+e.full_name+'</span><input class="fi" id="trips-'+e.id+'" placeholder="trips in last 30 days" style="width:180px" type="number" value="8"></div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">Add employees first to run a utilization scan.</div>';
+
+  await renderFlagList();
+}
+
+async function renderFlagList(){
+  var flags;
+  try{flags=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/utilization-flags');}
+  catch(err){connectionBanner(err);return;}
+  document.getElementById('utilization-cards').innerHTML=flags.map(renderFlagCard).join('')||'<div style="font-size:13px;color:var(--dim)">No open flags.</div>';
+  document.getElementById('nb-utilization').textContent=flags.length;
+}
+
+async function runUtilizationEvaluation(){
+  if(!ACCOUNT)return;
+  var employees;
+  try{employees=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/employees');}
+  catch(err){connectionBanner(err);return;}
+
+  var tripsByMember={};
+  employees.forEach(function(e){
+    var input=document.getElementById('trips-'+e.id);
+    tripsByMember[e.id]=input?parseInt(input.value)||0:0;
+  });
+
+  try{
+    // Fully autonomous: the scan and the flagging happen in the same
+    // backend call — no separate "apply" step for the AI's own output.
+    await api('POST','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/evaluate-utilization',{trips_by_member:tripsByMember});
+    await renderFlagList();
+    await renderDash();
+  }catch(err){connectionBanner(err);}
+}
+
+async function resolveFlag(flagId){
+  try{
+    await api('POST','/api/v1/subscription/corporate/utilization-flags/'+flagId+'/resolve',{resolved_by:CURRENT_USER});
+    await renderFlagList();await renderDash();
+  }catch(err){connectionBanner(err);}
+}
+
+// ══════════════════════════════════════════════════════════════
+// Billing
+// ══════════════════════════════════════════════════════════════
+async function renderBilling(){
+  if(!ACCOUNT)return;
+  var summary;
+  try{summary=await api('GET','/api/v1/subscription/corporate/accounts/'+ORGANIZATION_ID+'/billing-summary');}
+  catch(err){connectionBanner(err);return;}
+
+  document.getElementById('billing-account-details').innerHTML=
+    '<div style="display:flex;justify-content:space-between"><span class="tm">Company</span><span class="tc">'+ACCOUNT.company_name+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Billing contact</span><span class="tc">'+ACCOUNT.billing_contact_email+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Billing type</span><span class="tc">'+fmtClassName(summary.billing_type)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Status</span><span class="p '+(ACCOUNT.status==='active'?'pg':'pr')+'">'+ACCOUNT.status+'</span></div>';
+
+  document.getElementById('billing-seat-details').innerHTML=
+    '<div style="display:flex;justify-content:space-between"><span class="tm">Seats used</span><span class="tc">'+summary.seats_used+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Seats available</span><span class="tc">'+summary.seats_available+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Seat limit</span><span class="tc">'+summary.seat_limit+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Total GU across employees</span><span class="tc">'+summary.total_gu_balance.toLocaleString()+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span class="tm">Total lifetime value</span><span class="tc">'+fmtMoney(summary.total_lifetime_value_usd)+'</span></div>';
+}
+
+async function rerenderAll(){
+  var resolved=await resolveAccount();
+  if(!resolved)return;
+  await renderDash();
+  await renderEmployees();
+  await renderUtilization();
+  await renderBilling();
+}
+rerenderAll();
+</script>
+</body>
+</html>

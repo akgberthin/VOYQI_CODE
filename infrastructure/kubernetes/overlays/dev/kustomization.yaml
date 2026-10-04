@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: voyqi
+
+resources:
+  - ../../base
+
+namePrefix: ""
+nameSuffix: ""
+
+patches:
+  # Dev runs single replicas of everything to keep the GKE node pool small.
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/part-of=voyqi-mobility-os"
+
+images:
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-dev/voyqi/api-gateway
+    newTag: dev
+
+configMapGenerator:
+  - name: gateway-config
+    literals:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug

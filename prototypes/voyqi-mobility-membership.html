@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI — Mobility Membership Subscription</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --amber:#c9a84c;--purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --black-gold:#e8c874;
+  --sw:224px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.wordmark span{color:var(--mid);font-weight:500;letter-spacing:.04em;margin-left:6px;font-size:12px}
+.tb-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim);flex-shrink:0}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.tbx{width:30px;height:30px;border-radius:7px;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+.tbx:hover{background:var(--surface3)}
+.tbx i{font-size:15px;color:var(--mid)}
+.nbadge{position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--gold);border-radius:50%;border:1.5px solid var(--surface)}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;cursor:pointer}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.sfoot{margin-top:auto;padding:10px 13px;border-top:0.5px solid var(--border)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:10px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center;transition:background .1s}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:var(--surface2)}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pp{background:var(--purple-dim);color:var(--purple);border:0.5px solid rgba(123,108,212,.3)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.pblack{background:linear-gradient(135deg,#2a2a2a,#0a0a0a);color:var(--black-gold);border:0.5px solid rgba(232,200,116,.4)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-gh{background:none;border:0.5px solid var(--border);color:var(--dim)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--gold-border)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.at{font-family:monospace;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.dv{height:0.5px;background:var(--border);margin:13px 0}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:14px}
+.aip-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--gold)}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.noai{background:var(--surface2);border:0.5px dashed var(--border2);border-radius:10px;padding:12px;font-size:12px;color:var(--dim)}
+.blackcard{background:linear-gradient(135deg,#1a1a1a,#0a0a0a);border:0.5px solid rgba(232,200,116,.35);border-radius:11px;padding:15px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI<span>Mobility Membership</span></span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx">AI-Native Subscription Platform</span>
+  <div class="tb-right">
+    <div class="tbx" onclick="sp('billing')"><i class="ti ti-receipt"></i><div class="nbadge" id="topbar-badge"></div></div>
+    <div class="tbx"><i class="ti ti-settings"></i></div>
+    <div class="upill"><div class="uav">MO</div><div><div class="uname">Membership Ops</div><div class="urole">subscription_admin</div></div></div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Overview</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+
+  <div class="ss">MOB-001</div>
+  <div class="ni" id="n-members" onclick="sp('members')"><i class="ti ti-users"></i>Members &amp; KYC</div>
+
+  <div class="ss">MOB-002 / 003</div>
+  <div class="ni" id="n-enrollment" onclick="sp('enrollment')"><i class="ti ti-clipboard-check"></i>Plans &amp; enrollment</div>
+
+  <div class="ss">MOB-007</div>
+  <div class="ni" id="n-lifecycle" onclick="sp('lifecycle')"><i class="ti ti-refresh"></i>Subscription lifecycle</div>
+
+  <div class="ss">MOB-004</div>
+  <div class="ni" id="n-billing" onclick="sp('billing')"><i class="ti ti-receipt"></i>Billing &amp; invoicing<span class="nb nb-r" id="nb-billing">0</span></div>
+
+  <div class="ss">MOB-005</div>
+  <div class="ni" id="n-gu" onclick="sp('gu')"><i class="ti ti-coin"></i>Growth Units economy</div>
+
+  <div class="ss">MOB-006</div>
+  <div class="ni" id="n-swap" onclick="sp('swap')"><i class="ti ti-replace"></i>Vehicle swap</div>
+  <div class="ni" id="n-upgrade" onclick="sp('upgrade')"><i class="ti ti-arrow-up-circle"></i>Upgrade intelligence</div>
+  <div class="ni" id="n-deposits" onclick="sp('deposits')"><i class="ti ti-shield-lock"></i>Deposit holds<span class="nb nb-r" id="nb-deposits">0</span></div>
+
+  <div class="ss">MOB-008</div>
+  <div class="ni" id="n-travel" onclick="sp('travel')"><i class="ti ti-plane"></i>Travel &amp; continuity</div>
+
+  <div class="ss">MOB-009 / 010</div>
+  <div class="ni" id="n-black" onclick="sp('black')"><i class="ti ti-crown"></i>VOYQI Black &amp; concierge</div>
+
+  <div class="sfoot">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="uav" style="width:26px;height:26px;font-size:10px">MO</div>
+      <div><div style="font-size:12px;font-weight:500;color:var(--text)">Membership Ops</div><div style="font-size:11px;color:var(--dim)">subscription_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+
+<div class="page on" id="p-dash">
+<div class="ph"><div class="pt">Mobility Membership dashboard</div><div class="ps">Members · Enrollment · Lifecycle · Billing · GU Economy · Swap · Continuity · Black — <span class="ld"></span>Live</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Active members</div><div class="kv" id="dk-members">—</div><div class="kd tg">KYC verified</div></div>
+  <div class="kpi kpi-b"><div class="kl">Active subscriptions</div><div class="kv" id="dk-subs">—</div><div class="kd tb2">Billing normally</div></div>
+  <div class="kpi kpi-red"><div class="kl">Past-due invoices</div><div class="kv" id="dk-pastdue">—</div><div class="kd trr">Dunning exhausted</div></div>
+  <div class="kpi kpi-green"><div class="kl">Open swap requests</div><div class="kv" id="dk-swaps">—</div><div class="kd tr2">Awaiting fulfillment</div></div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Member Experience Agent activity</span></div>
+    <div id="dash-feed" style="display:flex;flex-direction:column;gap:1px;max-height:280px;overflow-y:auto"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Members by mobility class</span></div>
+    <div style="position:relative;height:230px"><canvas id="chartClass" role="img" aria-label="Members by class">Class chart</canvas></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-members">
+<div class="ph"><div class="pt">Member Directory &amp; KYC</div><div class="ps">MOB-001 · KYC verification is a human/vendor-confirmed fact — never AI-inferred. Churn-risk and upgrade-readiness scores are the Member Experience Agent's output, a signal for retention outreach, never an automatic action against anyone's account.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('member-form')"><i class="ti ti-plus"></i>New member</button></div></div>
+<div class="card" id="member-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Full name</label><input class="fi" id="mf-name" placeholder="Priya Sharma"></div>
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="mf-email" placeholder="priya@example.com"></div>
+    <div class="fg"><label class="fl">User ID</label><input class="fi" id="mf-userid" placeholder="usr-1042"></div>
+  </div>
+  <button class="btn btn-g" onclick="createMember()"><i class="ti ti-check"></i>Create member profile</button>
+</div>
+<div class="two" style="align-items:start">
+  <div>
+    <div class="sec"><span class="st">Members</span></div>
+    <div class="tw">
+      <div class="th" style="grid-template-columns:1.2fr 1fr 1fr 90px"><span>Name</span><span>KYC</span><span>Class</span><span></span></div>
+      <div id="member-rows"></div>
+    </div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Member Experience scores</span></div>
+    <div id="member-score-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-enrollment">
+<div class="ph"><div class="pt">Plan Catalog &amp; Enrollment Pipeline</div><div class="ps">MOB-002/003 · Plan pricing and class equivalency are configured facts. Application review is always a human decision — approving/rejecting who becomes a member is not something this platform automates.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('plan-form')"><i class="ti ti-plus"></i>New plan</button><button class="btn btn-o" onclick="toggleForm('app-form')"><i class="ti ti-file-plus"></i>New application</button></div></div>
+<div class="card" id="plan-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Mobility class</label><select class="fs" id="pf-class"></select></div>
+    <div class="fg"><label class="fl">Market</label><input class="fi" id="pf-market" placeholder="South Florida"></div>
+    <div class="fg"><label class="fl">Monthly price ($)</label><input class="fi" id="pf-price" placeholder="899"></div>
+  </div>
+  <button class="btn btn-g" onclick="createPlan()"><i class="ti ti-check"></i>Create plan</button>
+</div>
+<div class="card" id="app-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Applicant name</label><input class="fi" id="af-name" placeholder="Jane Doe"></div>
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="af-email" placeholder="jane@example.com"></div>
+    <div class="fg"><label class="fl">Requested class</label><select class="fs" id="af-class"></select></div>
+  </div>
+  <div class="fg"><label class="fl">Market</label><input class="fi" id="af-market" placeholder="South Florida"></div>
+  <button class="btn btn-g" onclick="submitApplication()"><i class="ti ti-check"></i>Submit application</button>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Plan catalog</span></div>
+    <div id="plan-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Applications</span></div>
+    <div id="application-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-lifecycle">
+<div class="ph"><div class="pt">Subscription Lifecycle</div><div class="ps">MOB-007 · Pausing holds the class with no charge. Cancelling always requires a reason — and the instant it's initiated, the Member Experience Agent evaluates a win-back offer automatically, reading the actual reason rather than applying a blanket discount.</div></div>
+<div id="subscription-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-billing">
+<div class="ph"><div class="pt">Billing &amp; Invoicing</div><div class="ps">MOB-004 · Entirely deterministic. Dunning is a plain retry counter — past 3 failed attempts an invoice goes PAST_DUE for a human collections workflow rather than retried forever. No AI anywhere in this module's math, the same principle as payroll and e-contracting elsewhere on this platform.</div></div>
+<div class="krow">
+  <div class="kpi kpi-b"><div class="kl">Open</div><div class="kv" id="bk-open">—</div></div>
+  <div class="kpi kpi-green"><div class="kl">Paid</div><div class="kv" id="bk-paid">—</div></div>
+  <div class="kpi kpi-red"><div class="kl">Past due</div><div class="kv" id="bk-pastdue">—</div></div>
+  <div class="kpi kpi-g"><div class="kl">Refunded</div><div class="kv" id="bk-refunded">—</div></div>
+</div>
+<div id="invoice-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-gu">
+<div class="ph"><div class="pt">Growth Unit (GU) Economy Console</div><div class="ps">MOB-005 · Fraud detection is a deterministic rolling-window count — more than the threshold of earn events in the window flags the entry for review. The flagged entry still completes (the member still gets their GU); the flag is what routes to compliance, never an automatic block.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('gu-earn-form')"><i class="ti ti-plus"></i>Earn GU</button><button class="btn btn-o" onclick="toggleForm('gu-redeem-form')"><i class="ti ti-gift"></i>Redeem GU</button></div></div>
+<div class="card" id="gu-earn-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="guf-member"></select></div>
+    <div class="fg"><label class="fl">Trigger</label><select class="fs" id="guf-trigger"><option value="low_mileage">Low mileage</option><option value="pause">Pause</option><option value="referral">Referral</option><option value="off_peak">Off-peak</option><option value="profile_completion">Profile completion</option><option value="rating">Rating</option><option value="anniversary">Anniversary</option></select></div>
+    <div class="fg"><label class="fl">Amount</label><input class="fi" id="guf-amount" placeholder="150"></div>
+  </div>
+  <button class="btn btn-g" onclick="earnGU()"><i class="ti ti-check"></i>Record earn</button>
+  <div id="gu-earn-result" style="margin-top:10px"></div>
+</div>
+<div class="card" id="gu-redeem-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="gurf-member"></select></div>
+    <div class="fg"><label class="fl">Catalog item</label><select class="fs" id="gurf-item"></select></div>
+  </div>
+  <button class="btn btn-g" onclick="redeemGU()"><i class="ti ti-check"></i>Redeem</button>
+  <div id="gu-redeem-result" style="margin-top:10px"></div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Redemption catalog</span></div>
+    <div id="gu-catalog-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">GU ledger (append-only)</span></div>
+    <div id="gu-ledger-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-swap">
+<div class="ph"><div class="pt">Vehicle Swap &amp; Request Queue</div><div class="ps">MOB-006 · Requesting a swap stages a fleet-svc transfer PROPOSED, never dispatched — the same human-dispatch requirement whether the transfer originated from a member request or an AI recommendation elsewhere on the platform.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('swap-form')"><i class="ti ti-plus"></i>New swap request</button></div></div>
+<div class="card" id="swap-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="swf-member"></select></div>
+    <div class="fg"><label class="fl">Requested class</label><select class="fs" id="swf-class"></select></div>
+  </div>
+  <button class="btn btn-g" onclick="requestSwap()"><i class="ti ti-check"></i>Request swap (24h SLA starts now)</button>
+</div>
+<div id="swap-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-upgrade">
+<div class="ph"><div class="pt">Upgrade Intelligence</div><div class="ps">MOB-011 · Detecting a pattern and offering an upgrade case never touches billing — fully autonomous. Actually enacting the upgrade (which raises what the member pays) is always a separate, member-confirmed acceptance; the agent that offers a case never accepts it on the member's behalf.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('acr-form')"><i class="ti ti-plus"></i>Log above-class request</button></div></div>
+<div class="card" id="acr-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="acrf-member"></select></div>
+    <div class="fg"><label class="fl">Requested class (above their own)</label><select class="fs" id="acrf-class"></select></div>
+  </div>
+  <button class="btn btn-g" onclick="logAboveClassRequest()"><i class="ti ti-check"></i>Log request (checks pattern automatically)</button>
+  <div id="acr-result" style="margin-top:10px"></div>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div>
+    <div class="sec"><span class="st">Above-class request signal, by member</span></div>
+    <div id="acr-summary-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Offered upgrade cases — awaiting member acceptance</span></div>
+    <div id="upgrade-offered-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+<div class="sec"><span class="st">Resolved cases</span></div>
+<div id="upgrade-resolved-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<div class="page" id="p-deposits">
+<div class="ph"><div class="pt">Deposit Holds</div><div class="ps">MOB-012 · $5,000–$25,000 holds for Luxury Plus / Performance Plus. Placement and full release are a fixed table lookup by class — deterministic policy, not a judgment call, so both execute autonomously. Capturing part of a deposit is the one genuine financial-risk judgment call and always requires human approval, regardless of amount or AI risk score.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('dep-form')"><i class="ti ti-plus"></i>Place deposit hold</button></div></div>
+<div class="card" id="dep-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="depf-member"></select></div>
+    <div class="fg"><label class="fl">Mobility class</label><select class="fs" id="depf-class"><option value="luxury_plus">Luxury Plus — $10,000</option><option value="performance_plus">Performance Plus — $15,000</option></select></div>
+  </div>
+  <button class="btn btn-g" onclick="placeDepositHold()"><i class="ti ti-check"></i>Place hold (fixed amount by class — no approval needed)</button>
+  <div id="dep-result" style="margin-top:10px"></div>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div>
+    <div class="sec"><span class="st">Active holds</span></div>
+    <div id="dep-active-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Financial risk — held for human review</span></div>
+    <div id="dep-review-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+<div class="sec"><span class="st">Resolved holds</span></div>
+<div id="dep-resolved-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<div class="page" id="p-travel">
+<div class="ph"><div class="pt">Travel Declaration &amp; Mobility Continuity</div><div class="ps">MOB-008 · "Your Mobility Travels With You" — a declared trip resolves the destination market's equivalent class via configured equivalency rules, falling back to the member's own class unchanged if no rule exists yet, so continuity never fails outright over a missing configuration.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('travel-form')"><i class="ti ti-plus"></i>Declare travel</button></div></div>
+<div class="card" id="travel-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="tf-member"></select></div>
+    <div class="fg"><label class="fl">Destination market</label><input class="fi" id="tf-market" placeholder="Austin, TX"></div>
+  </div>
+  <button class="btn btn-g" onclick="declareTravel()"><i class="ti ti-check"></i>Declare (resolves equivalent class automatically)</button>
+  <div id="travel-result" style="margin-top:10px"></div>
+</div>
+<div id="travel-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-black">
+<div class="ph"><div class="pt">VOYQI Black&trade; &amp; White-Glove Concierge</div><div class="ps">MOB-009/010 · VOYQI Black is a separate brand, never a membership tier — its invitations and entitlements are deliberately kept in their own tables, never reusing the Plan model. Concierge journeys track whether the AI initiated proactively, the member requested reactively, or a concierge is assisting.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('black-invite-form')"><i class="ti ti-crown"></i>Invite to Black</button><button class="btn btn-o" onclick="toggleForm('journey-form')"><i class="ti ti-map"></i>New concierge journey</button></div></div>
+<div class="card" id="black-invite-form" style="display:none;margin-bottom:14px">
+  <div class="fg"><label class="fl">Member</label><select class="fs" id="bif-member"></select></div>
+  <button class="btn btn-g" onclick="inviteToBlack()"><i class="ti ti-check"></i>Send invitation</button>
+</div>
+<div class="card" id="journey-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Member</label><select class="fs" id="jf-member"></select></div>
+    <div class="fg"><label class="fl">Journey type</label><input class="fi" id="jf-type" placeholder="Airport pickup"></div>
+    <div class="fg"><label class="fl">Mode</label><select class="fs" id="jf-mode"><option value="proactive">Proactive (AI-initiated)</option><option value="reactive">Reactive (member-requested)</option><option value="assisted">Assisted (concierge + AI)</option></select></div>
+  </div>
+  <button class="btn btn-g" onclick="createJourney()"><i class="ti ti-check"></i>Create journey</button>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div>
+    <div class="sec"><span class="st">Black invitations</span></div>
+    <div id="black-invitation-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Entitlement catalog</span></div>
+    <div id="black-entitlement-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+</div>
+<div class="sec"><span class="st">Active concierge journeys</span></div>
+<div id="journey-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+var PAGES=['dash','members','enrollment','lifecycle','billing','gu','swap','upgrade','deposits','travel','black'];
+function sp(id){
+  PAGES.forEach(function(p){
+    var pg=document.getElementById('p-'+p);
+    var nv=document.getElementById('n-'+p);
+    if(pg)pg.classList.remove('on');
+    if(nv)nv.classList.remove('on');
+  });
+  document.getElementById('p-'+id).classList.add('on');
+  var nv=document.getElementById('n-'+id);
+  if(nv)nv.classList.add('on');
+  document.querySelector('.workspace').scrollTop=0;
+}
+function toggleForm(id){var el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+var uid=1000;
+function nextId(){return 'id-'+(uid++);}
+function populateSelect(sel,items,labelFn,valueFn){
+  var prior=sel.value;
+  sel.innerHTML=items.map(function(it){return '<option value="'+valueFn(it)+'">'+labelFn(it)+'</option>';}).join('');
+  if(prior)sel.value=prior;
+}
+
+var CLASS_LABELS={urban:'Urban',family:'Family',executive:'Executive',adventure:'Adventure',luxury:'Luxury',performance:'Performance',luxury_plus:'Luxury Plus',performance_plus:'Performance Plus'};
+var CLASS_LIST=Object.keys(CLASS_LABELS);
+var KYC_LABELS={pending:'Pending',verified:'Verified',failed:'Failed'};
+
+var MEMBERS=[
+  {id:'mem-1',full_name:'Priya Sharma',email:'priya@example.com',user_id:'usr-1001',kyc_status:'verified',mobility_class:'executive',service_level:null,gu_balance:850,lifetime_value_usd:12400,churn_risk_score:null,upgrade_readiness_score:null,is_voyqi_black:false},
+  {id:'mem-2',full_name:'Marcus Reyes',email:'marcus@example.com',user_id:'usr-1002',kyc_status:'verified',mobility_class:'luxury',service_level:'gold_plus',gu_balance:2100,lifetime_value_usd:38900,churn_risk_score:null,upgrade_readiness_score:null,is_voyqi_black:false},
+];
+var PLANS=[
+  {id:'plan-1',mobility_class:'executive',market:'South Florida',monthly_price_usd:899,is_invitation_only:false},
+  {id:'plan-2',mobility_class:'luxury',market:'South Florida',monthly_price_usd:1499,is_invitation_only:false},
+];
+var APPLICATIONS=[];
+var SUBSCRIPTIONS=[
+  {id:'sub-1',member_profile_id:'mem-1',plan_id:'plan-1',status:'active',cancellation_reason:'',winback_offer:null},
+  {id:'sub-2',member_profile_id:'mem-2',plan_id:'plan-2',status:'active',cancellation_reason:'',winback_offer:null},
+];
+var INVOICES=[];
+var GU_LEDGER=[];
+var GU_CATALOG=[
+  {id:'gu-item-1',key:'weekend_upgrade',name:'Weekend class upgrade',gu_cost:500,is_active:true},
+  {id:'gu-item-2',key:'airport_transfer',name:'Complimentary airport transfer',gu_cost:250,is_active:true},
+];
+var SWAP_REQUESTS=[];
+var TRAVEL_DECLARATIONS=[];
+var CLASS_EQUIVALENCIES={'South Florida->Austin, TX':{urban:'urban',executive:'executive',luxury:'luxury_plus'}};
+var BLACK_INVITATIONS=[];
+var BLACK_ENTITLEMENTS=[
+  {id:'ent-1',key:'unlimited_class_swap',name:'Unlimited class swap',description:'No SLA queue, always first in line'},
+  {id:'ent-2',key:'global_concierge',name:'24/7 global concierge',description:'Proactive journey planning worldwide'},
+];
+var CONCIERGE_JOURNEYS=[];
+
+var ABOVE_CLASS_REQUESTS=[]; // {id, member_id, subscribed_class, requested_class, created_at}
+var UPGRADE_CASES=[]; // {id, member_id, subscription_id, current_class, recommended_class, request_count, reasoning, status: offered|accepted|declined, created_at, resolved_at}
+var UPGRADE_PATTERN_THRESHOLD=3, UPGRADE_PATTERN_WINDOW_DAYS=30;
+
+var DEPOSIT_HOLDS=[]; // {id, member_id, mobility_class, amount_usd, captured_amount_usd, capture_reason, status: placed|released|capture_pending_review|captured, risk_score, placed_at, resolved_at}
+var DEPOSIT_AMOUNTS={luxury_plus:10000, performance_plus:15000};
+
+var GU_FRAUD_WINDOW_HOURS=24, GU_FRAUD_EARN_COUNT_THRESHOLD=5;
+var MAX_DUNNING_RETRIES=3;
+var SWAP_SLA_HOURS=24;
+
+var DFEED=[
+  {a:'member-experience-agent',m:'Churn risk assessed — Priya Sharma, score 15/100 (low risk)',ts:'2h ago'},
+];
+
+function memberById(id){return MEMBERS.find(function(m){return m.id===id;});}
+function planById(id){return PLANS.find(function(p){return p.id===id;});}
+function subById(id){return SUBSCRIPTIONS.find(function(s){return s.id===id;});}
+
+function populateMemberSelects(){
+  ['guf-member','gurf-member','swf-member','tf-member','bif-member','jf-member','acrf-member','depf-member'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)populateSelect(el,MEMBERS,function(m){return m.full_name;},function(m){return m.id;});
+  });
+  ['pf-class','af-class','swf-class'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)populateSelect(el,CLASS_LIST.map(function(c){return {id:c};}),function(c){return CLASS_LABELS[c.id];},function(c){return c.id;});
+  });
+  var acrClassSel=document.getElementById('acrf-class');
+  if(acrClassSel)populateSelect(acrClassSel,CLASS_LIST.map(function(c){return {id:c};}),function(c){return CLASS_LABELS[c.id];},function(c){return c.id;});
+  var itemSel=document.getElementById('gurf-item');
+  if(itemSel)populateSelect(itemSel,GU_CATALOG.filter(function(i){return i.is_active;}),function(i){return i.name+' ('+i.gu_cost+' GU)';},function(i){return i.id;});
+}
+
+function renderMembers(){
+  document.getElementById('member-rows').innerHTML=MEMBERS.map(function(m){
+    var kycPill={pending:'pb',verified:'pg',failed:'pr'}[m.kyc_status];
+    return '<div class="tr" style="grid-template-columns:1.2fr 1fr 1fr 90px">'
+      +'<span class="tc" style="font-size:13px">'+m.full_name+(m.is_voyqi_black?' <span class="p pblack" style="margin-left:4px"><i class="ti ti-crown" style="font-size:10px"></i>BLACK</span>':'')+'</span>'
+      +'<span class="p '+kycPill+'">'+KYC_LABELS[m.kyc_status]+'</span>'
+      +'<span class="tm" style="font-size:12px">'+(m.mobility_class?CLASS_LABELS[m.mobility_class]:'—')+'</span>'
+      +'<span>'+(m.kyc_status==='pending'?'<button class="btn btn-s btn-g" onclick="verifyKyc(\''+m.id+'\')">Verify</button>':'')+'</span>'
+      +'</div>';
+  }).join('');
+
+  document.getElementById('member-score-cards').innerHTML=MEMBERS.map(function(m){
+    var scoreBlock=m.churn_risk_score!==null?
+      ('<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Member Experience Agent</div><div class="aip-body">Churn risk: <b style="color:'+(m.churn_risk_score>=50?'var(--red)':'var(--green)')+'">'+m.churn_risk_score+'/100</b><br>'+m.churn_reasoning+'</div></div>')
+      :'<button class="btn btn-s btn-g" onclick="assessChurnRisk(\''+m.id+'\')"><i class="ti ti-sparkles"></i>Evaluate churn risk</button>';
+    return '<div class="card"><div class="ct" style="margin-bottom:8px">'+m.full_name+'</div>'+scoreBlock+'</div>';
+  }).join('');
+
+  document.getElementById('dk-members').textContent=MEMBERS.filter(function(m){return m.kyc_status==='verified';}).length;
+  renderClassChart();
+}
+function createMember(){
+  var name=document.getElementById('mf-name').value.trim();
+  if(!name)return;
+  var email=document.getElementById('mf-email').value.trim();
+  var userId=document.getElementById('mf-userid').value.trim();
+  MEMBERS.push({id:nextId(),full_name:name,email:email,user_id:userId,kyc_status:'pending',mobility_class:null,service_level:null,gu_balance:0,lifetime_value_usd:0,churn_risk_score:null,upgrade_readiness_score:null,is_voyqi_black:false});
+  toggleForm('member-form');
+  document.getElementById('mf-name').value='';document.getElementById('mf-email').value='';document.getElementById('mf-userid').value='';
+  renderMembers();populateMemberSelects();
+}
+function verifyKyc(id){
+  var m=memberById(id);
+  m.kyc_status='verified';
+  renderMembers();
+}
+function deterministicChurnScore(daysIdle,pauseCount,supportComplaints,guEarnEvents){
+  var score=0,drivers=[];
+  if(daysIdle>=30){score+=40;drivers.push(daysIdle+' days since last use');}
+  else if(daysIdle>=14){score+=20;drivers.push(daysIdle+' days since last use');}
+  if(pauseCount>=2){score+=25;drivers.push(pauseCount+' pauses in the last year');}
+  if(supportComplaints>=2){score+=25;drivers.push(supportComplaints+' support complaints in the last 90 days');}
+  if(guEarnEvents===0){score+=10;drivers.push('no GU earn activity in the last 90 days');}
+  score=Math.max(0,Math.min(100,score));
+  return {score:score,reasoning:'[deterministic fallback] Score '+score+'/100. Drivers: '+(drivers.length?drivers.join('; '):'no elevated-risk signals')+'.'};
+}
+function assessChurnRisk(id){
+  var m=memberById(id);
+  var daysIdle=Math.floor(Math.random()*45);
+  var pauseCount=Math.floor(Math.random()*3);
+  var result=deterministicChurnScore(daysIdle,pauseCount,0,GU_LEDGER.filter(function(g){return g.member_profile_id===id&&g.entry_type==='earn';}).length);
+  m.churn_risk_score=result.score;
+  m.churn_reasoning=result.reasoning;
+  DFEED.unshift({a:'member-experience-agent',m:'Churn risk assessed — '+m.full_name+', score '+result.score+'/100',ts:'now'});
+  renderMembers();renderFeed();
+}
+
+function renderEnrollment(){
+  document.getElementById('plan-cards').innerHTML=PLANS.map(function(p){
+    return '<div class="card"><div class="ch"><span class="ct">'+CLASS_LABELS[p.mobility_class]+'</span>'+(p.is_invitation_only?'<span class="p pa2">Invitation-only</span>':'')+'</div>'
+      +'<div style="font-size:12px;color:var(--mid)">'+p.market+' · $'+p.monthly_price_usd+'/month</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No plans yet.</div>';
+
+  document.getElementById('application-cards').innerHTML=APPLICATIONS.map(function(a){
+    var pill={submitted:'pb',under_review:'pa2',approved:'pg',rejected:'pr',enrolled:'pp'}[a.status];
+    var actions='';
+    if(a.status==='submitted')actions='<button class="btn btn-s btn-o" onclick="reviewApplication(\''+a.id+'\',\'under_review\')">Start review</button>';
+    else if(a.status==='under_review')actions='<button class="btn btn-s btn-g" onclick="reviewApplication(\''+a.id+'\',\'approved\')">Approve</button><button class="btn btn-s btn-d" onclick="reviewApplication(\''+a.id+'\',\'rejected\')">Reject</button>';
+    else if(a.status==='approved')actions='<button class="btn btn-s btn-g" onclick="enrollApplication(\''+a.id+'\')">Enroll member</button>';
+    return '<div class="card"><div class="ch"><span class="ct">'+a.applicant_name+'</span><span class="p '+pill+'">'+a.status.replace('_',' ')+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">'+CLASS_LABELS[a.requested_class]+' · '+a.market+'</div>'
+      +(actions?'<div>'+actions+'</div>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No applications yet.</div>';
+}
+function createPlan(){
+  var mclass=document.getElementById('pf-class').value;
+  var market=document.getElementById('pf-market').value.trim();
+  var price=parseFloat(document.getElementById('pf-price').value)||0;
+  if(!market)return;
+  PLANS.push({id:nextId(),mobility_class:mclass,market:market,monthly_price_usd:price,is_invitation_only:false});
+  toggleForm('plan-form');
+  document.getElementById('pf-market').value='';document.getElementById('pf-price').value='';
+  renderEnrollment();
+}
+function submitApplication(){
+  var name=document.getElementById('af-name').value.trim();
+  if(!name)return;
+  var email=document.getElementById('af-email').value.trim();
+  var reqClass=document.getElementById('af-class').value;
+  var market=document.getElementById('af-market').value.trim();
+  APPLICATIONS.push({id:nextId(),applicant_name:name,applicant_email:email,requested_class:reqClass,market:market,status:'submitted',member_profile_id:null});
+  toggleForm('app-form');
+  document.getElementById('af-name').value='';document.getElementById('af-email').value='';document.getElementById('af-market').value='';
+  renderEnrollment();
+}
+function reviewApplication(id,newStatus){
+  var a=APPLICATIONS.find(function(x){return x.id===id;});
+  a.status=newStatus;
+  renderEnrollment();
+}
+function enrollApplication(id){
+  var a=APPLICATIONS.find(function(x){return x.id===id;});
+  var member={id:nextId(),full_name:a.applicant_name,email:a.applicant_email,user_id:'usr-'+nextId(),kyc_status:'pending',mobility_class:a.requested_class,service_level:null,gu_balance:0,lifetime_value_usd:0,churn_risk_score:null,upgrade_readiness_score:null,is_voyqi_black:false};
+  MEMBERS.push(member);
+  a.status='enrolled';
+  a.member_profile_id=member.id;
+  renderEnrollment();renderMembers();populateMemberSelects();
+}
+
+function deterministicWinbackOffer(reason){
+  var lower=reason.toLowerCase();
+  var nonRetainable=['moving','relocat','deceased','no longer need','no longer able'];
+  if(nonRetainable.some(function(t){return lower.indexOf(t)>=0;}))return null;
+  if(lower.indexOf('expensive')>=0||lower.indexOf('price')>=0||lower.indexOf('cost')>=0)return{offer:'20% off for 3 months',gu_bonus:500};
+  if(lower.indexOf('service')>=0||lower.indexOf('issue')>=0||lower.indexOf('problem')>=0)return{offer:'dedicated concierge follow-up + 250 GU goodwill credit',gu_bonus:250};
+  return{offer:'pause option (hold your class, no charge) instead of cancelling',gu_bonus:0};
+}
+function renderLifecycle(){
+  document.getElementById('subscription-cards').innerHTML=SUBSCRIPTIONS.map(function(s){
+    var m=memberById(s.member_profile_id);
+    var plan=planById(s.plan_id);
+    var pill={active:'pg',paused:'pa2',cancelled:'pd'}[s.status];
+    var body='<div class="ch"><div><div class="ct">'+m.full_name+'</div><div style="font-size:12px;color:var(--mid);margin-top:2px">'+CLASS_LABELS[plan.mobility_class]+' · $'+plan.monthly_price_usd+'/mo</div></div><span class="p '+pill+'">'+s.status+'</span></div>';
+    if(s.status==='active'){
+      body+='<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-s btn-o" onclick="pauseSubscription(\''+s.id+'\')">Pause</button><button class="btn btn-s btn-d" onclick="promptCancellation(\''+s.id+'\')">Cancel</button></div>';
+    } else if(s.status==='paused'){
+      body+='<div style="margin-top:8px"><button class="btn btn-s btn-g" onclick="resumeSubscription(\''+s.id+'\')">Resume</button></div>';
+    } else if(s.status==='cancelled'&&s.winback_offer!==undefined){
+      body+='<div class="aip" style="margin-top:8px"><div class="aip-h"><i class="ti ti-sparkles"></i>Member Experience Agent — win-back</div><div class="aip-body">'+(s.winback_offer?('Offer: <b style="color:var(--gold)">'+s.winback_offer.offer+'</b>'+(s.winback_offer.gu_bonus?' + '+s.winback_offer.gu_bonus+' GU':'')):'No offer — reason indicates a non-retainable cancellation')+'</div></div>';
+      if(s.winback_offer && !s.winback_accepted){
+        body+='<button class="btn btn-s btn-g" style="margin-top:8px" onclick="acceptWinback(\''+s.id+'\')">Accept win-back offer</button>';
+      }
+    }
+    return '<div class="card">'+body+'</div>';
+  }).join('');
+  document.getElementById('dk-subs').textContent=SUBSCRIPTIONS.filter(function(s){return s.status==='active';}).length;
+}
+function pauseSubscription(id){var s=subById(id);s.status='paused';renderLifecycle();}
+function resumeSubscription(id){var s=subById(id);s.status='active';renderLifecycle();}
+function promptCancellation(id){
+  var reason=prompt('Cancellation reason:','too expensive for my usage');
+  if(!reason)return;
+  var s=subById(id);
+  s.status='cancelled';
+  s.cancellation_reason=reason;
+  var offer=deterministicWinbackOffer(reason);
+  s.winback_offer=offer;
+  s.winback_accepted=false;
+  var m=memberById(s.member_profile_id);
+  DFEED.unshift({a:'member-experience-agent',m:'Win-back evaluated — '+m.full_name+(offer?': '+offer.offer:': no offer, non-retainable reason'),ts:'now'});
+  renderLifecycle();renderFeed();
+}
+function acceptWinback(id){
+  var s=subById(id);
+  s.status='active';
+  s.winback_accepted=true;
+  if(s.winback_offer&&s.winback_offer.gu_bonus){
+    GU_LEDGER.push({id:nextId(),member_profile_id:s.member_profile_id,entry_type:'earn',amount:s.winback_offer.gu_bonus,earn_trigger:'anniversary',redemption_item:'',flagged_for_fraud:false,created_at:new Date()});
+    memberById(s.member_profile_id).gu_balance+=s.winback_offer.gu_bonus;
+  }
+  renderLifecycle();renderGu();
+}
+
+function renderBilling(){
+  document.getElementById('invoice-cards').innerHTML=INVOICES.slice().reverse().map(function(inv){
+    var m=memberById(inv.member_profile_id);
+    var pill={open:'pb',paid:'pg',past_due:'pr',refunded:'pa2'}[inv.status];
+    var actions='';
+    if(inv.status==='open'){
+      actions='<button class="btn btn-s btn-g" onclick="markPaid(\''+inv.id+'\')">Mark paid</button><button class="btn btn-s btn-d" onclick="paymentFailed(\''+inv.id+'\')">Payment failed</button>';
+    } else if(inv.status==='paid'){
+      actions='<button class="btn btn-s btn-o" onclick="refundInvoice(\''+inv.id+'\')">Refund</button>';
+    }
+    return '<div class="card"><div class="ch"><span class="ct">'+m.full_name+'</span><span class="p '+pill+'">'+inv.status.replace('_',' ')+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">$'+inv.amount_usd.toFixed(2)+(inv.retry_count?' · retry '+inv.retry_count+'/'+MAX_DUNNING_RETRIES:'')+'</div>'
+      +(actions?'<div>'+actions+'</div>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No invoices yet. Create a subscription to generate one.</div>';
+
+  document.getElementById('bk-open').textContent=INVOICES.filter(function(i){return i.status==='open';}).length;
+  document.getElementById('bk-paid').textContent=INVOICES.filter(function(i){return i.status==='paid';}).length;
+  document.getElementById('bk-pastdue').textContent=INVOICES.filter(function(i){return i.status==='past_due';}).length;
+  document.getElementById('bk-refunded').textContent=INVOICES.filter(function(i){return i.status==='refunded';}).length;
+  var pastDue=INVOICES.filter(function(i){return i.status==='past_due';}).length;
+  document.getElementById('dk-pastdue').textContent=pastDue;
+  document.getElementById('nb-billing').textContent=pastDue;
+  document.getElementById('topbar-badge').style.display=pastDue?'block':'none';
+}
+function markPaid(id){var inv=INVOICES.find(function(x){return x.id===id;});inv.status='paid';renderBilling();}
+function paymentFailed(id){
+  var inv=INVOICES.find(function(x){return x.id===id;});
+  inv.retry_count+=1;
+  if(inv.retry_count>MAX_DUNNING_RETRIES){inv.status='past_due';}
+  renderBilling();
+}
+function refundInvoice(id){var inv=INVOICES.find(function(x){return x.id===id;});inv.status='refunded';renderBilling();}
+function generateInvoiceForSubscription(subId){
+  var s=subById(subId);
+  var plan=planById(s.plan_id);
+  INVOICES.push({id:nextId(),member_profile_id:s.member_profile_id,subscription_id:subId,amount_usd:plan.monthly_price_usd,status:'open',retry_count:0});
+}
+
+function renderGu(){
+  document.getElementById('gu-catalog-cards').innerHTML=GU_CATALOG.map(function(i){
+    return '<div class="card" style="padding:10px 13px"><div style="display:flex;justify-content:space-between"><span class="tc" style="font-size:13px">'+i.name+'</span><span class="tg">'+i.gu_cost+' GU</span></div></div>';
+  }).join('');
+  document.getElementById('gu-ledger-rows').innerHTML=GU_LEDGER.slice().reverse().map(function(g){
+    var m=memberById(g.member_profile_id);
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 70px"><span class="tc" style="font-size:12px">'+m.full_name+'</span><span class="tm" style="font-size:11px">'+(g.entry_type==='earn'?g.earn_trigger:g.redemption_item)+'</span><span class="'+(g.entry_type==='earn'?'tr2':'trr')+'">'+(g.entry_type==='earn'?'+':'-')+g.amount+(g.flagged_for_fraud?' <i class="ti ti-flag" style="color:var(--red)"></i>':'')+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No GU activity yet.</div>';
+}
+function earnGU(){
+  var memberId=document.getElementById('guf-member').value;
+  var trigger=document.getElementById('guf-trigger').value;
+  var amount=parseInt(document.getElementById('guf-amount').value)||0;
+  var m=memberById(memberId);
+  var recentCount=GU_LEDGER.filter(function(g){return g.member_profile_id===memberId&&g.entry_type==='earn'&&(new Date()-g.created_at)<GU_FRAUD_WINDOW_HOURS*3600*1000;}).length;
+  var flagged=recentCount>=GU_FRAUD_EARN_COUNT_THRESHOLD;
+  GU_LEDGER.push({id:nextId(),member_profile_id:memberId,entry_type:'earn',amount:amount,earn_trigger:trigger,redemption_item:'',flagged_for_fraud:flagged,created_at:new Date()});
+  m.gu_balance+=amount;
+  var resultEl=document.getElementById('gu-earn-result');
+  resultEl.innerHTML=flagged?
+    '<div style="background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:8px;padding:10px;font-size:12px;color:var(--red)">Earn completed and credited, but flagged for fraud review — '+recentCount+' earn events already in the last '+GU_FRAUD_WINDOW_HOURS+'h (threshold: '+GU_FRAUD_EARN_COUNT_THRESHOLD+').</div>'
+    :'<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">'+amount+' GU credited to '+m.full_name+'.</div>';
+  document.getElementById('guf-amount').value='';
+  renderGu();renderMembers();
+}
+function redeemGU(){
+  var memberId=document.getElementById('gurf-member').value;
+  var itemId=document.getElementById('gurf-item').value;
+  var item=GU_CATALOG.find(function(i){return i.id===itemId;});
+  var m=memberById(memberId);
+  var resultEl=document.getElementById('gu-redeem-result');
+  if(m.gu_balance<item.gu_cost){
+    resultEl.innerHTML='<div style="background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:8px;padding:10px;font-size:12px;color:var(--red)">Insufficient GU balance — '+m.full_name+' has '+m.gu_balance+', needs '+item.gu_cost+'.</div>';
+    return;
+  }
+  GU_LEDGER.push({id:nextId(),member_profile_id:memberId,entry_type:'redeem',amount:item.gu_cost,earn_trigger:null,redemption_item:item.name,flagged_for_fraud:false,created_at:new Date()});
+  m.gu_balance-=item.gu_cost;
+  resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">Redeemed '+item.name+' for '+m.full_name+'.</div>';
+  renderGu();renderMembers();
+}
+
+function renderSwap(){
+  document.getElementById('swap-cards').innerHTML=SWAP_REQUESTS.map(function(s){
+    var m=memberById(s.member_profile_id);
+    var isBreached=s.status!=='fulfilled'&&s.status!=='cancelled'&&new Date()>s.sla_due_at;
+    var effectiveStatus=isBreached&&s.status!=='sla_breached'?'sla_breached':s.status;
+    var pill={requested:'pb',staged:'pa2',fulfilled:'pg',sla_breached:'pr',cancelled:'pd'}[effectiveStatus];
+    var actions='';
+    if(s.status==='requested')actions='<button class="btn btn-s btn-g" onclick="stageSwap(\''+s.id+'\')">Stage (propose transfer)</button>';
+    else if(s.status==='staged')actions='<button class="btn btn-s btn-g" onclick="fulfillSwap(\''+s.id+'\')">Fulfill</button>';
+    return '<div class="card"><div class="ch"><span class="ct">'+m.full_name+'</span><span class="p '+pill+'">'+effectiveStatus.replace('_',' ')+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">Requested: '+CLASS_LABELS[s.requested_class]+' · SLA due '+s.sla_due_at.toLocaleString()+'</div>'
+      +(actions?'<div>'+actions+'</div>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No swap requests yet.</div>';
+  document.getElementById('dk-swaps').textContent=SWAP_REQUESTS.filter(function(s){return s.status==='requested'||s.status==='staged';}).length;
+}
+function requestSwap(){
+  var memberId=document.getElementById('swf-member').value;
+  var reqClass=document.getElementById('swf-class').value;
+  var slaDue=new Date(Date.now()+SWAP_SLA_HOURS*3600*1000);
+  SWAP_REQUESTS.push({id:nextId(),member_profile_id:memberId,requested_class:reqClass,status:'requested',sla_due_at:slaDue});
+  toggleForm('swap-form');
+  renderSwap();
+}
+function stageSwap(id){var s=SWAP_REQUESTS.find(function(x){return x.id===id;});s.status='staged';renderSwap();}
+function fulfillSwap(id){var s=SWAP_REQUESTS.find(function(x){return x.id===id;});s.status='fulfilled';renderSwap();}
+
+function resolveEquivalentClass(sourceClass,destinationMarket,sourceMarket){
+  var key=sourceMarket+'->'+destinationMarket;
+  var rule=CLASS_EQUIVALENCIES[key];
+  if(rule&&rule[sourceClass])return rule[sourceClass];
+  return sourceClass;
+}
+function renderTravel(){
+  document.getElementById('travel-cards').innerHTML=TRAVEL_DECLARATIONS.slice().reverse().map(function(t){
+    var m=memberById(t.member_profile_id);
+    return '<div class="card"><div class="ch"><span class="ct">'+m.full_name+'</span><span class="p '+(t.is_active?'pb':'pd')+'">'+(t.is_active?'active':'completed')+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">'+t.destination_market+' · resolved to <b style="color:var(--gold)">'+CLASS_LABELS[t.resolved_equivalent_class]+'</b></div>'
+      +(t.is_active?'<button class="btn btn-s btn-g" onclick="completeTravel(\''+t.id+'\')">Complete travel</button>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No travel declarations yet.</div>';
+}
+function declareTravel(){
+  var memberId=document.getElementById('tf-member').value;
+  var market=document.getElementById('tf-market').value.trim();
+  if(!market)return;
+  var m=memberById(memberId);
+  var resolvedClass=resolveEquivalentClass(m.mobility_class,market,'South Florida');
+  TRAVEL_DECLARATIONS.push({id:nextId(),member_profile_id:memberId,destination_market:market,resolved_equivalent_class:resolvedClass,is_active:true});
+  document.getElementById('travel-result').innerHTML='<div class="aip-body" style="font-size:12px">Resolved equivalent class for '+market+': <b style="color:var(--gold)">'+CLASS_LABELS[resolvedClass]+'</b>'+(resolvedClass===m.mobility_class?' (no equivalency rule configured — falling back to unchanged class)':' (equivalency rule applied)')+'</div>';
+  document.getElementById('tf-market').value='';
+  renderTravel();
+}
+function completeTravel(id){var t=TRAVEL_DECLARATIONS.find(function(x){return x.id===id;});t.is_active=false;t.completed_at=new Date();renderTravel();}
+
+function renderBlack(){
+  document.getElementById('black-invitation-cards').innerHTML=BLACK_INVITATIONS.map(function(inv){
+    var m=memberById(inv.member_profile_id);
+    var pill={invited:'pa2',accepted:'pblack',declined:'pd'}[inv.status];
+    var actions=inv.status==='invited'?'<div style="display:flex;gap:6px"><button class="btn btn-s btn-g" onclick="respondBlackInvite(\''+inv.id+'\',\'accepted\')">Accept</button><button class="btn btn-s btn-gh" onclick="respondBlackInvite(\''+inv.id+'\',\'declined\')">Decline</button></div>':'';
+    return '<div class="blackcard"><div class="ch"><span class="ct" style="color:#e8c874">'+m.full_name+'</span><span class="p '+pill+'">'+inv.status+'</span></div>'+actions+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No Black invitations yet.</div>';
+
+  document.getElementById('black-entitlement-rows').innerHTML=BLACK_ENTITLEMENTS.map(function(e){
+    return '<div class="tr" style="grid-template-columns:1fr 2fr"><span class="tc" style="font-size:12px">'+e.name+'</span><span class="tm" style="font-size:11px">'+e.description+'</span></div>';
+  }).join('');
+
+  document.getElementById('journey-cards').innerHTML=CONCIERGE_JOURNEYS.filter(function(j){return j.status==='active';}).map(function(j){
+    var m=memberById(j.member_profile_id);
+    var modePill={proactive:'pa2',reactive:'pb',assisted:'pp'}[j.mode];
+    return '<div class="card"><div class="ch"><span class="ct">'+j.journey_type+' — '+m.full_name+'</span><span class="p '+modePill+'">'+j.mode+'</span></div>'
+      +'<button class="btn btn-s btn-g" onclick="completeJourney(\''+j.id+'\')">Complete journey</button></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No active concierge journeys.</div>';
+}
+function inviteToBlack(){
+  var memberId=document.getElementById('bif-member').value;
+  BLACK_INVITATIONS.push({id:nextId(),member_profile_id:memberId,status:'invited',invited_by:'membership-ops-1'});
+  toggleForm('black-invite-form');
+  renderBlack();
+}
+function respondBlackInvite(id,response){
+  var inv=BLACK_INVITATIONS.find(function(x){return x.id===id;});
+  inv.status=response;
+  if(response==='accepted')memberById(inv.member_profile_id).is_voyqi_black=true;
+  renderBlack();renderMembers();
+}
+function createJourney(){
+  var memberId=document.getElementById('jf-member').value;
+  var journeyType=document.getElementById('jf-type').value.trim();
+  var mode=document.getElementById('jf-mode').value;
+  if(!journeyType)return;
+  CONCIERGE_JOURNEYS.push({id:nextId(),member_profile_id:memberId,journey_type:journeyType,mode:mode,status:'active'});
+  toggleForm('journey-form');
+  document.getElementById('jf-type').value='';
+  renderBlack();
+}
+function completeJourney(id){var j=CONCIERGE_JOURNEYS.find(function(x){return x.id===id;});j.status='completed';renderBlack();}
+
+function renderFeed(){
+  document.getElementById('dash-feed').innerHTML=DFEED.slice(0,10).map(function(d){
+    return '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--border)"><span class="at" style="flex-shrink:0">'+d.a+'</span><span style="font-size:12px;color:var(--text);flex:1">'+d.m+'</span><span style="font-size:11px;color:var(--dim);flex-shrink:0">'+d.ts+'</span></div>';
+  }).join('');
+}
+
+var classChart=null;
+function renderClassChart(){
+  var counts={};
+  MEMBERS.forEach(function(m){if(m.mobility_class)counts[m.mobility_class]=(counts[m.mobility_class]||0)+1;});
+  var labels=Object.keys(counts).map(function(c){return CLASS_LABELS[c];});
+  var data=Object.values(counts);
+  var ctx=document.getElementById('chartClass');
+  if(!ctx)return;
+  if(classChart)classChart.destroy();
+  classChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:labels,datasets:[{data:data,backgroundColor:'rgba(201,168,76,0.65)',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(110,128,150,0.8)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(110,128,150,0.8)',font:{size:11},stepSize:1}}}}
+  });
+}
+
+function subscriptionForMember(memberId){return SUBSCRIPTIONS.find(function(s){return s.member_profile_id===memberId&&s.status==='active';});}
+
+// ══════════════════════════════════════════════════════════════
+// Upgrade intelligence — detecting a pattern and offering a case
+// never touches billing (fully autonomous); accepting always
+// requires the member's own separate confirmation.
+// ══════════════════════════════════════════════════════════════
+function detectUpgradePattern(memberId){
+  var cutoff=new Date(Date.now()-UPGRADE_PATTERN_WINDOW_DAYS*24*3600*1000);
+  var recent=ABOVE_CLASS_REQUESTS.filter(function(r){return r.member_id===memberId&&r.created_at>=cutoff;});
+  if(recent.length<UPGRADE_PATTERN_THRESHOLD)return {topClass:null,count:recent.length,reasoning:'Only '+recent.length+' above-class request(s) in the last '+UPGRADE_PATTERN_WINDOW_DAYS+' days — below the '+UPGRADE_PATTERN_THRESHOLD+'-request pattern threshold.'};
+  var counts={};
+  recent.forEach(function(r){counts[r.requested_class]=(counts[r.requested_class]||0)+1;});
+  var topClass=null,topCount=0;
+  Object.keys(counts).forEach(function(c){if(counts[c]>topCount){topClass=c;topCount=counts[c];}});
+  if(topCount<UPGRADE_PATTERN_THRESHOLD)return {topClass:null,count:recent.length,reasoning:recent.length+' above-class requests in the last '+UPGRADE_PATTERN_WINDOW_DAYS+' days, but no single class reached the '+UPGRADE_PATTERN_THRESHOLD+'-request threshold.'};
+  return {topClass:topClass,count:topCount,reasoning:topCount+' requests for '+CLASS_LABELS[topClass]+' in the last '+UPGRADE_PATTERN_WINDOW_DAYS+' days — pattern threshold met.'};
+}
+function logAboveClassRequest(){
+  var memberId=document.getElementById('acrf-member').value;
+  var requestedClass=document.getElementById('acrf-class').value;
+  var m=memberById(memberId);
+  ABOVE_CLASS_REQUESTS.push({id:nextId(),member_id:memberId,subscribed_class:m.mobility_class,requested_class:requestedClass,created_at:new Date()});
+  var pattern=detectUpgradePattern(memberId);
+  var resultEl=document.getElementById('acr-result');
+  if(pattern.topClass){
+    var sub=subscriptionForMember(memberId);
+    UPGRADE_CASES.push({id:nextId(),member_id:memberId,subscription_id:sub?sub.id:null,current_class:m.mobility_class,recommended_class:pattern.topClass,request_count:pattern.count,reasoning:'[deterministic fallback] '+pattern.reasoning,status:'offered',created_at:new Date(),resolved_at:null});
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">Pattern confirmed — upgrade case offered automatically to '+m.full_name+'. Nothing billed yet; the member still has to accept.</div>';
+    DFEED.unshift({a:'member-experience-agent',m:'Upgrade case offered automatically — '+m.full_name+' -> '+CLASS_LABELS[pattern.topClass]+' ('+pattern.reasoning+')',ts:'now'});
+  } else {
+    resultEl.innerHTML='<div style="background:var(--surface2);border:0.5px dashed var(--border2);border-radius:8px;padding:10px;font-size:12px;color:var(--dim)">'+pattern.reasoning+'</div>';
+  }
+  renderUpgrade();renderFeed();
+}
+function acceptUpgradeCase(id){
+  var c=UPGRADE_CASES.find(function(x){return x.id===id;});
+  var plan=PLANS.find(function(p){return p.mobility_class===c.recommended_class;});
+  if(!plan){alert('No plan on file for '+CLASS_LABELS[c.recommended_class]+' — cannot enact this upgrade yet.');return;}
+  var sub=SUBSCRIPTIONS.find(function(s){return s.id===c.subscription_id;});
+  if(sub)sub.plan_id=plan.id;
+  var m=memberById(c.member_id);
+  m.mobility_class=c.recommended_class;
+  c.status='accepted';c.resolved_at=new Date();
+  DFEED.unshift({a:'system',m:m.full_name+' accepted the upgrade to '+CLASS_LABELS[c.recommended_class]+' — billing now reflects the new plan',ts:'now'});
+  renderUpgrade();renderMembers();renderFeed();
+}
+function declineUpgradeCase(id){
+  var c=UPGRADE_CASES.find(function(x){return x.id===id;});
+  c.status='declined';c.resolved_at=new Date();
+  renderUpgrade();
+}
+function renderUpgrade(){
+  var byMember={};
+  ABOVE_CLASS_REQUESTS.forEach(function(r){(byMember[r.member_id]=byMember[r.member_id]||[]).push(r);});
+  document.getElementById('acr-summary-cards').innerHTML=Object.keys(byMember).map(function(memberId){
+    var m=memberById(memberId);
+    var pattern=detectUpgradePattern(memberId);
+    return '<div class="card" style="padding:10px 13px"><div class="ch" style="margin-bottom:0"><span class="tc" style="font-size:13px">'+m.full_name+'</span><span class="p '+(pattern.topClass?'pa2':'pd')+'">'+byMember[memberId].length+' request(s)</span></div>'
+      +'<div style="font-size:11px;color:var(--dim);margin-top:4px">'+pattern.reasoning+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No above-class requests logged yet.</div>';
+
+  document.getElementById('upgrade-offered-cards').innerHTML=UPGRADE_CASES.filter(function(c){return c.status==='offered';}).map(function(c){
+    var m=memberById(c.member_id);
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+m.full_name+' <span class="p pg" style="font-size:9px;margin-left:6px">offered automatically</span></div><div class="aip-body">'
+      +CLASS_LABELS[c.current_class]+' &rarr; <b style="color:var(--gold)">'+CLASS_LABELS[c.recommended_class]+'</b><br>'+c.reasoning+'</div>'
+      +'<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-s btn-g" onclick="acceptUpgradeCase(\''+c.id+'\')">Member accepts</button><button class="btn btn-s btn-o" onclick="declineUpgradeCase(\''+c.id+'\')">Member declines</button></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No offered cases awaiting a member decision.</div>';
+
+  document.getElementById('upgrade-resolved-cards').innerHTML=UPGRADE_CASES.filter(function(c){return c.status!=='offered';}).map(function(c){
+    var m=memberById(c.member_id);
+    return '<div class="card" style="padding:10px 13px"><div class="ch" style="margin-bottom:0"><span class="tc" style="font-size:13px">'+m.full_name+'</span><span class="p '+(c.status==='accepted'?'pg':'pd')+'">'+c.status+'</span></div>'
+      +'<div style="font-size:11px;color:var(--dim);margin-top:4px">'+CLASS_LABELS[c.current_class]+' &rarr; '+CLASS_LABELS[c.recommended_class]+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No resolved cases yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Deposit holds — placement/release are a fixed table lookup by
+// class (autonomous); capturing is the one genuine financial-risk
+// judgment call, always held for human review regardless of the
+// AI risk score.
+// ══════════════════════════════════════════════════════════════
+function depositRiskScore(amountUsd,holdAmountUsd){
+  var score=55, drivers=['discretionary money taken from a member always crosses the default review threshold'];
+  if(holdAmountUsd&&amountUsd>=0.75*holdAmountUsd){score+=20;drivers.push('capture amount is \u226575% of the full hold \u2014 near-total forfeiture');}
+  return {score:score,reasoning:drivers.join('; ')};
+}
+function placeDepositHold(){
+  var memberId=document.getElementById('depf-member').value;
+  var mobilityClass=document.getElementById('depf-class').value;
+  var m=memberById(memberId);
+  var amount=DEPOSIT_AMOUNTS[mobilityClass];
+  DEPOSIT_HOLDS.push({id:nextId(),member_id:memberId,mobility_class:mobilityClass,amount_usd:amount,captured_amount_usd:0,capture_reason:'',status:'placed',risk_score:null,placed_at:new Date(),resolved_at:null});
+  document.getElementById('dep-result').innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">$'+amount.toLocaleString()+' hold placed for '+m.full_name+' — fixed table amount, no approval needed.</div>';
+  renderDeposits();
+}
+function releaseDepositHold(id){
+  var h=DEPOSIT_HOLDS.find(function(x){return x.id===id;});
+  h.status='released';h.resolved_at=new Date();
+  renderDeposits();
+}
+function requestDepositCapture(id){
+  var h=DEPOSIT_HOLDS.find(function(x){return x.id===id;});
+  var amount=parseFloat(document.getElementById('depcap-amount-'+id).value)||0;
+  var reason=document.getElementById('depcap-reason-'+id).value.trim();
+  if(amount<=0||amount>h.amount_usd){alert('Capture amount must be between $0 and the held $'+h.amount_usd.toLocaleString()+'.');return;}
+  if(!reason){alert('A reason is required.');return;}
+  var risk=depositRiskScore(amount,h.amount_usd);
+  h.status='capture_pending_review';h.captured_amount_usd=amount;h.capture_reason=reason;h.risk_score=risk.score;
+  DFEED.unshift({a:'compliance-audit-agent',m:'Capture requested on '+memberById(h.member_id).full_name+'\u2019s hold ($'+amount.toLocaleString()+') \u2014 risk score '+risk.score+'/100, held for human review',ts:'now'});
+  renderDeposits();renderFeed();
+}
+function approveDepositCapture(id){
+  var h=DEPOSIT_HOLDS.find(function(x){return x.id===id;});
+  h.status='captured';h.resolved_at=new Date();
+  renderDeposits();
+}
+function rejectDepositCapture(id){
+  var h=DEPOSIT_HOLDS.find(function(x){return x.id===id;});
+  h.status='placed';h.captured_amount_usd=0;h.capture_reason='';h.risk_score=null;
+  renderDeposits();
+}
+function renderDeposits(){
+  document.getElementById('nb-deposits').textContent=DEPOSIT_HOLDS.filter(function(h){return h.status==='capture_pending_review';}).length;
+
+  document.getElementById('dep-active-cards').innerHTML=DEPOSIT_HOLDS.filter(function(h){return h.status==='placed';}).map(function(h){
+    var m=memberById(h.member_id);
+    return '<div class="card" style="padding:10px 13px"><div class="ch" style="margin-bottom:6px"><span class="tc" style="font-size:13px">'+m.full_name+'</span><span class="tg">$'+h.amount_usd.toLocaleString()+'</span></div>'
+      +'<div style="font-size:11px;color:var(--dim);margin-bottom:8px">'+CLASS_LABELS[h.mobility_class]+'</div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn btn-s btn-o" onclick="releaseDepositHold(\''+h.id+'\')">Release in full</button></div>'
+      +'<div style="display:flex;gap:6px;align-items:center"><input class="fi" id="depcap-amount-'+h.id+'" placeholder="Capture $" style="max-width:110px;font-size:12px"><input class="fi" id="depcap-reason-'+h.id+'" placeholder="Reason" style="font-size:12px"><button class="btn btn-s btn-g" onclick="requestDepositCapture(\''+h.id+'\')">Request capture</button></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No active holds.</div>';
+
+  document.getElementById('dep-review-cards').innerHTML=DEPOSIT_HOLDS.filter(function(h){return h.status==='capture_pending_review';}).map(function(h){
+    var m=memberById(h.member_id);
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-alert-triangle"></i>'+m.full_name+' <span class="p pa2" style="font-size:9px;margin-left:6px">risk '+h.risk_score+'/100</span></div><div class="aip-body">Capture requested: <b style="color:var(--gold)">$'+h.captured_amount_usd.toLocaleString()+'</b> of $'+h.amount_usd.toLocaleString()+' held<br>Reason: '+h.capture_reason+'</div>'
+      +'<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-s btn-g" onclick="approveDepositCapture(\''+h.id+'\')">Approve capture</button><button class="btn btn-s btn-o" onclick="rejectDepositCapture(\''+h.id+'\')">Reject</button></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No captures awaiting review.</div>';
+
+  document.getElementById('dep-resolved-cards').innerHTML=DEPOSIT_HOLDS.filter(function(h){return h.status==='released'||h.status==='captured';}).map(function(h){
+    var m=memberById(h.member_id);
+    return '<div class="card" style="padding:10px 13px"><div class="ch" style="margin-bottom:0"><span class="tc" style="font-size:13px">'+m.full_name+'</span><span class="p '+(h.status==='captured'?'pr':'pg')+'">'+h.status+'</span></div>'
+      +(h.status==='captured'?'<div style="font-size:11px;color:var(--dim);margin-top:4px">$'+h.captured_amount_usd.toLocaleString()+' captured \u2014 '+h.capture_reason+'</div>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No resolved holds yet.</div>';
+}
+
+function rerenderAll(){
+  populateMemberSelects();
+  renderMembers();
+  renderEnrollment();
+  generateInvoiceForSubscription('sub-1');
+  generateInvoiceForSubscription('sub-2');
+  renderLifecycle();
+  renderBilling();
+  renderGu();
+  renderSwap();
+  renderUpgrade();
+  renderDeposits();
+  renderTravel();
+  renderBlack();
+  renderFeed();
+}
+rerenderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+# VOYQI Mobility OS — Autonomy Tier Policy
+#
+# This is the mechanism, not just documentation: ai-orchestration-svc
+# consults this file (via src/core/tiering.get_tier) before executing
+# ANY agent action that has been wired to check it. It replaces the
+# blanket "AI proposes, human approves" rule with three tiers, so the
+# platform is actually automated for the actions that don't need a
+# person, while keeping a human in the loop exactly where
+# reversibility, cost, or regulation requires one.
+#
+# Tier definitions:
+#   1 = Fully autonomous. Executes immediately, logs to the decision
+#       log, reviewable after the fact. No approval card ever renders.
+#   2 = Approval gate required. Low confidence, above a cost/scale
+#       threshold, or otherwise flagged — creates a pending
+#       AIRecommendation and waits.
+#   3 = Always human, no exceptions. Regulatorily required accountable
+#       human decision (fair lending, employment law, access-policy
+#       grants). Never auto-executes regardless of model confidence —
+#       this is a compliance boundary, not a UX preference, and must
+#       not be reachable via any threshold change.
+#
+# default_tier is deliberately conservative (2) — an action type not
+# yet explicitly listed here requires approval until someone makes the
+# deliberate decision to add it. Silence should never mean "automated."
+#
+# Source of truth for this content: the client-delivered
+# infrastructure/kubernetes/base/ai-orchestration/tier-policy.yaml
+# ConfigMap (docs/AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md). Copied
+# in-tree here since this local deployment has no Kubernetes ConfigMap
+# mount — TIER_POLICY_PATH points at this file by default.
+
+version: 1
+default_tier: 2
+
+tiers:
+  1:
+    name: "Fully autonomous"
+    approval_required: false
+    audit: "log-only (decision log), reviewable after the fact"
+  2:
+    name: "Approval gate required"
+    approval_required: true
+    surfaces_in: "AI-002 Recommendation Review & Override"
+  3:
+    name: "Always human"
+    approval_required: true
+    surfaces_in: "AI-002 Recommendation Review & Override"
+    promotable: false
+    requires_accountable_role: true
+
+agents:
+
+  concierge:
+    actions:
+      logistics.routine: { tier: 1 }
+      journey.schedule_change: { tier: 1 }
+      journey.premium_reroute: { tier: 2, threshold: "cost_delta_usd > 150" }
+
+  member-experience:
+    actions:
+      preference.silent_learning_update: { tier: 1 }
+      upgrade.recommendation_surface: { tier: 1 }
+      churn.risk_flag: { tier: 1 }
+      plan.auto_upgrade_execute: { tier: 2 }
+
+  relationship-intelligence:
+    actions:
+      reply.routine_intent: { tier: 1 }
+      lead.route: { tier: 1 }
+      reply.negotiation_or_commitment: { tier: 2 }
+      reply.pricing_quote: { tier: 2 }
+
+  fleet-intelligence:
+    actions:
+      staging.recommend_prestage: { tier: 1 }
+      staging.rebalance_within_threshold: { tier: 1 }
+      staging.reassign_cross_region: { tier: 1 }
+      staging.reassign_large_scale: { tier: 1 }
+      maintenance.predictive_alert: { tier: 1 }
+      maintenance.auto_schedule: { tier: 1 }
+      maintenance.auto_schedule_high_cost: { tier: 1 }
+      incident.severity_triage: { tier: 1 }
+      incident.liability_assessment: { tier: 3 }
+      remarketing.disposition_recommend: { tier: 1 }
+      remarketing.disposition_execute: { tier: 1 }
+      financing.covenant_early_warning: { tier: 1 }
+      telematics.tamper_event_flag: { tier: 3 }
+
+  pricing-intelligence:
+    actions:
+      pricing.adjust_within_band: { tier: 1 }
+      pricing.demand_multiplier_apply: { tier: 1 }
+      pricing.breach_guardrail: { tier: 2 }
+
+  revenue:
+    actions:
+      idle_inventory.recommend_channel: { tier: 1 }
+      term_conversion.offer_standard: { tier: 1 }
+      term_conversion.offer_high_value: { tier: 2, threshold: "annual_value_usd > 10000" }
+
+  retention:
+    actions:
+      winback.offer_standard: { tier: 1 }
+      winback.offer_high_value: { tier: 2, threshold: "offer_value_usd > 500" }
+      cancellation.intervention_standard: { tier: 1 }
+
+  sales-originations-intelligence:
+    actions:
+      lead.score_and_route: { tier: 1 }
+      lender.match_recommend: { tier: 1 }
+      deal.structure_recommend: { tier: 2 }
+      credit.decision: { tier: 3 }
+
+  talent-workforce-intelligence:
+    actions:
+      course.draft_generate: { tier: 1 }
+      notice.draft_generate: { tier: 1 }
+      candidate.screen_score: { tier: 1 }
+      hire_reject_discipline.decision: { tier: 3 }
+
+  compliance-risk-intelligence:
+    actions:
+      audit.flag_anomaly: { tier: 1 }
+      policy.simulate: { tier: 1 }
+      abac.policy_grant_apply: { tier: 3 }
+
+  portfolio-intelligence:
+    actions:
+      rollup.generate_report: { tier: 1 }

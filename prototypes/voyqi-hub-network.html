@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI — Hub Network</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --amber:#c9a84c;--purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --sw:224px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.wordmark span{color:var(--mid);font-weight:500;letter-spacing:.04em;margin-left:6px;font-size:12px}
+.tb-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim);flex-shrink:0}
+.tb-search{flex:1;max-width:340px;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:7px}
+.tb-search input{background:none;border:none;outline:none;font-size:13px;color:var(--text);width:100%}
+.tb-search input::placeholder{color:var(--dim)}
+.tb-search i{color:var(--dim);font-size:15px;flex-shrink:0}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.tbx{width:30px;height:30px;border-radius:7px;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+.tbx:hover{background:var(--surface3)}
+.tbx i{font-size:15px;color:var(--mid)}
+.nbadge{position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--gold);border-radius:50%;border:1.5px solid var(--surface)}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;cursor:pointer}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.nb-b{background:var(--blue-dim);color:var(--blue)}
+.nb-g{background:var(--gold-dim);color:var(--gold)}
+.sfoot{margin-top:auto;padding:10px 13px;border-top:0.5px solid var(--border)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.cg{background:var(--surface);border:0.5px solid var(--gold-border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:10px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center;transition:background .1s}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:var(--surface2)}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pp{background:var(--purple-dim);color:var(--purple);border:0.5px solid rgba(123,108,212,.3)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-o:hover{background:var(--surface2);color:var(--text)}
+.btn-gh{background:none;border:0.5px solid var(--border);color:var(--dim)}
+.btn-gh:hover{background:var(--surface2);color:var(--text)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--gold-border)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.ft{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;resize:vertical;min-height:70px}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.tog{display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0;user-select:none}
+.ts{width:34px;height:18px;border-radius:9px;background:var(--surface3);position:relative;transition:background .2s;border:0.5px solid var(--border);flex-shrink:0}
+.ts.on{background:var(--green)}
+.ts::after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:var(--dim);top:2px;left:2px;transition:all .2s}
+.ts.on::after{left:19px;background:#fff}
+.tlb{font-size:13px;color:var(--text)}
+.prog{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.pf{height:4px;border-radius:2px}
+.pf-g{background:var(--green)}
+.pf-gold{background:var(--gold)}
+.pf-r{background:var(--red)}
+.pf-b{background:var(--blue)}
+.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.at{font-family:monospace;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.sl{font-size:12px;color:var(--gold);cursor:pointer}
+.dv{height:0.5px;background:var(--border);margin:13px 0}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.flash{animation:fl .5s ease}
+@keyframes fl{0%{background:var(--gold-dim)}100%{background:transparent}}
+.stepper{display:flex;align-items:center;gap:0;margin-bottom:16px}
+.step{display:flex;align-items:center;gap:8px;flex:1}
+.step-dot{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dim);flex-shrink:0}
+.step.done .step-dot{background:var(--green-dim);border-color:var(--green-border);color:var(--green)}
+.step.active .step-dot{background:var(--gold-dim);border-color:var(--gold-border);color:var(--gold)}
+.step-lb{font-size:12px;color:var(--dim);white-space:nowrap}
+.step.done .step-lb,.step.active .step-lb{color:var(--text)}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 4px}
+.step.done .step-line{background:var(--green-border)}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:14px}
+.aip-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--gold)}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.aip-empty{font-size:13px;border:0.5px solid var(--gold-border);border-radius:8px;padding:10px;color:var(--gold);background:var(--gold-dim)}
+.mapwrap{position:relative;width:100%;height:360px;background:radial-gradient(ellipse at 30% 20%,rgba(61,142,212,0.06),transparent 60%),var(--surface2);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.mapgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:40px 40px}
+.pin{position:absolute;width:14px;height:14px;border-radius:50% 50% 50% 0;transform:translate(-50%,-100%) rotate(-45deg);cursor:pointer;border:1.5px solid rgba(0,0,0,0.3);transition:transform .15s}
+.pin:hover{transform:translate(-50%,-100%) rotate(-45deg) scale(1.3);z-index:10}
+.pin-airport{background:var(--blue)}
+.pin-city_business{background:var(--gold)}
+.pin-residential{background:var(--green)}
+.pin-university_campus{background:var(--purple)}
+.pin-corporate_campus{background:#e8955f}
+.pin-partner_white_label{background:var(--mid)}
+.map-legend{position:absolute;bottom:10px;left:10px;background:rgba(13,19,32,0.9);border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;flex-direction:column;gap:4px}
+.map-legend-item{display:flex;align-items:center;gap:6px}
+.map-legend-dot{width:9px;height:9px;border-radius:50%}
+.map-tooltip{position:absolute;background:var(--surface3);border:0.5px solid var(--gold-border);border-radius:8px;padding:8px 10px;font-size:12px;pointer-events:none;z-index:20;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI<span>Hub Network</span></span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx">Hub Network Administration</span>
+  <div class="tb-search"><i class="ti ti-search"></i><input type="text" placeholder="Search hubs, members, cards..."></div>
+  <div class="tb-right">
+    <div class="tbx" onclick="sp('security')"><i class="ti ti-shield-exclamation"></i><div class="nbadge" id="topbar-badge"></div></div>
+    <div class="tbx"><i class="ti ti-settings"></i></div>
+    <div class="upill">
+      <div class="uav">HN</div>
+      <div><div class="uname">Hub Network Admin</div><div class="urole">hub_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Overview</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Network dashboard</div>
+
+  <div class="ss">HUB-001</div>
+  <div class="ni" id="n-directory" onclick="sp('directory')"><i class="ti ti-map-2"></i>Hub directory &amp; map</div>
+
+  <div class="ss">HUB-002</div>
+  <div class="ni" id="n-ops" onclick="sp('ops')"><i class="ti ti-clipboard-check"></i>Operations board</div>
+  <div class="ni" id="n-security" onclick="sp('security')"><i class="ti ti-fingerprint"></i>Card security<span class="nb nb-r" id="nb-anomalies">0</span></div>
+
+  <div class="ss">HUB-003</div>
+  <div class="ni" id="n-analytics" onclick="sp('analytics')"><i class="ti ti-chart-dots"></i>Capacity &amp; utilization</div>
+
+  <div class="sfoot">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="uav" style="width:26px;height:26px;font-size:10px">HN</div>
+      <div><div style="font-size:12px;font-weight:500;color:var(--text)">Hub Network Admin</div><div style="font-size:11px;color:var(--dim)">hub_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+
+<div class="page on" id="p-dash">
+<div class="ph"><div class="pt">Hub network dashboard</div><div class="ps">5 hubs · Florida &amp; Texas · <span class="ld"></span>Live</div>
+<div class="pa"><button class="btn btn-g" onclick="rerenderAll()"><i class="ti ti-refresh"></i>Refresh</button></div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Active hubs</div><div class="kv" id="dk-hubs">—</div><div class="kd tg">Across 2 states</div></div>
+  <div class="kpi"><div class="kl">Touchpoints today</div><div class="kv" id="dk-touchpoints">—</div><div class="kd tm">Pickups, returns, swaps</div></div>
+  <div class="kpi kpi-b"><div class="kl">Avg utilization</div><div class="kv" id="dk-util">—</div><div class="kd tb2">Network-wide</div></div>
+  <div class="kpi kpi-red"><div class="kl">Security alerts</div><div class="kv" id="dk-alerts">—</div><div class="kd trr">Card taps flagged</div></div>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="ch"><span class="ct">Utilization by hub</span></div>
+    <div style="position:relative;height:190px"><canvas id="chartUtil" role="img" aria-label="Utilization by hub">Utilization chart</canvas></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Today's operations feed</span><span class="sl" onclick="sp('ops')">View board</span></div>
+    <div id="dash-feed" style="display:flex;flex-direction:column;gap:1px;max-height:210px;overflow-y:auto"></div>
+  </div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Hubs at or near capacity</span><span class="sl" onclick="sp('analytics')">Manage</span></div>
+    <div id="dash-capacity" style="display:flex;flex-direction:column"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Card security status</span><span class="sl" onclick="sp('security')">Manage</span></div>
+    <div id="dash-security" style="display:flex;flex-direction:column"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-directory">
+<div class="ph"><div class="pt">Hub directory &amp; configuration</div><div class="ps">HUB-001 · Every hub location — profile, capacity, hours, amenities, geo data for the member-app map <span class="p pa2" style="margin-left:6px">Sample data — pending import from voyqi.com/locations</span></div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('hub-form')"><i class="ti ti-plus"></i>Add hub</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Total hubs</div><div class="kv" id="hk-total">—</div><div class="kd tm">All types</div></div>
+  <div class="kpi kpi-green"><div class="kl">With lounge access</div><div class="kv" id="hk-lounge">—</div><div class="kd tr2">GU redemption eligible</div></div>
+  <div class="kpi kpi-g"><div class="kl">Total capacity</div><div class="kv" id="hk-capacity">—</div><div class="kd tg">Vehicle slots network-wide</div></div>
+  <div class="kpi kpi-b"><div class="kl">Hub types</div><div class="kv" id="hk-types">—</div><div class="kd tb2">Distinct taxonomy in use</div></div>
+</div>
+<div class="card" id="hub-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Add hub</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Name</label><input class="fi" id="hf-name" placeholder="Austin Campus Hub"></div>
+    <div class="fg"><label class="fl">Type</label><select class="fs" id="hf-type">
+      <option value="airport">Airport</option><option value="city_business">City / Business</option><option value="residential">Residential</option>
+      <option value="university_campus">University / Campus</option><option value="corporate_campus">Corporate Campus</option><option value="partner_white_label">Partner / White-label</option>
+    </select></div>
+    <div class="fg"><label class="fl">Capacity</label><input class="fi" id="hf-capacity" placeholder="15"></div>
+  </div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Latitude</label><input class="fi" id="hf-lat" placeholder="30.2672"></div>
+    <div class="fg"><label class="fl">Longitude</label><input class="fi" id="hf-lon" placeholder="-97.7431"></div>
+    <div class="fg"><label class="fl">Lounge access?</label><select class="fs" id="hf-lounge"><option value="no">No</option><option value="yes">Yes</option></select></div>
+  </div>
+  <button class="btn btn-g" onclick="addHub()"><i class="ti ti-check"></i>Create hub</button>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="ch"><span class="ct">Network map <span class="p pa2">Sample locations</span></span><span style="font-size:11px;color:var(--dim)">Pins colored by hub type — hover for detail</span></div>
+  <div class="mapwrap" id="map-container"><div class="mapgrid"></div></div>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.4fr 1fr 90px 100px 110px 90px"><span>Hub</span><span>Type</span><span>Capacity</span><span>Hours</span><span>Amenities</span><span>Status</span></div>
+  <div id="hub-rows"></div>
+</div>
+</div>
+
+<div class="page" id="p-ops">
+<div class="ph"><div class="pt">Hub operations board</div><div class="ps">HUB-002 · Daily pickups/returns/swaps, vehicle prep checklists — an exception now triggers the Fleet Intelligence Agent to recommend a rebalancing hub, not just sit flagged for a human to notice</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('tp-form')"><i class="ti ti-plus"></i>Schedule touchpoint</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Scheduled</div><div class="kv" id="tpk-scheduled">—</div><div class="kd tm">Awaiting completion</div></div>
+  <div class="kpi kpi-green"><div class="kl">Completed today</div><div class="kv" id="tpk-completed">—</div><div class="kd tr2">Turned around</div></div>
+  <div class="kpi kpi-red"><div class="kl">Exceptions</div><div class="kv" id="tpk-exceptions">—</div><div class="kd trr">Needs attention</div></div>
+  <div class="kpi kpi-g"><div class="kl">Checklists open</div><div class="kv" id="tpk-checklists">—</div><div class="kd tg">Prep incomplete</div></div>
+</div>
+<div class="card" id="tp-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Schedule touchpoint</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Hub</label><select class="fs" id="tp-hub"></select></div>
+    <div class="fg"><label class="fl">Type</label><select class="fs" id="tp-type"><option value="pickup">Pickup</option><option value="return">Return</option><option value="swap">Swap</option></select></div>
+    <div class="fg"><label class="fl">Source</label><select class="fs" id="tp-source"><option value="subscription">Subscription</option><option value="rental">Rental</option></select></div>
+  </div>
+  <div class="fg"><label class="fl">Member / renter reference</label><input class="fi" id="tp-ref" placeholder="member-1042"></div>
+  <button class="btn btn-g" onclick="scheduleTouchpoint()"><i class="ti ti-check"></i>Schedule</button>
+</div>
+<div id="touchpoint-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-security">
+<div class="ph"><div class="pt">VOYQI Card security</div><div class="ps">Every tap is geo-checked deterministically (always-on, never AI-judged) — an implausible speed auto-suspends the card, then the Compliance/Audit Agent reviews the member's real tap history to judge first-time vs. repeat pattern</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('card-form')"><i class="ti ti-plus"></i>Issue card</button></div></div>
+<div class="krow">
+  <div class="kpi"><div class="kl">Cards issued</div><div class="kv" id="ck-issued">—</div><div class="kd tm">Active + suspended</div></div>
+  <div class="kpi kpi-red"><div class="kl">Suspended</div><div class="kv" id="ck-suspended">—</div><div class="kd trr">Auto-suspended on anomaly</div></div>
+  <div class="kpi kpi-green"><div class="kl">Taps logged today</div><div class="kv" id="ck-taps">—</div><div class="kd tr2">Every tap timestamped</div></div>
+  <div class="kpi kpi-g"><div class="kl">Plausibility threshold</div><div class="kv">900 km/h</div><div class="kd tg">Above = auto-suspend</div></div>
+</div>
+<div class="card" id="card-form" style="display:none;margin-bottom:14px">
+  <div class="sec"><span class="st">Issue VOYQI Card</span></div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Member reference</label><input class="fi" id="cf-member" placeholder="member-1042"></div>
+    <div class="fg"><label class="fl">Card number</label><input class="fi" id="cf-number" placeholder="VQ-1042-UC-STD-2026"></div>
+  </div>
+  <button class="btn btn-g" onclick="issueCard()"><i class="ti ti-check"></i>Issue card</button>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Simulate a card tap</span></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="fr3">
+        <div class="fg"><label class="fl">Card</label><select class="fs" id="tap-card"></select></div>
+        <div class="fg"><label class="fl">Hub</label><select class="fs" id="tap-hub"></select></div>
+        <div class="fg"><label class="fl">Minutes since last tap</label><input class="fi" id="tap-minutes" placeholder="5"></div>
+      </div>
+      <button class="btn btn-s btn-g" onclick="simulateTap()"><i class="ti ti-fingerprint"></i>Record tap</button>
+      <div id="tap-result" style="margin-top:10px"></div>
+    </div>
+    <div class="sec"><span class="st">Cards</span></div>
+    <div class="tw">
+      <div class="th" style="grid-template-columns:1fr 1.3fr 100px 90px"><span>Member</span><span>Card #</span><span>Status</span><span></span></div>
+      <div id="card-rows"></div>
+    </div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Compliance queue — card anomalies</span></div>
+    <div id="security-queue-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-analytics">
+<div class="ph"><div class="pt">Hub capacity &amp; utilization analytics</div><div class="ps">HUB-003 · Throughput, dwell time, capacity forecasting are plain arithmetic — but the Fleet Intelligence Agent now reads this data to recommend real rebalancing moves</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Network avg utilization</div><div class="kv" id="ak-util">—</div><div class="kd tg">Across active hubs</div></div>
+  <div class="kpi"><div class="kl">Avg dwell time</div><div class="kv" id="ak-dwell">—</div><div class="kd tm">Scheduled → completed</div></div>
+  <div class="kpi kpi-b"><div class="kl">Touchpoints/day</div><div class="kv" id="ak-throughput">—</div><div class="kd tb2">Network-wide, 7-day window</div></div>
+  <div class="kpi kpi-red"><div class="kl">At capacity</div><div class="kv" id="ak-atcapacity">—</div><div class="kd trr">Hubs needing attention</div></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="ch"><span class="ct">Network snapshot — utilization by hub</span></div>
+  <div style="position:relative;height:220px"><canvas id="chartNetwork" role="img" aria-label="Network utilization snapshot">Network chart</canvas></div>
+</div>
+<div class="card" style="margin-bottom:14px">
+  <div class="ch"><span class="ct">Fleet Intelligence Agent — rebalancing recommendation</span></div>
+  <div class="fg" style="max-width:420px"><label class="fl">Check rebalancing for hub</label><select class="fs" id="rebalance-hub-sel"></select></div>
+  <button class="btn btn-s btn-g" onclick="requestRebalancing()"><i class="ti ti-sparkles"></i>Get AI recommendation</button>
+  <div id="rebalance-result" style="margin-top:10px"></div>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.5fr 1fr 100px 110px 100px"><span>Hub</span><span>Type</span><span>Capacity</span><span>Scheduled</span><span>Utilization</span></div>
+  <div id="network-rows"></div>
+</div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+var PAGES=['dash','directory','ops','security','analytics'];
+function sp(id){
+  PAGES.forEach(function(p){
+    var pg=document.getElementById('p-'+p);
+    var nv=document.getElementById('n-'+p);
+    if(pg)pg.classList.remove('on');
+    if(nv)nv.classList.remove('on');
+  });
+  document.getElementById('p-'+id).classList.add('on');
+  var nv=document.getElementById('n-'+id);
+  if(nv)nv.classList.add('on');
+  document.querySelector('.workspace').scrollTop=0;
+}
+function toggleForm(id){var el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+
+var uid=1000;
+function nextId(){return 'id-'+(uid++);}
+function populateSelect(sel,items,labelFn,valueFn){
+  sel.innerHTML=items.map(function(it){return '<option value="'+valueFn(it)+'">'+labelFn(it)+'</option>';}).join('');
+}
+function fmtMoney(n){return '$'+Math.round(n).toLocaleString();}
+
+var HUBS=[
+  {id:'h-1',name:'Miami International Airport Hub',type:'airport',lat:25.7959,lon:-80.2870,capacity:25,hours:'05:00–23:00',lounge:true,amenities:['valet','lounge','wifi'],active:true},
+  {id:'h-2',name:'Coral Gables Residential Hub',type:'residential',lat:25.7215,lon:-80.2684,capacity:12,hours:'06:00–22:00',lounge:false,amenities:['wifi'],active:true},
+  {id:'h-3',name:'Downtown Miami City Hub',type:'city_business',lat:25.7743,lon:-80.1937,capacity:18,hours:'06:00–22:00',lounge:true,amenities:['lounge','wifi','ev_charging'],active:true},
+  {id:'h-4',name:'UT Austin Campus Hub',type:'university_campus',lat:30.2849,lon:-97.7341,capacity:15,hours:'07:00–21:00',lounge:false,amenities:['wifi'],active:true},
+  {id:'h-5',name:'Dallas Corporate Campus Hub',type:'corporate_campus',lat:32.7767,lon:-96.7970,capacity:10,hours:'06:00–20:00',lounge:false,amenities:['ev_charging'],active:true},
+];
+
+var TOUCHPOINTS=[
+  {id:'tp-1',hub:'h-1',type:'pickup',source:'subscription',ref:'member-1001',status:'completed',scheduledHoursAgo:3,completedHoursAgo:2.7},
+  {id:'tp-2',hub:'h-1',type:'return',source:'rental',ref:'renter-2003',status:'scheduled',scheduledHoursAgo:0.5},
+  {id:'tp-3',hub:'h-3',type:'swap',source:'subscription',ref:'member-1042',status:'scheduled',scheduledHoursAgo:0.2},
+  {id:'tp-4',hub:'h-4',type:'pickup',source:'subscription',ref:'member-1088',status:'exception',reason:'vehicle not yet staged',scheduledHoursAgo:1},
+  {id:'tp-5',hub:'h-2',type:'return',source:'rental',ref:'renter-2010',status:'completed',scheduledHoursAgo:5,completedHoursAgo:4.5},
+];
+
+var CHECKLISTS={
+  'tp-3':{id:'cl-1',items:[{id:'ci-1',label:'Wash exterior',done:true},{id:'ci-2',label:'Check tire pressure',done:false},{id:'ci-3',label:'Fuel/charge check',done:false}],status:'pending'},
+};
+
+var CARDS=[
+  {id:'card-1',member:'member-1001',number:'VQ-1001-UC-PLT-2026',status:'active'},
+  {id:'card-2',member:'member-1042',number:'VQ-1042-UC-STD-2026',status:'active'},
+  {id:'card-3',member:'member-1088',number:'VQ-1088-EX-STD-2026',status:'active'},
+];
+var CARD_TAPS=[];
+var SECURITY_QUEUE=[];
+var DFEED=[
+  {a:'ops',m:'Pickup completed — Miami Airport Hub, member-1001',ts:'2h ago'},
+  {a:'ops',m:'Exception flagged — UT Austin Hub, vehicle not staged',ts:'1h ago'},
+  {a:'ops',m:'Swap scheduled — Downtown Miami Hub, member-1042',ts:'12m ago'},
+];
+
+function hubById(id){return HUBS.find(function(h){return h.id===id;});}
+function hubName(id){var h=hubById(id);return h?h.name:id;}
+function cardById(id){return CARDS.find(function(c){return c.id===id;});}
+
+var HUB_TYPE_LABELS={airport:'Airport',city_business:'City / Business',residential:'Residential',university_campus:'University / Campus',corporate_campus:'Corporate Campus',partner_white_label:'Partner / White-label'};
+
+function renderMap(){
+  var container=document.getElementById('map-container');
+  Array.from(container.querySelectorAll('.pin,.map-legend,.map-tooltip')).forEach(function(el){el.remove();});
+
+  var lats=HUBS.map(function(h){return h.lat;});
+  var lons=HUBS.map(function(h){return h.lon;});
+  var padding=1.5;
+  var minLat=Math.min.apply(null,lats)-padding, maxLat=Math.max.apply(null,lats)+padding;
+  var minLon=Math.min.apply(null,lons)-padding, maxLon=Math.max.apply(null,lons)+padding;
+
+  HUBS.filter(function(h){return h.active;}).forEach(function(h){
+    var x=((h.lon-minLon)/(maxLon-minLon))*100;
+    var y=(1-(h.lat-minLat)/(maxLat-minLat))*100;
+    var pin=document.createElement('div');
+    pin.className='pin pin-'+h.type;
+    pin.style.left=x+'%';
+    pin.style.top=y+'%';
+    pin.title=h.name;
+    pin.onmouseenter=function(e){showMapTooltip(h,pin);};
+    pin.onmouseleave=function(){var t=container.querySelector('.map-tooltip');if(t)t.remove();};
+    container.appendChild(pin);
+  });
+
+  var legend=document.createElement('div');
+  legend.className='map-legend';
+  legend.innerHTML=Object.keys(HUB_TYPE_LABELS).map(function(t){
+    return '<div class="map-legend-item"><div class="map-legend-dot pin-'+t+'" style="border-radius:50%"></div>'+HUB_TYPE_LABELS[t]+'</div>';
+  }).join('');
+  container.appendChild(legend);
+}
+function showMapTooltip(hub,pinEl){
+  var container=document.getElementById('map-container');
+  var existing=container.querySelector('.map-tooltip');
+  if(existing)existing.remove();
+  var tip=document.createElement('div');
+  tip.className='map-tooltip';
+  tip.style.left=pinEl.style.left;
+  tip.style.top='calc(' + pinEl.style.top + ' - 34px)';
+  tip.innerHTML='<b>'+hub.name+'</b><br>'+HUB_TYPE_LABELS[hub.type]+' · capacity '+hub.capacity;
+  container.appendChild(tip);
+}
+
+function renderDirectory(){
+  document.getElementById('hub-rows').innerHTML=HUBS.map(function(h){
+    var amenities=h.amenities.join(', ')||'—';
+    return '<div class="tr" style="grid-template-columns:1.4fr 1fr 90px 100px 110px 90px">'
+      +'<span class="tc" style="font-size:13px">'+h.name+'</span>'
+      +'<span class="tm" style="font-size:12px">'+HUB_TYPE_LABELS[h.type]+'</span>'
+      +'<span>'+h.capacity+'</span>'
+      +'<span class="tm" style="font-size:12px">'+h.hours+'</span>'
+      +'<span class="tm" style="font-size:11px">'+amenities+(h.lounge?' <span class="p pa2">Lounge</span>':'')+'</span>'
+      +'<span>'+(h.active?'<span class="p pg">Active</span>':'<span class="p pd">Inactive</span>')+'</span>'
+      +'</div>';
+  }).join('');
+
+  document.getElementById('hk-total').textContent=HUBS.length;
+  document.getElementById('hk-lounge').textContent=HUBS.filter(function(h){return h.lounge;}).length;
+  document.getElementById('hk-capacity').textContent=HUBS.reduce(function(a,h){return a+h.capacity;},0);
+  document.getElementById('hk-types').textContent=new Set(HUBS.map(function(h){return h.type;})).size;
+
+  var tpHubSel=document.getElementById('tp-hub'), priorTpHub=tpHubSel.value;
+  populateSelect(tpHubSel,HUBS,function(h){return h.name;},function(h){return h.id;});
+  if(priorTpHub)tpHubSel.value=priorTpHub;
+  var tapHubSel=document.getElementById('tap-hub'), priorTapHub=tapHubSel.value;
+  populateSelect(tapHubSel,HUBS,function(h){return h.name;},function(h){return h.id;});
+  if(priorTapHub)tapHubSel.value=priorTapHub;
+
+  renderMap();
+}
+function addHub(){
+  var name=document.getElementById('hf-name').value.trim();
+  if(!name)return;
+  HUBS.push({
+    id:nextId(),name:name,type:document.getElementById('hf-type').value,
+    lat:parseFloat(document.getElementById('hf-lat').value)||30.0,
+    lon:parseFloat(document.getElementById('hf-lon').value)||-97.0,
+    capacity:parseInt(document.getElementById('hf-capacity').value)||10,
+    hours:'06:00–22:00',lounge:document.getElementById('hf-lounge').value==='yes',amenities:[],active:true,
+  });
+  toggleForm('hub-form');renderDirectory();renderAnalytics();
+}
+
+function renderOps(){
+  TOUCHPOINTS.forEach(function(tp){
+    if(tp.status==='exception'&&!tp.rebalancing){
+      tp.rebalancing=getRebalancingRecommendation(tp.hub);
+    }
+  });
+  document.getElementById('touchpoint-cards').innerHTML=TOUCHPOINTS.map(function(tp){
+    var pillMap={scheduled:'pb',completed:'pg',exception:'pr'};
+    var labelMap={scheduled:'Scheduled',completed:'Completed',exception:'Exception'};
+    var checklist=CHECKLISTS[tp.id];
+    var checklistHtml='';
+    if(checklist){
+      var incomplete=checklist.items.filter(function(i){return !i.done;});
+      var itemRows=checklist.items.map(function(item){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px">'
+          +'<span class="'+(item.done?'tm':'tc')+'" style="'+(item.done?'text-decoration:line-through':'')+'">'+item.label+'</span>'
+          +(item.done?'<span class="p pg">✓</span>':'<button class="btn btn-s btn-o" onclick="checkItem(\''+tp.id+'\',\''+item.id+'\')">Check</button>')
+          +'</div>';
+      }).join('');
+      var readyBtn=incomplete.length>0
+        ?'<button class="btn btn-s btn-o" disabled title="'+incomplete.length+' item(s) open" style="margin-top:6px">Mark ready ('+incomplete.length+' open)</button>'
+        :'<button class="btn btn-s btn-g" style="margin-top:6px" onclick="markChecklistReady(\''+tp.id+'\')">Mark ready</button>';
+      checklistHtml='<div class="dv"></div><div style="font-size:12px;color:var(--gold);margin-bottom:4px"><i class="ti ti-clipboard-check"></i> Prep checklist</div>'+itemRows+readyBtn;
+    }
+    var actions='';
+    if(tp.status==='scheduled'){
+      actions='<button class="btn btn-s btn-g" onclick="completeTouchpoint(\''+tp.id+'\')">Complete</button>'
+        +'<button class="btn btn-s btn-d" onclick="flagException(\''+tp.id+'\')">Flag exception</button>';
+    }
+    var exceptionNote='';
+    if(tp.status==='exception'){
+      exceptionNote='<div style="font-size:12px;color:var(--red);margin-top:6px">Reason: '+tp.reason+'</div>';
+      if(tp.rebalancing){
+        var candidateLine=tp.rebalancing.candidateHubId
+          ?('Recommended supply hub: <b style="color:var(--gold)">'+hubName(tp.rebalancing.candidateHubId)+'</b>')
+          :'No viable candidate hub found.';
+        exceptionNote+='<div class="aip" style="margin-top:8px"><div class="aip-h"><i class="ti ti-sparkles"></i>Fleet Intelligence Agent — hub rebalancing</div><div class="aip-body">'+candidateLine+'<br><br>'+tp.rebalancing.reasoning+'</div></div>';
+      }
+    }
+    return '<div class="card">'
+      +'<div class="ch"><div><div class="ct">'+hubName(tp.hub)+' · '+tp.type+'</div><div style="font-size:12px;color:var(--mid);margin-top:2px">'+tp.source+' · '+tp.ref+'</div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center"><span class="p '+pillMap[tp.status]+'">'+labelMap[tp.status]+'</span>'+actions+'</div></div>'
+      +exceptionNote+checklistHtml
+      +'</div>';
+  }).join('');
+
+  document.getElementById('tpk-scheduled').textContent=TOUCHPOINTS.filter(function(t){return t.status==='scheduled';}).length;
+  document.getElementById('tpk-completed').textContent=TOUCHPOINTS.filter(function(t){return t.status==='completed';}).length;
+  document.getElementById('tpk-exceptions').textContent=TOUCHPOINTS.filter(function(t){return t.status==='exception';}).length;
+  var openChecklists=Object.values(CHECKLISTS).filter(function(c){return c.items.some(function(i){return !i.done;});}).length;
+  document.getElementById('tpk-checklists').textContent=openChecklists;
+
+  document.getElementById('dk-touchpoints').textContent=TOUCHPOINTS.length;
+}
+var REBALANCE_HEADROOM_THRESHOLD_PCT=70.0;
+function getRebalancingRecommendation(sourceHubId){
+  var source=hubById(sourceHubId);
+  if(!source)return {candidateHubId:null,reasoning:'Source hub not found.'};
+  var candidates=HUBS.filter(function(h){return h.active&&h.id!==sourceHubId&&utilizationForHub(h)<REBALANCE_HEADROOM_THRESHOLD_PCT;});
+  if(candidates.length===0){
+    return {candidateHubId:null,reasoning:'[deterministic fallback] No other active hub in the network snapshot is below '+REBALANCE_HEADROOM_THRESHOLD_PCT.toFixed(0)+'% utilization — no rebalancing candidate found.'};
+  }
+  candidates.forEach(function(h){h._distanceKm=haversineKm(source.lat,source.lon,h.lat,h.lon);});
+  candidates.sort(function(a,b){return a._distanceKm-b._distanceKm;});
+  var best=candidates[0];
+  return {
+    candidateHubId:best.id,
+    reasoning:'[deterministic fallback] Nearest active hub below '+REBALANCE_HEADROOM_THRESHOLD_PCT.toFixed(0)+'% utilization: '+best.name+' ('+utilizationForHub(best)+'% utilized, '+best._distanceKm.toFixed(1)+' km away). Fleet Intelligence Agent recommends this hub as the supply source — a human dispatcher still coordinates the actual transfer.'
+  };
+}
+function scheduleTouchpoint(){
+  var hub=document.getElementById('tp-hub').value;
+  var type=document.getElementById('tp-type').value;
+  var source=document.getElementById('tp-source').value;
+  var ref=document.getElementById('tp-ref').value.trim()||'member-new';
+  TOUCHPOINTS.push({id:nextId(),hub:hub,type:type,source:source,ref:ref,status:'scheduled',scheduledHoursAgo:0});
+  toggleForm('tp-form');renderOps();renderAnalytics();
+}
+function completeTouchpoint(id){
+  var tp=TOUCHPOINTS.find(function(t){return t.id===id;});
+  tp.status='completed';tp.completedHoursAgo=0;
+  DFEED.unshift({a:'ops',m:'Touchpoint completed — '+hubName(tp.hub)+', '+tp.ref,ts:'now'});
+  renderOps();renderFeed();renderAnalytics();
+}
+function flagException(id){
+  var tp=TOUCHPOINTS.find(function(t){return t.id===id;});
+  tp.status='exception';tp.reason='staff-flagged issue';
+  DFEED.unshift({a:'ops',m:'Exception flagged — '+hubName(tp.hub)+', '+tp.ref,ts:'now'});
+  // Deterministic trigger (the exception) fires the Fleet Intelligence
+  // Agent's evaluate_hub_rebalancing capability — real judgment on top
+  // of a hard, reliable trigger, mirroring the actual backend flow.
+  tp.rebalancing=getRebalancingRecommendation(tp.hub);
+  DFEED.unshift({a:'fleet-intel',m:'Rebalancing evaluated — '+hubName(tp.hub)+(tp.rebalancing.candidateHubId?' → '+hubName(tp.rebalancing.candidateHubId):' → no candidate'),ts:'now'});
+  renderOps();renderFeed();
+}
+function checkItem(tpId,itemId){
+  var cl=CHECKLISTS[tpId];
+  var item=cl.items.find(function(i){return i.id===itemId;});
+  item.done=true;renderOps();
+}
+function markChecklistReady(tpId){
+  var cl=CHECKLISTS[tpId];
+  if(cl.items.some(function(i){return !i.done;}))return;
+  cl.status='completed';renderOps();
+}
+
+function haversineKm(lat1,lon1,lat2,lon2){
+  var r=6371;
+  var p1=lat1*Math.PI/180,p2=lat2*Math.PI/180;
+  var dphi=(lat2-lat1)*Math.PI/180, dl=(lon2-lon1)*Math.PI/180;
+  var a=Math.sin(dphi/2)*Math.sin(dphi/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return 2*r*Math.asin(Math.sqrt(a));
+}
+function renderSecurity(){
+  document.getElementById('ck-issued').textContent=CARDS.length;
+  var suspended=CARDS.filter(function(c){return c.status==='suspended';});
+  document.getElementById('ck-suspended').textContent=suspended.length;
+  document.getElementById('ck-taps').textContent=CARD_TAPS.length;
+  document.getElementById('nb-anomalies').textContent=SECURITY_QUEUE.length;
+  document.getElementById('topbar-badge').style.display=SECURITY_QUEUE.length?'block':'none';
+  document.getElementById('dk-alerts').textContent=SECURITY_QUEUE.length;
+
+  document.getElementById('card-rows').innerHTML=CARDS.map(function(c){
+    var pill=c.status==='active'?'<span class="p pg">Active</span>':'<span class="p pr">Suspended</span>';
+    var action=c.status==='suspended'?'<button class="btn btn-s btn-g" onclick="reactivateCard(\''+c.id+'\')">Reactivate</button>':'';
+    return '<div class="tr" style="grid-template-columns:1fr 1.3fr 100px 90px">'
+      +'<span class="tc" style="font-size:13px">'+c.member+'</span>'
+      +'<span class="fm tm" style="font-size:12px">'+c.number+'</span>'
+      +'<span>'+pill+'</span><span>'+action+'</span>'
+      +'</div>';
+  }).join('');
+
+  var tapCardSel=document.getElementById('tap-card');
+  var priorTapCard=tapCardSel.value;
+  populateSelect(tapCardSel,CARDS,function(c){return c.member+' — '+c.number;},function(c){return c.id;});
+  if(priorTapCard)tapCardSel.value=priorTapCard;
+
+  document.getElementById('security-queue-cards').innerHTML=SECURITY_QUEUE.length?SECURITY_QUEUE.map(function(q,i){
+    var reviewHtml=q.review?('<div class="aip" style="margin-top:8px"><div class="aip-h"><i class="ti ti-sparkles"></i>Compliance/Audit Agent — deeper review</div><div class="aip-body">'+q.review+'</div></div>'):'';
+    return '<div class="card" style="border-color:var(--red-border)">'
+      +'<div class="ch"><span class="ct"><i class="ti ti-alert-triangle" style="color:var(--red);margin-right:6px"></i>Geographic anomaly detected</span><span class="p pr">Risk 65 (deterministic score)</span></div>'
+      +'<div style="font-size:13px;color:var(--text)">'+q.detail+'</div>'
+      +reviewHtml
+      +'<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-s btn-g" onclick="resolveSecurityItem('+i+')">Verify &amp; resolve</button><button class="btn btn-s btn-gh">View tap log</button></div>'
+      +'</div>';
+  }).join(''):'<div style="font-size:13px;color:var(--dim)">No security alerts.</div>';
+
+  document.getElementById('dash-security').innerHTML=CARDS.map(function(c){
+    var pill=c.status==='active'?'<span class="p pg">Active</span>':'<span class="p pr">Suspended</span>';
+    return '<div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--cream)">'+c.member+'</span>'+pill+'</div>';
+  }).join('');
+}
+function issueCard(){
+  var member=document.getElementById('cf-member').value.trim();
+  var number=document.getElementById('cf-number').value.trim();
+  if(!member||!number)return;
+  CARDS.push({id:nextId(),member:member,number:number,status:'active'});
+  toggleForm('card-form');renderSecurity();
+}
+function reactivateCard(id){
+  var c=cardById(id);c.status='active';renderSecurity();
+}
+function resolveSecurityItem(i){SECURITY_QUEUE.splice(i,1);renderSecurity();}
+function simulateTap(){
+  var cardId=document.getElementById('tap-card').value;
+  var hubId=document.getElementById('tap-hub').value;
+  var minutesAgo=parseFloat(document.getElementById('tap-minutes').value)||0;
+  var card=cardById(cardId);
+  var hub=hubById(hubId);
+  var resultEl=document.getElementById('tap-result');
+
+  var priorTaps=CARD_TAPS.filter(function(t){return t.card===cardId;});
+  var lastTap=priorTaps.length?priorTaps[priorTaps.length-1]:null;
+
+  var anomaly=false, reason='';
+  if(lastTap && lastTap.hub!==hubId){
+    var lastHub=hubById(lastTap.hub);
+    var distanceKm=haversineKm(lastHub.lat,lastHub.lon,hub.lat,hub.lon);
+    var elapsedHours=Math.max(minutesAgo/60,1/3600);
+    var impliedSpeed=distanceKm/elapsedHours;
+    if(impliedSpeed>900){
+      anomaly=true;
+      reason='implied travel speed '+Math.round(impliedSpeed).toLocaleString()+' km/h between '+lastHub.name+' and '+hub.name+' ('+Math.round(distanceKm).toLocaleString()+' km in '+minutesAgo+' min) exceeds the 900 km/h plausibility threshold';
+    }
+  }
+
+  CARD_TAPS.push({id:nextId(),card:cardId,hub:hubId,anomaly:anomaly});
+
+  if(anomaly){
+    card.status='suspended';
+    // Deterministic trigger (the anomaly) fires the Compliance/Audit
+    // Agent's deeper review, which reads the card's real tap history —
+    // mirrors the actual get_card_tap_history tool exactly.
+    var priorAnomalies=CARD_TAPS.filter(function(t){return t.card===cardId&&t.anomaly;}).length;
+    var review=priorAnomalies>1
+      ?('This card has now been flagged '+priorAnomalies+' times — a repeat pattern is stronger evidence of theft or cloning, not an isolated edge case. Recommend treating as likely fraud pending verification.')
+      :('First anomaly on this card ('+priorAnomalies+' of '+CARD_TAPS.filter(function(t){return t.card===cardId;}).length+' taps flagged) — could be a legitimate edge case (e.g. two members sharing a household card). Recommend verifying the member before reactivating rather than assuming fraud.');
+    SECURITY_QUEUE.unshift({detail:card.member+' ('+card.number+') — '+reason,cardId:cardId,review:review});
+    DFEED.unshift({a:'compliance',m:'Card auto-suspended — geographic anomaly, '+card.member,ts:'now'});
+    resultEl.innerHTML='<div style="background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:8px;padding:10px;font-size:12px;color:var(--red);margin-bottom:8px"><i class="ti ti-ban" style="margin-right:5px"></i>Anomaly detected — card auto-suspended (deterministic gate, always-on). '+reason+'.</div>'
+      +'<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Compliance/Audit Agent — deeper review</div><div class="aip-body">'+review+'</div></div>';
+  } else {
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)"><i class="ti ti-check" style="margin-right:5px"></i>Tap logged — no anomaly. Travel plausible (or first tap / same hub).</div>';
+  }
+  renderSecurity();renderFeed();
+}
+
+function scheduledCountForHub(hubId){
+  return TOUCHPOINTS.filter(function(t){return t.hub===hubId&&t.status==='scheduled';}).length;
+}
+function utilizationForHub(hub){
+  var scheduled=scheduledCountForHub(hub.id);
+  return hub.capacity?Math.round((scheduled/hub.capacity)*1000)/10:0;
+}
+var networkChart=null, utilChart=null;
+function requestRebalancing(){
+  var hubId=document.getElementById('rebalance-hub-sel').value;
+  var resultEl=document.getElementById('rebalance-result');
+  resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-loader-2"></i>Fleet Intelligence Agent evaluating…</div></div>';
+  setTimeout(function(){
+    var rec=getRebalancingRecommendation(hubId);
+    var candidateLine=rec.candidateHubId
+      ?('Recommended supply hub: <b style="color:var(--gold);font-size:15px">'+hubName(rec.candidateHubId)+'</b>')
+      :'<span style="color:var(--dim)">No viable candidate hub found.</span>';
+    resultEl.innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Fleet Intelligence Agent — hub rebalancing</div><div class="aip-body">'+candidateLine+'<br><br>'+rec.reasoning+'</div></div>';
+  },500);
+}
+function renderAnalytics(){
+  var activeHubs=HUBS.filter(function(h){return h.active;});
+  var rebalanceSel=document.getElementById('rebalance-hub-sel');
+  var priorRebalanceSel=rebalanceSel.value;
+  populateSelect(rebalanceSel,activeHubs,function(h){return h.name;},function(h){return h.id;});
+  if(priorRebalanceSel)rebalanceSel.value=priorRebalanceSel;
+
+  var utils=activeHubs.map(utilizationForHub);
+  var avgUtil=utils.length?Math.round(utils.reduce(function(a,b){return a+b;},0)/utils.length*10)/10:0;
+  document.getElementById('ak-util').textContent=avgUtil+'%';
+  document.getElementById('dk-util').textContent=avgUtil+'%';
+
+  var completedCount=TOUCHPOINTS.filter(function(t){return t.status==='completed';}).length;
+  document.getElementById('ak-throughput').textContent=(completedCount/7).toFixed(2);
+
+  var dwellSamples=TOUCHPOINTS.filter(function(t){return t.status==='completed'&&t.completedHoursAgo!==undefined;})
+    .map(function(t){return t.scheduledHoursAgo-t.completedHoursAgo;});
+  var avgDwell=dwellSamples.length?(dwellSamples.reduce(function(a,b){return a+b;},0)/dwellSamples.length).toFixed(2):'—';
+  document.getElementById('ak-dwell').textContent=avgDwell==='—'?'—':avgDwell+'h';
+
+  var atCapacity=activeHubs.filter(function(h){return scheduledCountForHub(h.id)>=h.capacity;});
+  document.getElementById('ak-atcapacity').textContent=atCapacity.length;
+
+  document.getElementById('network-rows').innerHTML=activeHubs.map(function(h){
+    var scheduled=scheduledCountForHub(h.id);
+    var util=utilizationForHub(h);
+    var utilColor=util>=90?'trr':(util>=60?'tg':'tr2');
+    return '<div class="tr" style="grid-template-columns:1.5fr 1fr 100px 110px 100px">'
+      +'<span class="tc" style="font-size:13px">'+h.name+'</span>'
+      +'<span class="tm" style="font-size:12px">'+HUB_TYPE_LABELS[h.type]+'</span>'
+      +'<span>'+h.capacity+'</span>'
+      +'<span>'+scheduled+'</span>'
+      +'<span class="'+utilColor+'">'+util+'%</span>'
+      +'</div>';
+  }).join('');
+
+  document.getElementById('dash-capacity').innerHTML=activeHubs.map(function(h){
+    var util=utilizationForHub(h);
+    var pill=util>=90?'<span class="p pr">'+util+'%</span>':(util>=60?'<span class="p pa2">'+util+'%</span>':'<span class="p pg">'+util+'%</span>');
+    return '<div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--cream)">'+h.name+'</span>'+pill+'</div>';
+  }).join('');
+
+  var txtC='rgba(110,128,150,0.8)',gridC='rgba(255,255,255,0.04)';
+  var netCtx=document.getElementById('chartNetwork');
+  if(netCtx){
+    if(networkChart)networkChart.destroy();
+    networkChart=new Chart(netCtx,{
+      type:'bar',
+      data:{labels:activeHubs.map(function(h){return h.name.split(' ').slice(0,2).join(' ');}),
+        datasets:[{data:utils,backgroundColor:utils.map(function(u){return u>=90?'rgba(208,80,80,0.65)':u>=60?'rgba(201,168,76,0.65)':'rgba(46,168,122,0.65)';}),borderRadius:4,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:gridC},ticks:{color:txtC,font:{size:11}}},y:{grid:{color:gridC},ticks:{color:txtC,font:{size:11},callback:function(v){return v+'%';}},max:100}}}
+    });
+  }
+  var utilCtx=document.getElementById('chartUtil');
+  if(utilCtx){
+    if(utilChart)utilChart.destroy();
+    utilChart=new Chart(utilCtx,{
+      type:'doughnut',
+      data:{labels:activeHubs.map(function(h){return h.name.split(' ').slice(0,2).join(' ');}),
+        datasets:[{data:utils.map(function(u){return Math.max(u,1);}),backgroundColor:['rgba(201,168,76,0.7)','rgba(61,142,212,0.7)','rgba(46,168,122,0.7)','rgba(123,108,212,0.7)','rgba(232,149,95,0.7)'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:txtC,font:{size:10},boxWidth:10}}}}
+    });
+  }
+}
+
+function renderFeed(){
+  document.getElementById('dash-feed').innerHTML=DFEED.slice(0,8).map(function(d){
+    return '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--border)"><span class="at" style="flex-shrink:0">'+d.a+'</span><span style="font-size:12px;color:var(--text);flex:1">'+d.m+'</span><span style="font-size:11px;color:var(--dim);flex-shrink:0">'+d.ts+'</span></div>';
+  }).join('');
+}
+
+function rerenderAll(){
+  document.getElementById('dk-hubs').textContent=HUBS.filter(function(h){return h.active;}).length;
+  renderDirectory();
+  renderOps();
+  renderSecurity();
+  renderAnalytics();
+  renderFeed();
+}
+rerenderAll();
+</script>
+</body>
+</html>

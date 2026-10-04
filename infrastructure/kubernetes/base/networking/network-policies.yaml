@@ -1,0 +1,98 @@
+# VOYQI Mobility OS — Network Policies
+#
+# Architectural rule (PRD §3.1): no service port is ever called directly
+# from a client. All client traffic enters through api-gateway (port 8000).
+# These policies enforce that at the network layer, not just by convention.
+
+# 1. Default-deny all ingress in the voyqi namespace. Every service must be
+#    explicitly opened below.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: voyqi
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# 2. api-gateway is the only workload reachable from the Ingress/Load
+#    Balancer (external traffic).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-gateway
+  namespace: voyqi
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  ingress:
+    - from: [] # from the GCE Ingress controller / load balancer
+      ports:
+        - protocol: TCP
+          port: 8000
+  policyTypes:
+    - Ingress
+---
+# 3. Layer 0/1/2 execution services accept traffic ONLY from api-gateway or
+#    from the AI orchestration nucleus (which calls services as tools,
+#    identified by the X-AI-Initiated header at the application layer —
+#    this policy is the network-layer backstop). REV D: the nucleus is now
+#    two Deployments (ai-orchestration-realtime, ai-orchestration-batch)
+#    sharing the common label role=ai-orchestration, so this rule covers
+#    both without needing to enumerate them.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-and-ai-to-services
+  namespace: voyqi
+spec:
+  podSelector:
+    matchExpressions:
+      - key: voyqi-layer
+        operator: In
+        values: ["0", "1", "2"]
+      - key: app
+        operator: NotIn
+        values: ["api-gateway"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+        - podSelector:
+            matchLabels:
+              role: ai-orchestration
+  policyTypes:
+    - Ingress
+---
+# 4. The AI orchestration nucleus (both realtime and batch groups, matched
+#    via the shared role=ai-orchestration label) additionally accepts the
+#    Kafka consumer connection (from the kafka namespace) and is otherwise
+#    unreachable directly from clients.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kafka-to-ai-orchestration
+  namespace: voyqi
+spec:
+  podSelector:
+    matchLabels:
+      role: ai-orchestration
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kafka
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+  policyTypes:
+    - Ingress
+---
+# 5. Realtime and batch groups do NOT need to reach each other directly —
+#    coordination between them happens through the shared Postgres decision
+#    log, the shared Redis checkpoint store, and Kafka, never a direct pod-
+#    to-pod call. No rule opens tier=realtime <-> tier=batch traffic; this
+#    is intentional and keeps the isolation real, not just nominal.

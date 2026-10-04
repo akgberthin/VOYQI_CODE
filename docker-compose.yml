@@ -1,0 +1,609 @@
+# Trimmed for local setup: only the services that actually have code.
+# The original 14-service compose file referenced identity-svc,
+# platform-config-svc, cms-svc, crm-svc and org-svc with no source
+# anywhere in the provided zips — they're left out rather than faked.
+# ai-orchestration-svc's env vars still point at their URLs so wiring
+# them back in later is a one-line uncomment, not a rewrite.
+#
+# executive-svc was newly built from the 26-service vision
+# (docs/SERVICE_INVENTORY.md) — Portfolio Intelligence, tier-1
+# reporting/rollups only, no AI agent, no frontend.
+
+services:
+  kafka:
+    image: apache/kafka:3.7.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  rbac-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rbac
+      POSTGRES_USER: rbac_svc
+      POSTGRES_PASSWORD: ${RBAC_DB_PASSWORD:-devpassword}
+    volumes:
+      - rbac_db_data:/var/lib/postgresql/data
+
+  rbac-svc:
+    build: ./services/rbac-svc
+    ports:
+      - "8011:8011"
+    environment:
+      RBAC_DATABASE_URL: postgresql+asyncpg://rbac_svc:${RBAC_DB_PASSWORD:-devpassword}@rbac-db:5432/rbac
+      RBAC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - rbac-db
+      - kafka
+
+  ai-orchestration-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ai_orchestration
+      POSTGRES_USER: ai_orch_svc
+      POSTGRES_PASSWORD: ${AI_ORCH_DB_PASSWORD:-devpassword}
+    volumes:
+      - ai_orchestration_db_data:/var/lib/postgresql/data
+
+  ai-orchestration-svc:
+    build: ./services/ai-orchestration-svc
+    ports:
+      - "8020:8020"
+    environment:
+      AI_ORCH_DATABASE_URL: postgresql+asyncpg://ai_orch_svc:${AI_ORCH_DB_PASSWORD:-devpassword}@ai-orchestration-db:5432/ai_orchestration
+      AI_ORCH_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      AI_ORCH_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_ORCH_ANTHROPIC_MODEL: claude-sonnet-5
+      AI_ORCH_RBAC_SVC_BASE_URL: http://rbac-svc:8011
+      AI_ORCH_MARKETING_SVC_BASE_URL: http://marketing-svc:8007
+      AI_ORCH_FLEET_SVC_BASE_URL: http://fleet-svc:8004
+      AI_ORCH_SUBSCRIPTION_SVC_BASE_URL: http://subscription-svc:8003
+      AI_ORCH_RENTAL_SVC_BASE_URL: http://rental-svc:8005
+      AI_ORCH_DMS_SVC_BASE_URL: http://dms-svc:8008
+      AI_ORCH_HUB_SVC_BASE_URL: http://hub-svc:8006
+      AI_ORCH_HRM_SVC_BASE_URL: http://hrm-svc:8023
+      # Not started in this handoff — left commented so wiring them back in
+      # later is a one-line uncomment, not a rewrite:
+      # AI_ORCH_IDENTITY_SVC_BASE_URL: http://identity-svc:8014
+      # AI_ORCH_CRM_SVC_BASE_URL: http://crm-svc:8021
+      # AI_ORCH_ORG_SVC_BASE_URL: http://org-svc:8022
+    depends_on:
+      - ai-orchestration-db
+      - kafka
+      - rbac-svc
+      - marketing-svc
+      - fleet-svc
+      - subscription-svc
+      - rental-svc
+      - dms-svc
+      - hub-svc
+      - hrm-svc
+
+  marketing-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: marketing
+      POSTGRES_USER: marketing_svc
+      POSTGRES_PASSWORD: ${MARKETING_DB_PASSWORD:-devpassword}
+    volumes:
+      - marketing_db_data:/var/lib/postgresql/data
+
+  marketing-svc:
+    build: ./services/marketing-svc
+    ports:
+      - "8007:8007"
+    environment:
+      MARKETING_DATABASE_URL: postgresql+asyncpg://marketing_svc:${MARKETING_DB_PASSWORD:-devpassword}@marketing-db:5432/marketing
+      MARKETING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - marketing-db
+      - kafka
+
+  fleet-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fleet
+      POSTGRES_USER: fleet_svc
+      POSTGRES_PASSWORD: ${FLEET_DB_PASSWORD:-devpassword}
+    volumes:
+      - fleet_db_data:/var/lib/postgresql/data
+
+  fleet-svc:
+    build: ./services/fleet-svc
+    ports:
+      - "8004:8004"
+    environment:
+      FLEET_DATABASE_URL: postgresql+asyncpg://fleet_svc:${FLEET_DB_PASSWORD:-devpassword}@fleet-db:5432/fleet
+      FLEET_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      FLEET_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+    depends_on:
+      - fleet-db
+      - kafka
+
+  subscription-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: subscription
+      POSTGRES_USER: subscription_svc
+      POSTGRES_PASSWORD: ${SUBSCRIPTION_DB_PASSWORD:-devpassword}
+    volumes:
+      - subscription_db_data:/var/lib/postgresql/data
+
+  subscription-svc:
+    build: ./services/subscription-svc
+    ports:
+      - "8003:8003"
+    environment:
+      SUBSCRIPTION_DATABASE_URL: postgresql+asyncpg://subscription_svc:${SUBSCRIPTION_DB_PASSWORD:-devpassword}@subscription-db:5432/subscription
+      SUBSCRIPTION_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SUBSCRIPTION_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+      SUBSCRIPTION_FLEET_SVC_BASE_URL: http://fleet-svc:8004
+    depends_on:
+      - subscription-db
+      - kafka
+      - fleet-svc
+
+  rental-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: rental
+      POSTGRES_USER: rental_svc
+      POSTGRES_PASSWORD: ${RENTAL_DB_PASSWORD:-devpassword}
+    volumes:
+      - rental_db_data:/var/lib/postgresql/data
+
+  rental-svc:
+    build: ./services/rental-svc
+    ports:
+      - "8005:8005"
+    environment:
+      RENTAL_DATABASE_URL: postgresql+asyncpg://rental_svc:${RENTAL_DB_PASSWORD:-devpassword}@rental-db:5432/rental
+      RENTAL_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RENTAL_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+      RENTAL_FLEET_SVC_BASE_URL: http://fleet-svc:8004
+    depends_on:
+      - rental-db
+      - kafka
+      - fleet-svc
+
+  dms-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: dms
+      POSTGRES_USER: dms_svc
+      POSTGRES_PASSWORD: ${DMS_DB_PASSWORD:-devpassword}
+    volumes:
+      - dms_db_data:/var/lib/postgresql/data
+
+  dms-svc:
+    build: ./services/dms-svc
+    ports:
+      - "8008:8008"
+    environment:
+      DMS_DATABASE_URL: postgresql+asyncpg://dms_svc:${DMS_DB_PASSWORD:-devpassword}@dms-db:5432/dms
+      DMS_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DMS_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+    depends_on:
+      - dms-db
+      - kafka
+
+  hub-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: hub
+      POSTGRES_USER: hub_svc
+      POSTGRES_PASSWORD: ${HUB_DB_PASSWORD:-devpassword}
+    volumes:
+      - hub_db_data:/var/lib/postgresql/data
+
+  hub-svc:
+    build: ./services/hub-svc
+    ports:
+      - "8006:8006"
+    environment:
+      HUB_DATABASE_URL: postgresql+asyncpg://hub_svc:${HUB_DB_PASSWORD:-devpassword}@hub-db:5432/hub
+      HUB_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      HUB_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+    depends_on:
+      - hub-db
+      - kafka
+
+  hrm-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: hrm
+      POSTGRES_USER: hrm_svc
+      POSTGRES_PASSWORD: ${HRM_DB_PASSWORD:-devpassword}
+    volumes:
+      - hrm_db_data:/var/lib/postgresql/data
+
+  hrm-svc:
+    build: ./services/hrm-svc
+    ports:
+      - "8023:8023"
+    environment:
+      HRM_DATABASE_URL: postgresql+asyncpg://hrm_svc:${HRM_DB_PASSWORD:-devpassword}@hrm-db:5432/hrm
+      HRM_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      HRM_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+    depends_on:
+      - hrm-db
+      - kafka
+
+  executive-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: executive
+      POSTGRES_USER: executive_svc
+      POSTGRES_PASSWORD: ${EXECUTIVE_DB_PASSWORD:-devpassword}
+    volumes:
+      - executive_db_data:/var/lib/postgresql/data
+
+  executive-svc:
+    build: ./services/executive-svc
+    ports:
+      # 8025 collides with the client-delivered user-svc's default port —
+      # moved here rather than edit code that isn't ours.
+      - "8032:8032"
+    environment:
+      EXEC_DATABASE_URL: postgresql+asyncpg://executive_svc:${EXECUTIVE_DB_PASSWORD:-devpassword}@executive-db:5432/executive
+      EXEC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - executive-db
+      - kafka
+
+  # --- Newly delivered by the client (2026-09-29), tested and wired in ---
+
+  auth-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: auth_svc
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-devpassword}
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+
+  auth-svc:
+    build: ./services/auth-svc
+    ports:
+      - "8024:8024"
+    environment:
+      AUTH_DATABASE_URL: postgresql+asyncpg://auth_svc:${AUTH_DB_PASSWORD:-devpassword}@auth-db:5432/auth
+      AUTH_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Shared with api-gateway-svc's GATEWAY_JWT_SECRET below — both
+      # must match exactly for the gateway to verify tokens statelessly.
+      AUTH_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
+    depends_on:
+      - auth-db
+      - kafka
+
+  api-gateway-svc:
+    build: ./services/api-gateway-svc
+    ports:
+      - "8000:8000"
+    environment:
+      GATEWAY_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
+    depends_on:
+      - auth-svc
+
+  user-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: user_svc
+      POSTGRES_USER: user_svc
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-devpassword}
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+
+  user-svc:
+    build: ./services/user-svc
+    ports:
+      - "8025:8025"
+    environment:
+      USER_DATABASE_URL: postgresql+asyncpg://user_svc:${USER_DB_PASSWORD:-devpassword}@user-db:5432/user_svc
+      USER_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      USER_AUTH_SVC_BASE_URL: http://auth-svc:8024
+    depends_on:
+      - user-db
+      - kafka
+      - auth-svc
+
+  pricing-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: pricing
+      POSTGRES_USER: pricing_svc
+      POSTGRES_PASSWORD: ${PRICING_DB_PASSWORD:-devpassword}
+    volumes:
+      - pricing_db_data:/var/lib/postgresql/data
+
+  pricing-svc:
+    build: ./services/pricing-svc
+    ports:
+      - "8010:8010"
+    environment:
+      PRICING_DATABASE_URL: postgresql+asyncpg://pricing_svc:${PRICING_DB_PASSWORD:-devpassword}@pricing-db:5432/pricing
+      PRICING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - pricing-db
+      - kafka
+
+  notification-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: notification
+      POSTGRES_USER: notification_svc
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-devpassword}
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+
+  notification-svc:
+    build: ./services/notification-svc
+    ports:
+      - "8027:8027"
+    environment:
+      NOTIF_DATABASE_URL: postgresql+asyncpg://notification_svc:${NOTIFICATION_DB_PASSWORD:-devpassword}@notification-db:5432/notification
+      NOTIF_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # No SMTP/SMS provider credentials in this environment — the
+      # service falls back to its console provider (logs instead of
+      # sending) rather than faking delivery.
+    depends_on:
+      - notification-db
+      - kafka
+
+  payment-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: payment
+      POSTGRES_USER: payment_svc
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-devpassword}
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+
+  payment-svc:
+    build: ./services/payment-svc
+    ports:
+      - "8026:8026"
+    environment:
+      PAYMENT_DATABASE_URL: postgresql+asyncpg://payment_svc:${PAYMENT_DB_PASSWORD:-devpassword}@payment-db:5432/payment
+      PAYMENT_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PAYMENT_NOTIFICATION_SVC_BASE_URL: http://notification-svc:8027
+      # No Stripe credentials in this environment — falls back to the
+      # sandbox provider, clearly marked on every Charge record.
+    depends_on:
+      - payment-db
+      - kafka
+      - notification-svc
+
+  crm-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: crm
+      POSTGRES_USER: crm_svc
+      POSTGRES_PASSWORD: ${CRM_DB_PASSWORD:-devpassword}
+    volumes:
+      - crm_db_data:/var/lib/postgresql/data
+
+  crm-svc:
+    build: ./services/crm-svc
+    ports:
+      - "8021:8021"
+    environment:
+      CRM_DATABASE_URL: postgresql+asyncpg://crm_svc:${CRM_DB_PASSWORD:-devpassword}@crm-db:5432/crm
+      CRM_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - crm-db
+      - kafka
+
+  # --- Built 2026-09-29, second Portfolio Intelligence service (Layer 2) ---
+
+  management-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: management
+      POSTGRES_USER: management_svc
+      POSTGRES_PASSWORD: ${MANAGEMENT_DB_PASSWORD:-devpassword}
+    volumes:
+      - management_db_data:/var/lib/postgresql/data
+
+  management-svc:
+    build: ./services/management-svc
+    ports:
+      # docs/PORT_REGISTRY.md assigns 8026, but the client-delivered
+      # payment-svc already claims that port — moved here to a free
+      # slot rather than edit code that isn't ours.
+      - "8033:8033"
+    environment:
+      MGMT_DATABASE_URL: postgresql+asyncpg://management_svc:${MANAGEMENT_DB_PASSWORD:-devpassword}@management-db:5432/management
+      MGMT_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - management-db
+      - kafka
+
+  real-estate-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: real_estate
+      POSTGRES_USER: real_estate_svc
+      POSTGRES_PASSWORD: ${REAL_ESTATE_DB_PASSWORD:-devpassword}
+    volumes:
+      - real_estate_db_data:/var/lib/postgresql/data
+
+  real-estate-svc:
+    build: ./services/real-estate-svc
+    ports:
+      # docs/PORT_REGISTRY.md assigns 8027, but the client-delivered
+      # notification-svc already claims that port — moved here to a
+      # free slot rather than edit code that isn't ours.
+      - "8034:8034"
+    environment:
+      REALESTATE_DATABASE_URL: postgresql+asyncpg://real_estate_svc:${REAL_ESTATE_DB_PASSWORD:-devpassword}@real-estate-db:5432/real_estate
+      REALESTATE_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - real-estate-db
+      - kafka
+
+  capital-finance-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: capital_finance
+      POSTGRES_USER: capital_finance_svc
+      POSTGRES_PASSWORD: ${CAPITAL_FINANCE_DB_PASSWORD:-devpassword}
+    volumes:
+      - capital_finance_db_data:/var/lib/postgresql/data
+
+  capital-finance-svc:
+    build: ./services/capital-finance-svc
+    ports:
+      # Moved off docs/PORT_REGISTRY.md's original 8028 — the client-
+      # delivered ip-asset-svc claims that port, and more importantly
+      # the client-delivered api-gateway-svc's routing table hardcodes
+      # ip-asset-svc there. See capital-finance-svc's own config.py.
+      - "8035:8035"
+    environment:
+      CAPFIN_DATABASE_URL: postgresql+asyncpg://capital_finance_svc:${CAPITAL_FINANCE_DB_PASSWORD:-devpassword}@capital-finance-db:5432/capital_finance
+      CAPFIN_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - capital-finance-db
+
+  ip-asset-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ip_asset
+      POSTGRES_USER: ip_asset_svc
+      POSTGRES_PASSWORD: ${IP_ASSET_DB_PASSWORD:-devpassword}
+    volumes:
+      - ip_asset_db_data:/var/lib/postgresql/data
+
+  ip-asset-svc:
+    build: ./services/ip-asset-svc
+    ports:
+      - "8028:8028"
+    environment:
+      IP_DATABASE_URL: postgresql+asyncpg://ip_asset_svc:${IP_ASSET_DB_PASSWORD:-devpassword}@ip-asset-db:5432/ip_asset
+      IP_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - ip-asset-db
+      - kafka
+
+  # --- Built 2026-09-30: the 4 remaining missing services ---
+
+  sales-service:
+    build: ./services/sales-service
+    ports:
+      - "8009:8009"
+    environment:
+      SALES_DATABASE_URL: postgresql+asyncpg://sales_svc:${SALES_DB_PASSWORD:-devpassword}@sales-db:5432/sales
+      SALES_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - sales-db
+      - kafka
+
+  sales-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: sales
+      POSTGRES_USER: sales_svc
+      POSTGRES_PASSWORD: ${SALES_DB_PASSWORD:-devpassword}
+    volumes:
+      - sales_db_data:/var/lib/postgresql/data
+
+  insurance-risk-svc:
+    build: ./services/insurance-risk-svc
+    ports:
+      - "8029:8029"
+    environment:
+      RISK_DATABASE_URL: postgresql+asyncpg://risk_svc:${RISK_DB_PASSWORD:-devpassword}@insurance-risk-db:5432/insurance_risk
+      RISK_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - insurance-risk-db
+      - kafka
+
+  insurance-risk-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: insurance_risk
+      POSTGRES_USER: risk_svc
+      POSTGRES_PASSWORD: ${RISK_DB_PASSWORD:-devpassword}
+    volumes:
+      - insurance_risk_db_data:/var/lib/postgresql/data
+
+  security-compliance-svc:
+    build: ./services/security-compliance-svc
+    ports:
+      - "8031:8031"
+    environment:
+      SECCOMP_DATABASE_URL: postgresql+asyncpg://seccomp_svc:${SECCOMP_DB_PASSWORD:-devpassword}@security-compliance-db:5432/security_compliance
+      SECCOMP_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - security-compliance-db
+      - kafka
+
+  security-compliance-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: security_compliance
+      POSTGRES_USER: seccomp_svc
+      POSTGRES_PASSWORD: ${SECCOMP_DB_PASSWORD:-devpassword}
+    volumes:
+      - security_compliance_db_data:/var/lib/postgresql/data
+
+  originations-svc:
+    build: ./services/originations-svc
+    ports:
+      # docs/PORT_REGISTRY.md's original 8024 collides with the
+      # client-delivered auth-svc — moved here rather than edit code
+      # that isn't ours.
+      - "8036:8036"
+    environment:
+      ORIG_DATABASE_URL: postgresql+asyncpg://orig_svc:${ORIG_DB_PASSWORD:-devpassword}@originations-db:5432/originations
+      ORIG_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - originations-db
+      - kafka
+
+  originations-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: originations
+      POSTGRES_USER: orig_svc
+      POSTGRES_PASSWORD: ${ORIG_DB_PASSWORD:-devpassword}
+    volumes:
+      - originations_db_data:/var/lib/postgresql/data
+
+volumes:
+  kafka_data:
+  rbac_db_data:
+  ai_orchestration_db_data:
+  marketing_db_data:
+  fleet_db_data:
+  subscription_db_data:
+  rental_db_data:
+  dms_db_data:
+  hub_db_data:
+  hrm_db_data:
+  executive_db_data:
+  auth_db_data:
+  user_db_data:
+  pricing_db_data:
+  notification_db_data:
+  payment_db_data:
+  crm_db_data:
+  real_estate_db_data:
+  capital_finance_db_data:
+  ip_asset_db_data:
+  management_db_data:
+  sales_db_data:
+  insurance_risk_db_data:
+  security_compliance_db_data:
+  originations_db_data:

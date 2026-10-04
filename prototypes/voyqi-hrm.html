@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI — HRM</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --sw:224px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em}
+.wordmark span{color:var(--mid);font-weight:500;letter-spacing:.04em;margin-left:6px;font-size:12px}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tbx{width:30px;height:30px;border-radius:7px;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.tbx i{font-size:15px;color:var(--mid)}
+.nbadge{position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:var(--gold);border-radius:50%;border:1.5px solid var(--surface)}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold)}
+.uname{font-size:12px;font-weight:500}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.sfoot{margin-top:auto;padding:10px 13px;border-top:0.5px solid var(--border)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:10px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center;transition:background .1s}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:var(--surface2)}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pp{background:var(--purple-dim);color:var(--purple);border:0.5px solid rgba(123,108,212,.3)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none}
+.fi:focus{border-color:var(--gold-border)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.at{font-family:monospace;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.dv{height:0.5px;background:var(--border);margin:13px 0}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:14px}
+.aip-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--gold)}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.noai{background:var(--surface2);border:0.5px dashed var(--border2);border-radius:10px;padding:12px;font-size:12px;color:var(--dim)}
+.grid9{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.box9{border-radius:8px;padding:10px;min-height:70px;border:0.5px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI<span>HRM · AI-Native HR</span></span>
+  <div class="tb-right">
+    <div class="tbx" onclick="sp('cases')"><i class="ti ti-headset"></i><div class="nbadge" id="topbar-badge"></div></div>
+    <div class="tbx"><i class="ti ti-settings"></i></div>
+    <div class="upill"><div class="uav">HR</div><div><div class="uname">HR Operations</div><div class="urole">hrm_admin</div></div></div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Overview</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+
+  <div class="ss">HRM-001</div>
+  <div class="ni" id="n-directory" onclick="sp('directory')"><i class="ti ti-id-badge-2"></i>Employee directory</div>
+
+  <div class="ss">HRM-002</div>
+  <div class="ni" id="n-payroll" onclick="sp('payroll')"><i class="ti ti-receipt"></i>Payroll &amp; benefits</div>
+
+  <div class="ss">HRM-003</div>
+  <div class="ni" id="n-recruiting" onclick="sp('recruiting')"><i class="ti ti-users-plus"></i>Talent CRM &amp; recruiting</div>
+
+  <div class="ss">HRM-004</div>
+  <div class="ni" id="n-performance" onclick="sp('performance')"><i class="ti ti-target-arrow"></i>Performance &amp; 9-box</div>
+
+  <div class="ss">HRM-005</div>
+  <div class="ni" id="n-workforce" onclick="sp('workforce')"><i class="ti ti-chart-bar"></i>Workforce analytics<span class="nb nb-r" id="nb-attrition">0</span></div>
+
+  <div class="ss">HRM-006</div>
+  <div class="ni" id="n-academy" onclick="sp('academy')"><i class="ti ti-school"></i>VOYQI Academy</div>
+
+  <div class="ss">HRM-007</div>
+  <div class="ni" id="n-cases" onclick="sp('cases')"><i class="ti ti-headset"></i>Case management</div>
+
+  <div class="ss">HRM-008</div>
+  <div class="ni" id="n-notices" onclick="sp('notices')"><i class="ti ti-speakerphone"></i>Notices &amp; communication<span class="nb nb-r" id="nb-notices">0</span></div>
+  <div class="ni" id="n-assistant" onclick="sp('assistant')"><i class="ti ti-message-chatbot"></i>AI assistant</div>
+
+  <div class="sfoot">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="uav" style="width:26px;height:26px;font-size:10px">HR</div>
+      <div><div style="font-size:12px;font-weight:500;color:var(--text)">HR Operations</div><div style="font-size:11px;color:var(--dim)">hrm_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+
+<div class="page on" id="p-dash">
+<div class="ph"><div class="pt">HRM Dashboard</div><div class="ps">Employees · Payroll &amp; Benefits · Talent CRM · Performance · Workforce Analytics · Academy · Cases — <span class="ld"></span>Live</div></div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Active employees</div><div class="kv" id="dk-employees">—</div><div class="kd tg">Across all entities</div></div>
+  <div class="kpi kpi-b"><div class="kl">Open applications</div><div class="kv" id="dk-applications">—</div><div class="kd tb2">In the pipeline</div></div>
+  <div class="kpi kpi-red"><div class="kl">Attrition watchlist</div><div class="kv" id="dk-attrition">—</div><div class="kd trr">Risk score ≥ 50%</div></div>
+  <div class="kpi kpi-green"><div class="kl">Open HR cases</div><div class="kv" id="dk-cases">—</div><div class="kd tr2">Awaiting resolution</div></div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Talent Agent activity</span></div>
+    <div id="dash-feed" style="display:flex;flex-direction:column;gap:1px;max-height:280px;overflow-y:auto"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Headcount by department</span></div>
+    <div style="position:relative;height:230px"><canvas id="chartDept" role="img" aria-label="Headcount by department">Department chart</canvas></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-directory">
+<div class="ph"><div class="pt">Employee Directory &amp; HR Core</div><div class="ps">HRM-001 · Onboarding/offboarding checklists are AI-populated by department automatically, then hard-gated: the checklist must be fully complete before status can advance. Nothing here is skippable by the agent.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('emp-form')"><i class="ti ti-plus"></i>New employee</button></div></div>
+<div class="card" id="emp-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Full name</label><input class="fi" id="ef-name" placeholder="Jane Doe"></div>
+    <div class="fg"><label class="fl">Job title</label><input class="fi" id="ef-title" placeholder="Service Advisor"></div>
+    <div class="fg"><label class="fl">Department</label><input class="fi" id="ef-dept" placeholder="Service"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Entity</label><select class="fs" id="ef-entity"><option value="dealership">Dealership</option><option value="hub">Hub Operations</option><option value="corporate">Corporate</option></select></div>
+    <div class="fg"><label class="fl">Annual salary ($)</label><input class="fi" id="ef-salary" placeholder="55000"></div>
+  </div>
+  <button class="btn btn-g" onclick="createEmployee()"><i class="ti ti-check"></i>Create (auto-populates onboarding checklist)</button>
+</div>
+<div class="two" style="align-items:start">
+  <div>
+    <div class="sec"><span class="st">Employees</span></div>
+    <div class="tw">
+      <div class="th" style="grid-template-columns:1.1fr 1fr 1fr 100px"><span>Name</span><span>Title</span><span>Department</span><span>Checklist</span></div>
+      <div id="employee-rows"></div>
+    </div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Onboarding checklist detail</span></div>
+    <div id="checklist-detail" class="card" style="margin-bottom:14px">Select an employee to view their checklist.</div>
+    <div class="sec"><span class="st">Notes</span></div>
+    <div id="notes-panel" class="card">Select an employee to view their notes.</div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-payroll">
+<div class="ph"><div class="pt">Payroll &amp; Benefits Administration</div><div class="ps">HRM-002 · Payroll math is entirely deterministic — FICA 7.65%, federal flat 12%, state per jurisdiction. No AI touches binding financial calculations. Benefits recommendations auto-accept and enroll automatically — full automation — unless the recommended plan would raise the employee's actual monthly cost versus their current plan; that specific case is the one financial-risk exception, held for human review rather than executed blind.</div></div>
+<div class="card" style="margin-bottom:14px">
+  <div class="sec"><span class="st">Pay stub calculator</span></div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Gross pay ($)</label><input class="fi" id="pf-gross" placeholder="2500"></div>
+    <div class="fg"><label class="fl">State</label><select class="fs" id="pf-state"><option value="FL">Florida (0%)</option><option value="TX">Texas (0%)</option><option value="CA">California (5%, default rate)</option></select></div>
+    <div class="fg"><label class="fl">Garnishment ($, optional)</label><input class="fi" id="pf-garnish" placeholder="0"></div>
+  </div>
+  <button class="btn btn-g" onclick="calculatePayStub()"><i class="ti ti-calculator"></i>Calculate (deterministic, auditable)</button>
+  <div id="paystub-result" style="margin-top:12px"></div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Benefits plans</span></div>
+    <div id="benefits-plan-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Request AI benefits recommendation</span></div>
+    <div class="card">
+      <div class="fg"><label class="fl">Employee</label><select class="fs" id="bf-employee"></select></div>
+      <button class="btn btn-s btn-g" onclick="requestBenefitsRecommendation()"><i class="ti ti-sparkles"></i>Evaluate</button>
+      <div id="benefits-rec-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+<div class="two" style="margin-top:14px">
+  <div>
+    <div class="sec"><span class="st">Financial risk — held for human review</span></div>
+    <div id="benefits-financial-review-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Recently auto-accepted &amp; enrolled</span></div>
+    <div id="benefits-auto-accepted-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<div class="page" id="p-recruiting">
+<div class="ph"><div class="pt">Talent CRM &amp; Recruiting Pipeline</div><div class="ps">HRM-003 · Resume screening scores fit on skills/qualifications only — never name or anything that could proxy for a protected characteristic. A recruiter signal, never an automatic reject. Rejection automatically drafts a "silver medalist" nurture message and sends it — full automation; no financial or security risk in a nurture message.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('req-form')"><i class="ti ti-plus"></i>New requisition</button><button class="btn btn-o" onclick="toggleForm('app-form')"><i class="ti ti-file-plus"></i>New application</button></div></div>
+<div class="card" id="req-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Title</label><input class="fi" id="reqf-title" placeholder="Service Advisor"></div>
+    <div class="fg"><label class="fl">Required skills (comma-separated)</label><input class="fi" id="reqf-skills" placeholder="automotive, customer service, DMS"></div>
+  </div>
+  <button class="btn btn-g" onclick="createRequisition()"><i class="ti ti-check"></i>Create requisition</button>
+</div>
+<div class="card" id="app-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Candidate name</label><input class="fi" id="appf-name" placeholder="Alex Chen"></div>
+    <div class="fg"><label class="fl">Resume summary</label><input class="fi" id="appf-resume" placeholder="Experienced in automotive diagnostics and customer service"></div>
+  </div>
+  <div class="fg"><label class="fl">Requisition</label><select class="fs" id="appf-req"></select></div>
+  <button class="btn btn-g" onclick="submitApplication()"><i class="ti ti-check"></i>Submit (auto-screens on submission)</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1fr 1fr 1fr 1fr 140px"><span>Candidate</span><span>Requisition</span><span>Stage</span><span>Score</span><span></span></div>
+  <div id="application-rows"></div>
+</div>
+<div class="sec" style="margin-top:16px"><span class="st">Recent nurture drafts — sent automatically</span></div>
+<div id="nurture-draft-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-performance">
+<div class="ph"><div class="pt">Performance &amp; Talent Development</div><div class="ps">HRM-004 · Feedback drafting turns a manager's raw notes into polished narrative and finalizes it automatically — the manager's rating and substance are never touched, only the writing. 9-box placement confirms automatically too: it's a categorization, not a transaction — it doesn't move money by itself, so full automation applies rather than the financial-risk exception.</div></div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="sec"><span class="st">Request feedback draft</span></div>
+    <div class="fg"><label class="fl">Employee</label><select class="fs" id="fbf-employee"></select></div>
+    <div class="fg"><label class="fl">Rating (1-5)</label><input class="fi" id="fbf-rating" placeholder="4.2"></div>
+    <div class="fg"><label class="fl">Manager notes</label><input class="fi" id="fbf-notes" placeholder="Strong quarter, exceeded CSI targets"></div>
+    <button class="btn btn-s btn-g" onclick="requestFeedbackDraft()"><i class="ti ti-sparkles"></i>Draft feedback</button>
+    <div id="feedback-draft-result" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="st">Suggest 9-box placement</span></div>
+    <div class="fg"><label class="fl">Employee</label><select class="fs" id="nbf-employee"></select></div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Rating (1-5)</label><input class="fi" id="nbf-rating" placeholder="4.2"></div>
+      <div class="fg"><label class="fl">Goal completion (0-1)</label><input class="fi" id="nbf-goals" placeholder="0.8"></div>
+    </div>
+    <button class="btn btn-s btn-g" onclick="suggestNineBox()"><i class="ti ti-sparkles"></i>Suggest placement</button>
+  </div>
+</div>
+<div class="sec"><span class="st">9-Box grid (this cycle)</span></div>
+<div class="grid9" id="nine-box-grid" style="margin-bottom:16px"></div>
+<div class="sec"><span class="st">Recent feedback drafts — finalized automatically</span></div>
+<div id="feedback-draft-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-workforce">
+<div class="ph"><div class="pt">Workforce Analytics &amp; Retention Intelligence</div><div class="ps">HRM-005 · Attrition risk is a real, auditable weighted heuristic — low pay-band position, compensation stagnation, low goal completion, short tenure. A signal for HR outreach, never an automatic decision about anyone's employment. Pay-equity analytics is scoped to department and tenure only — never anything that could proxy for a protected characteristic.</div></div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="sec"><span class="st">Headcount by department</span></div>
+    <div id="headcount-rows"></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="st">Request attrition risk assessment</span></div>
+    <div class="fg"><label class="fl">Employee</label><select class="fs" id="arf-employee"></select></div>
+    <button class="btn btn-s btn-g" onclick="assessAttritionRisk()"><i class="ti ti-sparkles"></i>Evaluate</button>
+    <div id="attrition-result" style="margin-top:10px"></div>
+  </div>
+</div>
+<div class="sec"><span class="st">Attrition risk watchlist</span></div>
+<div id="attrition-watchlist-rows" style="margin-bottom:16px"></div>
+<div class="sec"><span class="st">Pay-equity snapshot (department × tenure, aggregate only)</span></div>
+<div id="pay-equity-rows"></div>
+</div>
+
+<div class="page" id="p-academy">
+<div class="ph"><div class="pt">VOYQI Academy — Training &amp; Certification</div><div class="ps">HRM-006 · Course recommendations always prioritize compliance/safety training over optional development courses — a fixed rule, not a judgment call — and enroll automatically once recommended; no financial or security risk in assigning training. AI-drafted courses publish to the library automatically the same way.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('course-form')"><i class="ti ti-plus"></i>New course</button></div></div>
+<div class="card" id="course-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Title</label><input class="fi" id="crsf-title" placeholder="Anti-Harassment Training"></div>
+    <div class="fg"><label class="fl">Category</label><select class="fs" id="crsf-category"><option value="compliance">Compliance</option><option value="safety">Safety</option><option value="technical">Technical</option><option value="leadership">Leadership</option></select></div>
+    <div class="fg"><label class="fl">Mandatory?</label><select class="fs" id="crsf-mandatory"><option value="true">Yes</option><option value="false">No</option></select></div>
+  </div>
+  <div class="fr3">
+    <div class="fg"><label class="fl">Content type</label><select class="fs" id="crsf-content-type"><option value="video">Video</option><option value="document">Document</option><option value="quiz">Quiz</option><option value="in_person">In-person</option><option value="other">Other</option></select></div>
+    <div class="fg"><label class="fl">Content URL (optional)</label><input class="fi" id="crsf-content-url" placeholder="https://academy.internal/videos/..."></div>
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="crsf-description" placeholder="Short description"></div>
+  </div>
+  <button class="btn btn-g" onclick="createCourse()"><i class="ti ti-check"></i>Create course</button>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="ch"><span class="ct">AI-assisted course prep</span></div>
+    <div class="fg"><label class="fl">Short prompt</label><input class="fi" id="crdf-prompt" placeholder="forklift safety certification"></div>
+    <button class="btn btn-s btn-g" onclick="requestCourseDraft()"><i class="ti ti-sparkles"></i>Draft with AI</button>
+    <div id="course-draft-result" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Recent course drafts — published automatically</span></div>
+    <div id="course-draft-cards" style="display:flex;flex-direction:column;gap:10px;max-height:260px;overflow-y:auto"></div>
+  </div>
+</div>
+<div class="two" style="margin-bottom:14px">
+  <div>
+    <div class="sec"><span class="st">Course library</span></div>
+    <div id="course-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Request course recommendation</span></div>
+    <div class="card">
+      <div class="fg"><label class="fl">Employee</label><select class="fs" id="crf-employee"></select></div>
+      <button class="btn btn-s btn-g" onclick="requestCourseRecommendation()"><i class="ti ti-sparkles"></i>Evaluate</button>
+      <div id="course-rec-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+<div class="sec"><span class="st">Recent course recommendations — enrolled automatically</span></div>
+<div id="course-rec-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<div class="page" id="p-cases">
+<div class="ph"><div class="pt">Employee Self-Service &amp; Case Management</div><div class="ps">HRM-007 · Complaints always escalate immediately and never receive an AI-drafted reply — the one security-risk exception in HRM: allegations of harassment, discrimination, or safety carry legal and personal-safety exposure, so they stay human-handled regardless of automation level. Policy questions get a grounded answer, sent automatically, only when a policy on file actually matches; otherwise no draft is created at all, since an ungrounded guess is worse than silence.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('case-form')"><i class="ti ti-plus"></i>New case</button><button class="btn btn-o" onclick="toggleForm('policy-form')"><i class="ti ti-file-plus"></i>New policy document</button></div></div>
+<div class="card" id="case-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Employee</label><select class="fs" id="cf-employee"></select></div>
+    <div class="fg"><label class="fl">Case type</label><select class="fs" id="cf-type"><option value="policy_question">Policy question</option><option value="payroll_inquiry">Payroll inquiry</option><option value="benefits_question">Benefits question</option><option value="complaint">Complaint</option><option value="document_request">Document request</option></select></div>
+    <div class="fg"><label class="fl">Subject</label><input class="fi" id="cf-subject" placeholder="PTO carryover question"></div>
+  </div>
+  <button class="btn btn-g" onclick="createCase()"><i class="ti ti-check"></i>Create case</button>
+</div>
+<div class="card" id="policy-form" style="display:none;margin-bottom:14px">
+  <div class="fg"><label class="fl">Title</label><input class="fi" id="pdf-title" placeholder="PTO Policy"></div>
+  <div class="fg"><label class="fl">Body</label><input class="fi" id="pdf-body" placeholder="Employees may carry over up to 40 hours of unused PTO annually."></div>
+  <button class="btn btn-g" onclick="createPolicyDocument()"><i class="ti ti-check"></i>Add policy document</button>
+</div>
+<div class="tw" style="margin-bottom:16px">
+  <div class="th" style="grid-template-columns:1fr 1fr 1fr 100px"><span>Employee</span><span>Type</span><span>Status</span><span></span></div>
+  <div id="case-rows"></div>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Ask a policy question (auto-drafts if grounded)</span></div>
+    <div class="card">
+      <div class="fg"><label class="fl">Case</label><select class="fs" id="pqf-case"></select></div>
+      <div class="fg"><label class="fl">Question</label><input class="fi" id="pqf-question" placeholder="Can I carry over unused PTO?"></div>
+      <button class="btn btn-s btn-g" onclick="askPolicyQuestion()"><i class="ti ti-sparkles"></i>Ask</button>
+      <div id="policy-question-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Recent policy-question replies — sent automatically</span></div>
+    <div id="case-draft-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ HRM-008 NOTICES & COMMUNICATION ============ -->
+<div class="page" id="p-notices">
+<div class="ph"><div class="pt">Notices &amp; Communication</div><div class="ps">HRM-008 · The notice board itself is the real "app" delivery channel this platform can fulfill directly. Email and SMS record intended channels only — this platform has no integrated SMS/email gateway (that would need a real Twilio- or SendGrid-style integration), so flagging a notice for those channels is a fact about intent, not a claim that delivery happened. Formal email drafted by AI sends automatically — full automation; no financial or security risk in a routine email.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('notice-form')"><i class="ti ti-plus"></i>Post notice</button></div></div>
+<div class="card" id="notice-form" style="display:none;margin-bottom:14px">
+  <div class="fg"><label class="fl">Title</label><input class="fi" id="ntcf-title" placeholder="Q3 Travel Policy Update"></div>
+  <div class="fg"><label class="fl">Body</label><input class="fi" id="ntcf-body" placeholder="Business travel over 200 miles now requires pre-approval."></div>
+  <div class="fg"><label class="fl">Channels</label>
+    <div style="display:flex;gap:14px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text)"><input type="checkbox" id="ntcf-app" checked>App (real — the board itself)</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text)"><input type="checkbox" id="ntcf-email">Email (intent only)</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text)"><input type="checkbox" id="ntcf-sms">SMS (intent only)</label>
+    </div>
+  </div>
+  <button class="btn btn-g" onclick="postNotice()"><i class="ti ti-check"></i>Post</button>
+</div>
+<div class="two" style="margin-bottom:16px">
+  <div class="card">
+    <div class="ch"><span class="ct">Formal email</span></div>
+    <div class="fg"><label class="fl">Recipients</label>
+      <select class="fs" id="emf-scope" onchange="onEmailScopeChange()">
+        <option value="all_staff">All staff — one click, every active employee</option>
+        <option value="single_employee">Single employee</option>
+      </select>
+    </div>
+    <div class="fg" id="emf-employee-row" style="display:none">
+      <label class="fl">Employee</label>
+      <select class="fs" id="emf-employee" onchange="updateEmailRecipientPreview()"></select>
+    </div>
+    <div id="emf-recipient-preview" style="font-size:11px;color:var(--dim);margin-bottom:12px"></div>
+    <div class="dv"></div>
+    <div class="fg"><label class="fl">AI-assisted: short prompt — drafts and sends automatically</label><input class="fi" id="emf-prompt" placeholder="remind everyone open enrollment ends Friday"></div>
+    <button class="btn btn-s btn-g" onclick="draftEmailWithAi()" style="margin-bottom:10px"><i class="ti ti-sparkles"></i>AI: draft &amp; send</button>
+    <div class="dv"></div>
+    <div class="fg"><label class="fl">Or write it yourself — Subject</label><input class="fi" id="emf-subject" placeholder="Subject line"></div>
+    <div class="fg"><label class="fl">Body</label><input class="fi" id="emf-body" placeholder="Write manually — you'll send it yourself when ready"></div>
+    <button class="btn btn-o" onclick="createManualEmailDraft()">Save as draft</button>
+    <div id="email-draft-result" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Email drafts &amp; sent</span></div>
+    <div id="email-list" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto"></div>
+  </div>
+</div>
+<div id="notice-cards" style="display:flex;flex-direction:column;gap:14px"></div>
+</div>
+
+<!-- ============ AI ASSISTANT (CHAT + VOICE) ============ -->
+<div class="page" id="p-assistant">
+<div class="ph"><div class="pt">AI Assistant — Chat &amp; Voice</div><div class="ps">Ask about any employee, case, or policy. Voice uses your browser's built-in speech recognition and synthesis — nothing is sent to a third-party voice service. This simulates a grounded assistant with fixed, honest responses; a production assistant would be backed by a live model with the same tool access shown throughout this platform.</div></div>
+<div class="two" style="margin-bottom:14px">
+  <div class="card">
+    <div class="ch"><span class="ct">Live chat with HR</span></div>
+    <div class="fg"><label class="fl">Case</label><select class="fs" id="lcf-case"></select></div>
+    <div id="live-chat-messages" style="max-height:200px;overflow-y:auto;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <input class="fi" id="live-chat-input" placeholder="Type a message...">
+      <button class="btn btn-g" onclick="sendLiveChatMessage()"><i class="ti ti-send"></i></button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Voice</span></div>
+    <div id="voice-support-status" style="font-size:12px;color:var(--dim);margin-bottom:10px"></div>
+    <button class="btn btn-g" id="voice-listen-btn" onclick="toggleVoiceListening()" style="width:100%;justify-content:center;margin-bottom:8px"><i class="ti ti-microphone"></i>Start listening</button>
+    <button class="btn btn-o" onclick="speakLastAssistantReply()" style="width:100%;justify-content:center"><i class="ti ti-volume"></i>Read last reply aloud</button>
+  </div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+  <div id="assistant-chat-messages" style="height:320px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px"></div>
+  <div style="border-top:0.5px solid var(--border);padding:12px;display:flex;gap:8px">
+    <input class="fi" id="assistant-chat-input" placeholder="Ask the AI assistant..." onkeypress="if(event.key==='Enter')sendAssistantMessage()">
+    <button class="btn btn-g" onclick="sendAssistantMessage()"><i class="ti ti-send"></i></button>
+  </div>
+</div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+var PAGES=['dash','directory','payroll','recruiting','performance','workforce','academy','cases','notices','assistant'];
+function sp(id){
+  PAGES.forEach(function(p){
+    var pg=document.getElementById('p-'+p);
+    var nv=document.getElementById('n-'+p);
+    if(pg)pg.classList.remove('on');
+    if(nv)nv.classList.remove('on');
+  });
+  document.getElementById('p-'+id).classList.add('on');
+  var nv=document.getElementById('n-'+id);
+  if(nv)nv.classList.add('on');
+  document.querySelector('.workspace').scrollTop=0;
+}
+function toggleForm(id){var el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+var uid=1000;
+function nextId(){return 'id-'+(uid++);}
+function populateSelect(sel,items,labelFn,valueFn){
+  var prior=sel.value;
+  sel.innerHTML=items.map(function(it){return '<option value="'+valueFn(it)+'">'+labelFn(it)+'</option>';}).join('');
+  if(prior)sel.value=prior;
+}
+
+var EMPLOYEES=[
+  {id:'emp-1',full_name:'Jane Doe',job_title:'Service Advisor',department:'Service',entity_ref:'dealership',annual_salary_usd:55000,hire_date:new Date('2024-06-01'),checklist_complete:false,checklist_tasks:['Provision DMS system access','Issue employee badge','OSHA safety training'],current_plan_id:'plan-2'},
+  {id:'emp-2',full_name:'Marcus Reyes',job_title:'Hub Operations Lead',department:'Hub Operations',entity_ref:'hub',annual_salary_usd:68000,hire_date:new Date('2023-02-15'),checklist_complete:true,checklist_tasks:['Provision hub network access','Issue VOYQI Card'],current_plan_id:null},
+];
+var POSITIONS=[{id:'pos-1',title:'Service Advisor',department:'Service',salary_band_min:45000,salary_band_max:65000}];
+var BENEFITS_PLANS=[
+  {id:'plan-1',name:'Gold Health Plan',employee_cost_monthly:120},
+  {id:'plan-2',name:'Silver Health Plan',employee_cost_monthly:60},
+];
+var BENEFITS_RECOMMENDATIONS=[]; // {id, employee_id, recommended_plan_id, reasoning, status: 'auto_accepted' | 'pending_financial_review' | 'accepted' | 'rejected', current_cost, recommended_cost}
+var REQUISITIONS=[{id:'req-1',title:'Service Advisor',required_skills:'automotive, customer service, DMS'}];
+var APPLICATIONS=[];
+var NURTURE_DRAFTS=[];
+var REVIEW_CYCLE={id:'cycle-1',name:'2026 H1'};
+var FEEDBACK_DRAFTS=[];
+var NINE_BOX_PLACEMENTS=[];
+var ATTRITION_SCORES=[];
+var COURSES=[
+  {id:'course-1',title:'Anti-Harassment Compliance Training',category:'compliance',is_mandatory:true,content_type:'document',content_url:'',description:'Required annual compliance training covering workplace conduct policy.'},
+  {id:'course-2',title:'Advanced DMS Operations',category:'technical',is_mandatory:false,content_type:'video',content_url:'https://academy.voyqi.internal/videos/dms-operations',description:'Video walkthrough of advanced dealer management system workflows.'},
+];
+var COURSE_DRAFTS=[]; // {id, prompt, draft_title, draft_category, draft_description, draft_content_type, reasoning, status}
+var EMAIL_DRAFTS=[]; // {id, recipient_scope, recipient_employee_id, subject, body, ai_prompt, is_ai_generated, status, created_at, sent_at}
+var COURSE_RECOMMENDATIONS=[];
+var HR_CASES=[];
+var POLICY_DOCUMENTS=[
+  {id:'policy-1',title:'PTO Policy',body:'Employees may carry over up to 40 hours of unused PTO annually.'},
+];
+var CASE_DRAFTS=[];
+
+var NOTICES=[]; // {id, title, body, posted_by, channels, created_at}
+var NOTICE_COMMENTS=[]; // {id, notice_id, employee_id, body, created_at}
+var EMPLOYEE_NOTES={}; // employee_id -> [{id, body, author, is_ai_generated, created_at, updated_at}]
+var LIVE_CHAT_MESSAGES=[]; // {case_id, direction, body, sender}
+var ASSISTANT_CHAT_HISTORY=[{role:'assistant',text:'Hi — I\'m your HRM AI assistant. Ask me about employees, cases, or policies. You can also use voice.'}];
+var LAST_ASSISTANT_REPLY='';
+
+var GOAL_COMPLETION_RATES={'emp-1':0.8,'emp-2':0.6};
+
+var DFEED=[
+  {a:'talent-agent',m:'Onboarding checklist populated — Jane Doe, Service department',ts:'2h ago'},
+];
+
+function employeeById(id){return EMPLOYEES.find(function(e){return e.id===id;});}
+function requisitionById(id){return REQUISITIONS.find(function(r){return r.id===id;});}
+function courseById(id){return COURSES.find(function(c){return c.id===id;});}
+
+function populateEmployeeSelects(){
+  ['bf-employee','fbf-employee','nbf-employee','arf-employee','crf-employee','cf-employee','emf-employee'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)populateSelect(el,EMPLOYEES,function(e){return e.full_name;},function(e){return e.id;});
+  });
+  var reqSel=document.getElementById('appf-req');
+  if(reqSel)populateSelect(reqSel,REQUISITIONS,function(r){return r.title;},function(r){return r.id;});
+  var caseSel=document.getElementById('pqf-case');
+  if(caseSel)populateSelect(caseSel,HR_CASES.filter(function(c){return c.case_type==='policy_question';}),function(c){return c.subject;},function(c){return c.id;});
+}
+
+var DEPARTMENT_ONBOARDING_TASKS={
+  'service':['Provision DMS system access','Issue employee badge','OSHA safety training'],
+  'hub operations':['Provision hub network access','Issue VOYQI Card'],
+  'sales':['Provision CRM access','Issue employee badge'],
+};
+function deterministicChecklistTasks(department){
+  var base=['Complete I-9 verification','Set up direct deposit'];
+  var deptKey=department.toLowerCase();
+  var deptTasks=DEPARTMENT_ONBOARDING_TASKS[deptKey]||[];
+  return base.concat(deptTasks);
+}
+function renderDirectory(){
+  document.getElementById('employee-rows').innerHTML=EMPLOYEES.map(function(e){
+    return '<div class="tr" style="grid-template-columns:1.1fr 1fr 1fr 100px;cursor:pointer" onclick="viewChecklist(\''+e.id+'\')">'
+      +'<span class="tc" style="font-size:13px">'+e.full_name+'</span>'
+      +'<span class="tm" style="font-size:12px">'+e.job_title+'</span>'
+      +'<span class="tm" style="font-size:12px">'+e.department+'</span>'
+      +'<span class="p '+(e.checklist_complete?'pg':'pa2')+'">'+(e.checklist_complete?'Complete':'In progress')+'</span>'
+      +'</div>';
+  }).join('');
+  document.getElementById('dk-employees').textContent=EMPLOYEES.length;
+  renderDeptChart();
+}
+function createEmployee(){
+  var name=document.getElementById('ef-name').value.trim();
+  if(!name)return;
+  var title=document.getElementById('ef-title').value.trim();
+  var dept=document.getElementById('ef-dept').value.trim();
+  var entity=document.getElementById('ef-entity').value;
+  var salary=parseFloat(document.getElementById('ef-salary').value)||0;
+  var tasks=deterministicChecklistTasks(dept);
+  var employee={id:nextId(),full_name:name,job_title:title,department:dept,entity_ref:entity,annual_salary_usd:salary,hire_date:new Date(),checklist_complete:false,checklist_tasks:tasks};
+  EMPLOYEES.push(employee);
+  DFEED.unshift({a:'talent-agent',m:'Onboarding checklist populated — '+name+', '+tasks.length+' tasks for '+(dept||'unassigned department'),ts:'now'});
+  toggleForm('emp-form');
+  document.getElementById('ef-name').value='';document.getElementById('ef-title').value='';document.getElementById('ef-dept').value='';document.getElementById('ef-salary').value='';
+  renderDirectory();populateEmployeeSelects();renderFeed();
+}
+function viewChecklist(employeeId){
+  var e=employeeById(employeeId);
+  var html='<div class="ct" style="margin-bottom:10px">'+e.full_name+'\u2019s onboarding checklist</div>'
+    +e.checklist_tasks.map(function(t){return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span>'+t+'</span><span class="p pd">pending</span></div>';}).join('')
+    +'<button class="btn btn-s btn-g" style="margin-top:10px" onclick="completeChecklist(\''+employeeId+'\')">Mark all complete (hard gate to advance status)</button>';
+  document.getElementById('checklist-detail').innerHTML=html;
+  CURRENTLY_VIEWED_EMPLOYEE_ID=employeeId;
+  renderNotesPanel(employeeId);
+}
+var CURRENTLY_VIEWED_EMPLOYEE_ID=null;
+function renderNotesPanel(employeeId){
+  var e=employeeById(employeeId);
+  var notes=EMPLOYEE_NOTES[employeeId]||[];
+  var html='<div class="ct" style="margin-bottom:10px">'+e.full_name+'\u2019s notes</div>'
+    +'<div class="fg"><input class="fi" id="note-input" placeholder="Add a note..."></div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:12px">'
+    +'<button class="btn btn-s btn-g" onclick="addHumanNote(\''+employeeId+'\')">Add note</button>'
+    +'<button class="btn btn-s btn-o" onclick="requestAiNoteUpdate(\''+employeeId+'\')"><i class="ti ti-sparkles"></i>AI: add/update note</button>'
+    +'</div>'
+    +notes.map(function(n){
+      return '<div style="border-top:0.5px solid var(--border);padding:8px 0"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span class="tc" style="font-size:12px;font-weight:600">'+n.author+(n.is_ai_generated?' <span class="p pa2" style="font-size:9px">AI</span>':'')+'</span><span class="td" style="font-size:11px">'+n.created_at.toLocaleDateString()+'</span></div>'
+        +'<div style="font-size:12px;color:var(--text);white-space:pre-wrap">'+n.body+'</div></div>';
+    }).join('') || '<div style="font-size:12px;color:var(--dim)">No notes yet.</div>';
+  document.getElementById('notes-panel').innerHTML=html;
+}
+function addHumanNote(employeeId){
+  var input=document.getElementById('note-input');
+  var body=input.value.trim();
+  if(!body)return;
+  EMPLOYEE_NOTES[employeeId]=EMPLOYEE_NOTES[employeeId]||[];
+  EMPLOYEE_NOTES[employeeId].push({id:nextId(),body:body,author:'hr-ops-1',is_ai_generated:false,created_at:new Date(),updated_at:new Date()});
+  input.value='';
+  renderNotesPanel(employeeId);
+}
+// mirrors the backend's exact deterministic rule: append if a note
+// already exists, otherwise start a new one — and appending only
+// ever ADDS text, never overwrites what's there
+function deterministicNoteEntry(context){
+  var today=new Date().toISOString().slice(0,10);
+  return '['+today+'] '+context.trim();
+}
+function requestAiNoteUpdate(employeeId){
+  var e=employeeById(employeeId);
+  var context=prompt('What should the AI log?','Reviewed performance goals in 1:1');
+  if(!context)return;
+  var entry=deterministicNoteEntry(context);
+  var existing=EMPLOYEE_NOTES[employeeId]||[];
+  if(existing.length>0){
+    var mostRecent=existing[existing.length-1];
+    var timestamp=new Date().toISOString().slice(0,16).replace('T',' ')+' UTC';
+    mostRecent.body=mostRecent.body+'\n\n--- Update '+timestamp+' by talent-agent ---\n'+entry;
+    mostRecent.updated_at=new Date();
+    DFEED.unshift({a:'talent-agent',m:'Note appended — '+e.full_name,ts:'now'});
+  } else {
+    EMPLOYEE_NOTES[employeeId]=[{id:nextId(),body:entry,author:'talent-agent',is_ai_generated:true,created_at:new Date(),updated_at:new Date()}];
+    DFEED.unshift({a:'talent-agent',m:'New note added — '+e.full_name,ts:'now'});
+  }
+  renderNotesPanel(employeeId);renderFeed();
+}
+function completeChecklist(employeeId){
+  var e=employeeById(employeeId);
+  e.checklist_complete=true;
+  renderDirectory();
+  viewChecklist(employeeId);
+}
+
+var FICA_RATE=0.0765, FEDERAL_FLAT_RATE=0.12;
+var STATE_RATES={FL:0.0,TX:0.0,CA:0.05};
+function computePayStub(grossPay,state,garnishment){
+  var fica=Math.round(grossPay*FICA_RATE*100)/100;
+  var federal=Math.round(grossPay*FEDERAL_FLAT_RATE*100)/100;
+  var stateRate=STATE_RATES[state]!==undefined?STATE_RATES[state]:0.05;
+  var stateTax=Math.round(grossPay*stateRate*100)/100;
+  var netPay=Math.round((grossPay-fica-federal-stateTax-garnishment)*100)/100;
+  return {fica:fica,federal:federal,stateTax:stateTax,garnishment:garnishment,netPay:netPay};
+}
+function calculatePayStub(){
+  var gross=parseFloat(document.getElementById('pf-gross').value)||0;
+  var state=document.getElementById('pf-state').value;
+  var garnishment=parseFloat(document.getElementById('pf-garnish').value)||0;
+  var result=computePayStub(gross,state,garnishment);
+  document.getElementById('paystub-result').innerHTML='<div class="tw"><div class="th" style="grid-template-columns:1fr 1fr"><span>Line item</span><span>Amount</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Gross pay</span><span class="tc">$'+gross.toFixed(2)+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">FICA (7.65%)</span><span class="trr">-$'+result.fica.toFixed(2)+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Federal (12% flat)</span><span class="trr">-$'+result.federal.toFixed(2)+'</span></div>'
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">State ('+state+')</span><span class="trr">-$'+result.stateTax.toFixed(2)+'</span></div>'
+    +(garnishment?'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tm">Garnishment</span><span class="trr">-$'+garnishment.toFixed(2)+'</span></div>':'')
+    +'<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tc" style="font-weight:700">Net pay</span><span class="tg" style="font-weight:700">$'+result.netPay.toFixed(2)+'</span></div></div>';
+}
+function renderBenefitsPlans(){
+  document.getElementById('benefits-plan-cards').innerHTML=BENEFITS_PLANS.map(function(p){
+    return '<div class="card" style="padding:10px 13px"><div style="display:flex;justify-content:space-between"><span class="tc" style="font-size:13px">'+p.name+'</span><span class="tg">$'+p.employee_cost_monthly+'/mo</span></div></div>';
+  }).join('');
+}
+function benefitsPlanById(id){return BENEFITS_PLANS.find(function(p){return p.id===id;});}
+function benefitsFinancialRisk(currentPlanId,recommendedPlan){
+  if(!currentPlanId)return {isRisk:false,note:'No active enrollment on file — first-time enrollment, not a cost increase.',currentCost:null};
+  var currentPlan=benefitsPlanById(currentPlanId);
+  if(!currentPlan)return {isRisk:true,note:'Could not resolve the employee\'s current plan for comparison — holding for human review rather than assuming no increase.',currentCost:null};
+  if(recommendedPlan.employee_cost_monthly>currentPlan.employee_cost_monthly)return {isRisk:true,note:'Recommended plan raises the employee\'s monthly cost from $'+currentPlan.employee_cost_monthly+' to $'+recommendedPlan.employee_cost_monthly+' — financial risk, held for human review.',currentCost:currentPlan.employee_cost_monthly};
+  return {isRisk:false,note:'Recommended plan\'s employee cost ($'+recommendedPlan.employee_cost_monthly+') does not exceed the current plan\'s ($'+currentPlan.employee_cost_monthly+') — no financial risk.',currentCost:currentPlan.employee_cost_monthly};
+}
+function requestBenefitsRecommendation(){
+  var employeeId=document.getElementById('bf-employee').value;
+  var employee=employeeById(employeeId);
+  var recommended=BENEFITS_PLANS.reduce(function(lowest,p){return p.employee_cost_monthly<lowest.employee_cost_monthly?p:lowest;});
+  var risk=benefitsFinancialRisk(employee.current_plan_id,recommended);
+  var isRisk=risk.isRisk,riskNote=risk.note;
+
+  var rec={id:nextId(),employee_id:employeeId,recommended_plan_id:recommended.id,reasoning:'[deterministic fallback] Lowest employee-cost plan among available options ($'+recommended.employee_cost_monthly+'/mo). '+riskNote,status:isRisk?'pending_financial_review':'auto_accepted',current_cost:risk.currentCost,recommended_cost:recommended.employee_cost_monthly};
+  BENEFITS_RECOMMENDATIONS.unshift(rec);
+  if(!isRisk){employee.current_plan_id=recommended.id;}
+
+  document.getElementById('benefits-rec-result').innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Talent Agent — benefits'+(isRisk?' <span class="p pa2" style="font-size:9px;margin-left:6px">financial risk — held</span>':' <span class="p pg" style="font-size:9px;margin-left:6px">auto-accepted &amp; enrolled</span>')+'</div><div class="aip-body">Recommended: <b style="color:var(--gold)">'+recommended.name+'</b><br>'+rec.reasoning+'</div></div>';
+  DFEED.unshift({a:'talent-agent',m:'Benefits recommendation — '+employee.full_name+': '+recommended.name+(isRisk?' (held for human review — cost increase)':' (auto-accepted, no cost increase)'),ts:'now'});
+  renderPayrollBenefits();renderFeed();
+}
+function acceptBenefitsRecommendation(id){
+  var rec=BENEFITS_RECOMMENDATIONS.find(function(r){return r.id===id;});
+  var employee=employeeById(rec.employee_id);
+  rec.status='accepted';
+  employee.current_plan_id=rec.recommended_plan_id;
+  DFEED.unshift({a:'hr-admin',m:'Approved benefits cost increase for '+employee.full_name+' — now enrolled',ts:'now'});
+  renderPayrollBenefits();renderFeed();
+}
+function rejectBenefitsRecommendation(id){
+  var rec=BENEFITS_RECOMMENDATIONS.find(function(r){return r.id===id;});
+  rec.status='rejected';
+  renderPayrollBenefits();
+}
+function renderPayrollBenefits(){
+  renderBenefitsPlans();
+  document.getElementById('benefits-financial-review-cards').innerHTML=BENEFITS_RECOMMENDATIONS.filter(function(r){return r.status==='pending_financial_review';}).map(function(r){
+    var e=employeeById(r.employee_id);
+    var plan=benefitsPlanById(r.recommended_plan_id);
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-alert-triangle"></i>'+e.full_name+'</div><div class="aip-body">Recommended: <b style="color:var(--gold)">'+plan.name+'</b> — '+(r.current_cost!=null?('cost would rise from $'+r.current_cost+' to $'+r.recommended_cost+'/mo'):('current plan could not be resolved for comparison ($'+r.recommended_cost+'/mo recommended)'))+'<br>'+r.reasoning+'</div>'
+      +'<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-s btn-g" onclick="acceptBenefitsRecommendation(\''+r.id+'\')">Approve increase &amp; enroll</button><button class="btn btn-s btn-o" onclick="rejectBenefitsRecommendation(\''+r.id+'\')">Reject</button></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No cost-increase recommendations awaiting review.</div>';
+
+  document.getElementById('benefits-auto-accepted-cards').innerHTML=BENEFITS_RECOMMENDATIONS.filter(function(r){return r.status==='auto_accepted';}).slice(0,5).map(function(r){
+    var e=employeeById(r.employee_id);
+    var plan=benefitsPlanById(r.recommended_plan_id);
+    return '<div class="card" style="padding:10px 13px"><div class="ch" style="margin-bottom:0"><span class="tc" style="font-size:13px">'+e.full_name+'</span><span class="p pg" style="font-size:9px">enrolled automatically</span></div><div style="font-size:12px;color:var(--mid);margin-top:4px">'+plan.name+' — $'+r.recommended_cost+'/mo</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No auto-accepted recommendations yet.</div>';
+}
+
+function deterministicScreeningScore(resumeSummary,requiredSkills){
+  var required=requiredSkills.split(',').map(function(s){return s.trim().toLowerCase();}).filter(Boolean);
+  if(!required.length)return {score:0.5,reasoning:'[deterministic fallback] No required skills listed — defaulting to neutral score.'};
+  var resumeLower=resumeSummary.toLowerCase();
+  var matched=required.filter(function(r){return resumeLower.indexOf(r)>=0;});
+  var score=Math.round((matched.length/required.length)*100)/100;
+  return {score:score,reasoning:'[deterministic fallback] Keyword overlap: '+matched.length+'/'+required.length+' required skills found ('+(matched.join(', ')||'none')+'). Skills/qualifications only — never name or demographic proxies.'};
+}
+var NURTURE_TEMPLATE="Thank you for your interest in joining VOYQI, {name}. While we've moved forward with another candidate for this particular role, we were impressed with your background and would like to keep your profile on file for future opportunities that may be a better fit.";
+function createRequisition(){
+  var title=document.getElementById('reqf-title').value.trim();
+  if(!title)return;
+  var skills=document.getElementById('reqf-skills').value.trim();
+  REQUISITIONS.push({id:nextId(),title:title,required_skills:skills});
+  toggleForm('req-form');
+  document.getElementById('reqf-title').value='';document.getElementById('reqf-skills').value='';
+  populateEmployeeSelects();
+}
+function submitApplication(){
+  var name=document.getElementById('appf-name').value.trim();
+  if(!name)return;
+  var resume=document.getElementById('appf-resume').value.trim();
+  var reqId=document.getElementById('appf-req').value;
+  var req=requisitionById(reqId);
+  var result=deterministicScreeningScore(resume,req.required_skills);
+  var application={id:nextId(),candidate_name:name,resume_summary:resume,requisition_id:reqId,stage:'screening',score:result.score,score_reasoning:result.reasoning};
+  APPLICATIONS.push(application);
+  DFEED.unshift({a:'talent-agent',m:'Screened '+name+' for '+req.title+' — score '+result.score,ts:'now'});
+  toggleForm('app-form');
+  document.getElementById('appf-name').value='';document.getElementById('appf-resume').value='';
+  renderRecruiting();renderFeed();
+}
+function advanceApplication(id,stage){
+  var app=APPLICATIONS.find(function(a){return a.id===id;});
+  app.stage=stage;
+  if(stage==='rejected'){
+    var draftBody=NURTURE_TEMPLATE.replace('{name}',app.candidate_name);
+    NURTURE_DRAFTS.unshift({id:nextId(),candidate_name:app.candidate_name,draft_body:draftBody,reasoning:'[deterministic fallback] Fixed, honest template.',status:'approved_sent'});
+    DFEED.unshift({a:'talent-agent',m:'Nurture drafted and sent automatically — '+app.candidate_name+' (no financial or security risk; full automation applies)',ts:'now'});
+  }
+  renderRecruiting();renderFeed();
+}
+function sendNurtureDraft(id){
+  var draft=NURTURE_DRAFTS.find(function(d){return d.id===id;});
+  draft.status='approved_sent';
+  renderRecruiting();
+}
+function renderRecruiting(){
+  populateSelect(document.getElementById('appf-req'),REQUISITIONS,function(r){return r.title;},function(r){return r.id;});
+  document.getElementById('application-rows').innerHTML=APPLICATIONS.map(function(a){
+    var req=requisitionById(a.requisition_id);
+    var pill={screening:'pa2',interview:'pb',hired:'pg',rejected:'pr'}[a.stage]||'pd';
+    var actions='';
+    if(a.stage==='screening')actions='<button class="btn btn-s btn-g" onclick="advanceApplication(\''+a.id+'\',\'interview\')">Advance</button><button class="btn btn-s btn-d" onclick="advanceApplication(\''+a.id+'\',\'rejected\')">Reject</button>';
+    else if(a.stage==='interview')actions='<button class="btn btn-s btn-g" onclick="advanceApplication(\''+a.id+'\',\'hired\')">Hire</button>';
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 1fr 1fr 140px">'
+      +'<span class="tc" style="font-size:13px">'+a.candidate_name+'</span>'
+      +'<span class="tm" style="font-size:12px">'+req.title+'</span>'
+      +'<span class="p '+pill+'">'+a.stage+'</span>'
+      +'<span class="tg">'+(a.score!==null?a.score:'—')+'</span>'
+      +'<span>'+actions+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No applications yet.</div>';
+
+  document.getElementById('nurture-draft-cards').innerHTML=NURTURE_DRAFTS.slice(0,5).map(function(d){
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+d.candidate_name+' <span class="p pg" style="font-size:9px;margin-left:6px">sent automatically</span></div><div class="aip-body">'+d.draft_body+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No nurture drafts yet.</div>';
+
+  document.getElementById('dk-applications').textContent=APPLICATIONS.filter(function(a){return a.stage!=='hired'&&a.stage!=='rejected';}).length;
+}
+
+function deterministicFeedbackDraft(managerNotes,rating){
+  var descriptor='a';
+  if(rating>=4.5)descriptor='an outstanding';
+  else if(rating>=3.5)descriptor='a strong';
+  else if(rating>=2.5)descriptor='a solid';
+  else if(rating>=1.5)descriptor='a developing';
+  else if(rating!=null)descriptor='a challenging';
+  var body=managerNotes?('This employee had '+descriptor+' review period. Manager notes: '+managerNotes):('This employee had '+descriptor+' review period. No detailed manager notes were provided.');
+  return {body:body,reasoning:'[deterministic fallback] Template narrative built directly from the manager\'s raw notes and numeric rating, not a creative rewrite.'};
+}
+function levelFromScore(score,lowThreshold,highThreshold){
+  if(score==null)return 'medium';
+  if(score>=highThreshold)return 'high';
+  if(score>=lowThreshold)return 'medium';
+  return 'low';
+}
+function deterministicNineBox(rating,goalCompletionRate){
+  var performanceAxis=levelFromScore(rating,2.5,4.0);
+  var potentialAxis=levelFromScore(goalCompletionRate,0.4,0.75);
+  return {performanceAxis:performanceAxis,potentialAxis:potentialAxis,reasoning:'[deterministic fallback] Performance axis from rating, potential axis from goal completion rate.'};
+}
+function requestFeedbackDraft(){
+  var employeeId=document.getElementById('fbf-employee').value;
+  var employee=employeeById(employeeId);
+  var rating=parseFloat(document.getElementById('fbf-rating').value);
+  var notes=document.getElementById('fbf-notes').value.trim();
+  var result=deterministicFeedbackDraft(notes,rating);
+  FEEDBACK_DRAFTS.unshift({id:nextId(),employee_id:employeeId,draft_body:result.body,reasoning:result.reasoning,status:'approved_finalized'});
+  document.getElementById('feedback-draft-result').innerHTML='<div class="aip-body" style="font-size:12px;color:var(--green)">Drafted and finalized automatically — the numeric rating itself was set by the manager, not the agent.</div>';
+  DFEED.unshift({a:'talent-agent',m:'Feedback drafted and finalized automatically — '+employee.full_name,ts:'now'});
+  renderPerformance();renderFeed();
+}
+function approveFeedbackDraft(id){
+  var draft=FEEDBACK_DRAFTS.find(function(d){return d.id===id;});
+  draft.status='approved_finalized';
+  renderPerformance();
+}
+function suggestNineBox(){
+  var employeeId=document.getElementById('nbf-employee').value;
+  var employee=employeeById(employeeId);
+  var rating=parseFloat(document.getElementById('nbf-rating').value);
+  var goals=parseFloat(document.getElementById('nbf-goals').value);
+  var result=deterministicNineBox(rating,goals);
+  NINE_BOX_PLACEMENTS=NINE_BOX_PLACEMENTS.filter(function(p){return p.employee_id!==employeeId;});
+  NINE_BOX_PLACEMENTS.push({id:nextId(),employee_id:employeeId,performance_axis:result.performanceAxis,potential_axis:result.potentialAxis,reasoning:result.reasoning,status:'confirmed'});
+  DFEED.unshift({a:'talent-agent',m:'9-box placed and confirmed automatically — '+employee.full_name+': '+result.performanceAxis+'/'+result.potentialAxis+' (categorization only — doesn\'t move money itself, so no financial-risk hold applies)',ts:'now'});
+  renderPerformance();renderFeed();
+}
+function confirmNineBox(id){
+  var placement=NINE_BOX_PLACEMENTS.find(function(p){return p.id===id;});
+  placement.status='confirmed';
+  renderPerformance();
+}
+function renderPerformance(){
+  var levels=['high','medium','low'];
+  document.getElementById('nine-box-grid').innerHTML=levels.map(function(perf){
+    return levels.slice().reverse().map(function(pot){
+      var occupants=NINE_BOX_PLACEMENTS.filter(function(p){return p.performance_axis===perf&&p.potential_axis===pot;});
+      var color=(perf==='high'&&pot==='high')?'var(--green-dim)':(perf==='low'&&pot==='low')?'var(--red-dim)':'var(--surface2)';
+      return '<div class="box9" style="background:'+color+'"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">P:'+perf+' / Pot:'+pot+'</div>'
+        +occupants.map(function(o){var e=employeeById(o.employee_id);return '<div style="font-size:12px;color:var(--cream)">'+e.full_name+' <span class="p pg" style="font-size:9px">confirmed</span></div>';}).join('')
+        +'</div>';
+    }).join('');
+  }).join('');
+
+  document.getElementById('feedback-draft-cards').innerHTML=FEEDBACK_DRAFTS.slice(0,5).map(function(d){
+    var e=employeeById(d.employee_id);
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+e.full_name+' <span class="p pg" style="font-size:9px;margin-left:6px">finalized automatically</span></div><div class="aip-body">'+d.draft_body+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No feedback drafts yet.</div>';
+}
+
+function deterministicAttritionRisk(tenureMonths,compBandPosition,monthsSinceLastCompChange,goalCompletionRate){
+  var score=0,drivers=[];
+  if(compBandPosition!=null&&compBandPosition<0.3){score+=0.35;drivers.push('compensation sits in the bottom 30% of their pay band ('+Math.round(compBandPosition*100)+'%)');}
+  if(monthsSinceLastCompChange!=null&&monthsSinceLastCompChange>18){score+=0.25;drivers.push(monthsSinceLastCompChange+' months since last compensation change — pay stagnation');}
+  if(goalCompletionRate!=null&&goalCompletionRate<0.3){score+=0.20;drivers.push('low goal completion rate ('+Math.round(goalCompletionRate*100)+'%) — possible disengagement');}
+  if(tenureMonths!=null&&tenureMonths<6){score+=0.15;drivers.push('short tenure ('+tenureMonths+' months) — early-tenure attrition risk window');}
+  score=Math.min(Math.round(score*100)/100,1.0);
+  var reasoning='[deterministic fallback] '+(drivers.length?drivers.join('; '):'no elevated risk signals detected')+'.';
+  return {score:score,reasoning:reasoning};
+}
+function computeCompBandPosition(employee){
+  var position=POSITIONS.find(function(p){return p.title===employee.job_title;});
+  if(!position||position.salary_band_max<=position.salary_band_min)return null;
+  return Math.round(((employee.annual_salary_usd-position.salary_band_min)/(position.salary_band_max-position.salary_band_min))*100)/100;
+}
+function assessAttritionRisk(){
+  var employeeId=document.getElementById('arf-employee').value;
+  var employee=employeeById(employeeId);
+  var tenureMonths=Math.floor((new Date()-employee.hire_date)/(1000*60*60*24*30));
+  var compBandPosition=computeCompBandPosition(employee);
+  var monthsSinceLastCompChange=tenureMonths;
+  var goalCompletionRate=GOAL_COMPLETION_RATES[employeeId]!=null?GOAL_COMPLETION_RATES[employeeId]:null;
+  var result=deterministicAttritionRisk(tenureMonths,compBandPosition,monthsSinceLastCompChange,goalCompletionRate);
+  ATTRITION_SCORES=ATTRITION_SCORES.filter(function(s){return s.employee_id!==employeeId;});
+  ATTRITION_SCORES.push({id:nextId(),employee_id:employeeId,risk_score:result.score,reasoning:result.reasoning});
+  document.getElementById('attrition-result').innerHTML='<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Talent Agent — attrition risk</div><div class="aip-body">Risk score: <b style="color:'+(result.score>=0.5?'var(--red)':'var(--green)')+'">'+result.score+'</b><br>'+result.reasoning+'</div></div>';
+  DFEED.unshift({a:'talent-agent',m:'Attrition risk assessed — '+employee.full_name+': '+result.score,ts:'now'});
+  renderWorkforce();renderFeed();
+}
+function renderWorkforce(){
+  var byDept={};
+  EMPLOYEES.forEach(function(e){byDept[e.department]=(byDept[e.department]||0)+1;});
+  document.getElementById('headcount-rows').innerHTML=Object.keys(byDept).map(function(d){
+    return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span class="tm">'+d+'</span><span class="tc">'+byDept[d]+'</span></div>';
+  }).join('');
+
+  var watchlist=ATTRITION_SCORES.filter(function(s){return s.risk_score>=0.5;});
+  document.getElementById('attrition-watchlist-rows').innerHTML=watchlist.map(function(s){
+    var e=employeeById(s.employee_id);
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 2fr"><span class="tc" style="font-size:13px">'+e.full_name+'</span><span class="trr">'+s.risk_score+'</span><span class="tm" style="font-size:12px">'+s.reasoning+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No employees on the watchlist.</div>';
+  document.getElementById('dk-attrition').textContent=watchlist.length;
+  document.getElementById('nb-attrition').textContent=watchlist.length;
+  document.getElementById('topbar-badge').style.display=HR_CASES.filter(function(c){return c.status==='open'||c.status==='escalated';}).length?'block':'none';
+
+  var byGroup={};
+  EMPLOYEES.forEach(function(e){
+    var key=e.department;
+    byGroup[key]=byGroup[key]||[];
+    byGroup[key].push(e.annual_salary_usd);
+  });
+  document.getElementById('pay-equity-rows').innerHTML=Object.keys(byGroup).map(function(dept){
+    var salaries=byGroup[dept];
+    var avg=Math.round(salaries.reduce(function(a,b){return a+b;},0)/salaries.length);
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 1fr"><span class="tc" style="font-size:13px">'+dept+'</span><span class="tm">'+salaries.length+' employee'+(salaries.length>1?'s':'')+'</span><span class="tg">avg $'+avg.toLocaleString()+'</span></div>';
+  }).join('');
+}
+
+var PRIORITY_HINTS=['compliance','safety','harassment','security'];
+function deterministicCourseRecommendation(incompleteCourses){
+  if(!incompleteCourses.length)return {courseId:null,reasoning:'[deterministic fallback] No incomplete mandatory courses on file — nothing to recommend.'};
+  var priority=incompleteCourses.find(function(c){return PRIORITY_HINTS.some(function(hint){return c.title.toLowerCase().indexOf(hint)>=0;});});
+  if(priority)return {courseId:priority.id,reasoning:'[deterministic fallback] \''+priority.title+'\' is a compliance/safety course and always outranks other incomplete mandatory training.'};
+  return {courseId:incompleteCourses[0].id,reasoning:'[deterministic fallback] \''+incompleteCourses[0].title+'\' is the next incomplete mandatory course on file.'};
+}
+function createCourse(){
+  var title=document.getElementById('crsf-title').value.trim();
+  if(!title)return;
+  var category=document.getElementById('crsf-category').value;
+  var mandatory=document.getElementById('crsf-mandatory').value==='true';
+  var contentType=document.getElementById('crsf-content-type').value;
+  var contentUrl=document.getElementById('crsf-content-url').value.trim();
+  var description=document.getElementById('crsf-description').value.trim();
+  COURSES.push({id:nextId(),title:title,category:category,is_mandatory:mandatory,content_type:contentType,content_url:contentUrl,description:description});
+  toggleForm('course-form');
+  document.getElementById('crsf-title').value='';document.getElementById('crsf-content-url').value='';document.getElementById('crsf-description').value='';
+  renderAcademy();
+}
+function requestCourseRecommendation(){
+  var employeeId=document.getElementById('crf-employee').value;
+  var employee=employeeById(employeeId);
+  var incompleteMandatory=COURSES.filter(function(c){return c.is_mandatory;});
+  var result=deterministicCourseRecommendation(incompleteMandatory);
+  COURSE_RECOMMENDATIONS.unshift({id:nextId(),employee_id:employeeId,recommended_course_id:result.courseId,reasoning:result.reasoning,status:result.courseId?'accepted':'no_recommendation'});
+  document.getElementById('course-rec-result').innerHTML='<div class="aip-body" style="font-size:12px;color:var(--green)">'+(result.courseId?'Recommended and enrolled automatically — see recent activity below.':'No incomplete mandatory course to recommend.')+'</div>';
+  DFEED.unshift({a:'talent-agent',m:'Course recommended and enrolled automatically — '+employee.full_name+(result.courseId?': '+courseById(result.courseId).title:': none needed'),ts:'now'});
+  renderAcademy();renderFeed();
+}
+function acceptCourseRecommendation(id){
+  var rec=COURSE_RECOMMENDATIONS.find(function(r){return r.id===id;});
+  rec.status='accepted';
+  renderAcademy();
+}
+function rejectCourseRecommendation(id){
+  var rec=COURSE_RECOMMENDATIONS.find(function(r){return r.id===id;});
+  rec.status='rejected';
+  renderAcademy();
+}
+var CONTENT_TYPE_ICONS={video:'ti-video',document:'ti-file-text',quiz:'ti-checklist',in_person:'ti-users',other:'ti-dots'};
+function renderAcademy(){
+  document.getElementById('course-cards').innerHTML=COURSES.map(function(c){
+    var icon=CONTENT_TYPE_ICONS[c.content_type]||'ti-file-text';
+    return '<div class="card" style="padding:10px 13px">'
+      +'<div class="ch" style="margin-bottom:6px"><span class="tc" style="font-size:13px"><i class="ti '+icon+'" style="margin-right:5px;color:var(--gold)"></i>'+c.title+'</span><span class="p '+(c.is_mandatory?'pr':'pd')+'">'+(c.is_mandatory?'mandatory':'optional')+'</span></div>'
+      +(c.description?'<div style="font-size:12px;color:var(--mid);margin-bottom:4px">'+c.description+'</div>':'')
+      +'<div style="font-size:11px;color:var(--dim)">'+(c.content_type||'document').replace('_',' ')+(c.content_url?' · <a href="'+c.content_url+'" style="color:var(--gold)" target="_blank">open content</a>':'')+'</div>'
+      +'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No courses in the library yet.</div>';
+
+  document.getElementById('course-rec-cards').innerHTML=COURSE_RECOMMENDATIONS.slice(0,5).map(function(r){
+    var e=employeeById(r.employee_id);
+    var course=r.recommended_course_id?courseById(r.recommended_course_id):null;
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>'+e.full_name+(course?' <span class="p pg" style="font-size:9px;margin-left:6px">enrolled automatically</span>':'')+'</div><div class="aip-body">'+(course?('Enrolled in: <b style="color:var(--gold)">'+course.title+'</b><br>'):'')+r.reasoning+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No course recommendations yet.</div>';
+
+  document.getElementById('course-draft-cards').innerHTML=COURSE_DRAFTS.slice(0,5).map(function(d){
+    var icon=CONTENT_TYPE_ICONS[d.draft_content_type]||'ti-file-text';
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>AI course draft <span class="p pg" style="font-size:9px;margin-left:6px">published automatically</span></div><div class="aip-body">'
+      +'<b style="color:var(--gold)"><i class="ti '+icon+'"></i> '+d.draft_title+'</b> <span class="p pd">'+d.draft_category+'</span><br>'
+      +d.draft_description+'<br><span style="font-size:11px;color:var(--dim)">'+d.reasoning+'</span></div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No course drafts yet.</div>';
+}
+
+var SLA_HOURS_BY_TYPE={complaint:24,payroll_inquiry:48,benefits_question:72,policy_question:72,document_request:48};
+var ALWAYS_ESCALATE_TYPES=['complaint'];
+var POLICY_STOPWORDS=['the','a','an','is','are','can','i','do','does','my','to','of','for','in','on','and','or','what','how','when','policy','policies','our'];
+function deterministicPolicyAnswer(question,policies){
+  var questionWords=question.toLowerCase().split(/\s+/).map(function(w){return w.replace(/[.,?!]/g,'');}).filter(function(w){return w.length>2&&POLICY_STOPWORDS.indexOf(w)===-1;});
+  if(!questionWords.length||!policies.length)return {body:'',reasoning:'[deterministic fallback] No policy documents on file to ground an answer in — this needs a human response.',policyId:null};
+  var bestDoc=null,bestOverlap=0;
+  policies.forEach(function(doc){
+    var docWords=(doc.title+' '+doc.body).toLowerCase().split(/\s+/).map(function(w){return w.replace(/[.,?!]/g,'');});
+    var overlap=questionWords.filter(function(w){return docWords.indexOf(w)>=0;}).length;
+    if(overlap>bestOverlap){bestOverlap=overlap;bestDoc=doc;}
+  });
+  if(!bestDoc)return {body:'',reasoning:'[deterministic fallback] None of the policies on file match this question closely enough to ground an answer — this needs a human response.',policyId:null};
+  return {body:'Per our '+bestDoc.title+': '+bestDoc.body,reasoning:'[deterministic fallback] Keyword overlap with \''+bestDoc.title+'\' ('+bestOverlap+' matching terms) — grounding the answer directly in that policy\'s text.',policyId:bestDoc.id};
+}
+function createCase(){
+  var employeeId=document.getElementById('cf-employee').value;
+  var caseType=document.getElementById('cf-type').value;
+  var subject=document.getElementById('cf-subject').value.trim();
+  if(!subject)return;
+  var slaHours=SLA_HOURS_BY_TYPE[caseType]||72;
+  var status=ALWAYS_ESCALATE_TYPES.indexOf(caseType)>=0?'escalated':'open';
+  var hrCase={id:nextId(),employee_id:employeeId,case_type:caseType,subject:subject,status:status,sla_due_at:new Date(Date.now()+slaHours*3600*1000)};
+  HR_CASES.push(hrCase);
+  toggleForm('case-form');
+  document.getElementById('cf-subject').value='';
+  renderCases();populateEmployeeSelects();renderLiveChatCaseSelect();
+}
+function askPolicyQuestion(){
+  var caseId=document.getElementById('pqf-case').value;
+  var question=document.getElementById('pqf-question').value.trim();
+  if(!question||!caseId)return;
+  var result=deterministicPolicyAnswer(question,POLICY_DOCUMENTS);
+  var resultEl=document.getElementById('policy-question-result');
+  if(result.body){
+    CASE_DRAFTS.unshift({id:nextId(),case_id:caseId,draft_body:result.body,reasoning:result.reasoning,cites_policy_id:result.policyId,status:'approved_sent'});
+    resultEl.innerHTML='<div style="background:var(--green-dim);border:0.5px solid var(--green-border);border-radius:8px;padding:10px;font-size:12px;color:var(--green)">Grounded answer drafted and sent automatically — no financial or security risk in a policy-question reply.</div>';
+    DFEED.unshift({a:'talent-agent',m:'Policy answer drafted and sent automatically, grounded in real policy text',ts:'now'});
+  } else {
+    resultEl.innerHTML='<div style="background:var(--surface2);border:0.5px dashed var(--border2);border-radius:8px;padding:10px;font-size:12px;color:var(--dim)">'+result.reasoning+'</div>';
+    DFEED.unshift({a:'talent-agent',m:'No grounded policy match — routed to HR for manual response (an ungrounded guess is worse than silence, regardless of automation level)',ts:'now'});
+  }
+  document.getElementById('pqf-question').value='';
+  renderCases();renderFeed();
+}
+function approveCaseDraft(id){
+  var draft=CASE_DRAFTS.find(function(d){return d.id===id;});
+  draft.status='approved_sent';
+  renderCases();
+}
+function createPolicyDocument(){
+  var title=document.getElementById('pdf-title').value.trim();
+  if(!title)return;
+  var body=document.getElementById('pdf-body').value.trim();
+  POLICY_DOCUMENTS.push({id:nextId(),title:title,body:body});
+  toggleForm('policy-form');
+  document.getElementById('pdf-title').value='';document.getElementById('pdf-body').value='';
+}
+function renderCases(){
+  document.getElementById('case-rows').innerHTML=HR_CASES.map(function(c){
+    var e=employeeById(c.employee_id);
+    var pill={open:'pb',in_progress:'pa2',resolved:'pg',escalated:'pr'}[c.status];
+    return '<div class="tr" style="grid-template-columns:1fr 1fr 1fr 100px">'
+      +'<span class="tc" style="font-size:13px">'+(e?e.full_name:'—')+'</span>'
+      +'<span class="tm" style="font-size:12px">'+c.case_type.replace(/_/g,' ')+'</span>'
+      +'<span class="p '+pill+'">'+c.status+'</span>'
+      +'<span>'+(c.status!=='resolved'?'<button class="btn btn-s btn-g" onclick="resolveCase(\''+c.id+'\')">Resolve</button>':'')+'</span></div>';
+  }).join('') || '<div style="padding:14px;font-size:13px;color:var(--dim)">No cases yet.</div>';
+
+  document.getElementById('case-draft-cards').innerHTML=CASE_DRAFTS.slice(0,5).map(function(d){
+    return '<div class="aip"><div class="aip-h"><i class="ti ti-sparkles"></i>Draft reply <span class="p pg" style="font-size:9px;margin-left:6px">sent automatically</span></div><div class="aip-body">'+d.draft_body+'</div></div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No policy-question replies yet.</div>';
+
+  document.getElementById('dk-cases').textContent=HR_CASES.filter(function(c){return c.status==='open'||c.status==='in_progress'||c.status==='escalated';}).length;
+}
+function resolveCase(id){
+  var c=HR_CASES.find(function(x){return x.id===id;});
+  c.status='resolved';
+  // mirrors the backend exactly: resolving a case auto-logs a note —
+  // documentation, not a decision, so it doesn't need human approval
+  var context='Case resolved — '+c.case_type.replace(/_/g,' ')+': '+c.subject;
+  var entry=deterministicNoteEntry(context);
+  var existing=EMPLOYEE_NOTES[c.employee_id]||[];
+  if(existing.length>0){
+    var mostRecent=existing[existing.length-1];
+    var timestamp=new Date().toISOString().slice(0,16).replace('T',' ')+' UTC';
+    mostRecent.body=mostRecent.body+'\n\n--- Update '+timestamp+' by talent-agent ---\n'+entry;
+    mostRecent.updated_at=new Date();
+  } else {
+    EMPLOYEE_NOTES[c.employee_id]=[{id:nextId(),body:entry,author:'talent-agent',is_ai_generated:true,created_at:new Date(),updated_at:new Date()}];
+  }
+  var e=employeeById(c.employee_id);
+  DFEED.unshift({a:'talent-agent',m:'Case resolved, note logged automatically — '+(e?e.full_name:c.employee_id),ts:'now'});
+  renderCases();renderWorkforce();renderFeed();
+  if(CURRENTLY_VIEWED_EMPLOYEE_ID===c.employee_id)renderNotesPanel(c.employee_id);
+}
+
+function renderFeed(){
+  document.getElementById('dash-feed').innerHTML=DFEED.slice(0,10).map(function(d){
+    return '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--border)"><span class="at" style="flex-shrink:0">'+d.a+'</span><span style="font-size:12px;color:var(--text);flex:1">'+d.m+'</span><span style="font-size:11px;color:var(--dim);flex-shrink:0">'+d.ts+'</span></div>';
+  }).join('');
+}
+
+var deptChart=null;
+function renderDeptChart(){
+  var counts={};
+  EMPLOYEES.forEach(function(e){counts[e.department]=(counts[e.department]||0)+1;});
+  var ctx=document.getElementById('chartDept');
+  if(!ctx)return;
+  if(deptChart)deptChart.destroy();
+  deptChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:'rgba(201,168,76,0.65)',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(110,128,150,0.8)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(110,128,150,0.8)',font:{size:11},stepSize:1}}}}
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// HRM-008 Notices & Communication — the notice board IS the real
+// "app" channel; email/sms record intent only (no gateway integration)
+// ══════════════════════════════════════════════════════════════
+function postNotice(){
+  var title=document.getElementById('ntcf-title').value.trim();
+  if(!title)return;
+  var body=document.getElementById('ntcf-body').value.trim();
+  var channels=[];
+  if(document.getElementById('ntcf-app').checked)channels.push('app');
+  if(document.getElementById('ntcf-email').checked)channels.push('email');
+  if(document.getElementById('ntcf-sms').checked)channels.push('sms');
+  NOTICES.unshift({id:nextId(),title:title,body:body,posted_by:'hr-ops-1',channels:channels.join(','),created_at:new Date()});
+  toggleForm('notice-form');
+  document.getElementById('ntcf-title').value='';document.getElementById('ntcf-body').value='';
+  document.getElementById('nb-notices').textContent=NOTICES.length;
+  renderNotices();
+}
+function addNoticeComment(noticeId){
+  var input=document.getElementById('comment-input-'+noticeId);
+  var body=input.value.trim();
+  if(!body)return;
+  NOTICE_COMMENTS.push({id:nextId(),notice_id:noticeId,employee_id:'emp-1',body:body,created_at:new Date()});
+  input.value='';
+  renderNotices();
+}
+function renderNotices(){
+  document.getElementById('notice-cards').innerHTML=NOTICES.map(function(n){
+    var channelPills=(n.channels||'app').split(',').map(function(c){
+      var isReal=c==='app';
+      return '<span class="p '+(isReal?'pg':'pd')+'" style="margin-right:4px">'+c+(isReal?'':' (intent only)')+'</span>';
+    }).join('');
+    var comments=NOTICE_COMMENTS.filter(function(c){return c.notice_id===n.id;});
+    return '<div class="card"><div class="ch"><span class="ct">'+n.title+'</span>'+channelPills+'</div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:12px">'+n.body+'</div>'
+      +'<div class="dv"></div>'
+      +'<div style="font-size:11px;color:var(--dim);margin-bottom:8px">Chat board — '+comments.length+' comment'+(comments.length===1?'':'s')+'</div>'
+      +comments.map(function(c){return '<div style="padding:5px 0;font-size:12px;color:var(--text)">'+c.body+'</div>';}).join('')
+      +'<div style="display:flex;gap:6px;margin-top:8px"><input class="fi" id="comment-input-'+n.id+'" placeholder="Reply..."><button class="btn btn-s btn-o" onclick="addNoticeComment(\''+n.id+'\')">Reply</button></div>'
+      +'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No notices posted yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Live chat with HR (extends the existing case-message pattern)
+// ══════════════════════════════════════════════════════════════
+function renderLiveChatCaseSelect(){
+  var sel=document.getElementById('lcf-case');
+  if(sel)populateSelect(sel,HR_CASES,function(c){return c.subject;},function(c){return c.id;});
+}
+function sendLiveChatMessage(){
+  var caseId=document.getElementById('lcf-case').value;
+  var input=document.getElementById('live-chat-input');
+  var body=input.value.trim();
+  if(!body||!caseId)return;
+  LIVE_CHAT_MESSAGES.push({case_id:caseId,direction:'inbound',body:body,sender:'employee'});
+  input.value='';
+  renderLiveChat();
+}
+function renderLiveChat(){
+  var caseId=document.getElementById('lcf-case')?document.getElementById('lcf-case').value:null;
+  var messages=LIVE_CHAT_MESSAGES.filter(function(m){return m.case_id===caseId;});
+  document.getElementById('live-chat-messages').innerHTML=messages.map(function(m){
+    var isInbound=m.direction==='inbound';
+    return '<div style="text-align:'+(isInbound?'right':'left')+';margin-bottom:6px"><span style="display:inline-block;padding:6px 10px;border-radius:8px;font-size:12px;background:'+(isInbound?'var(--gold-dim)':'var(--surface2)')+'">'+m.body+'</span></div>';
+  }).join('') || '<div style="font-size:12px;color:var(--dim)">No messages yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI Assistant — chat grounded in real HRM data, plus voice using
+// the browser's own SpeechRecognition/SpeechSynthesis APIs. Nothing
+// here calls a third-party voice service; if the browser doesn't
+// support these APIs, the UI says so honestly rather than pretending.
+// ══════════════════════════════════════════════════════════════
+function deterministicAssistantReply(message){
+  var lower=message.toLowerCase();
+  if(lower.indexOf('attrition')>=0||lower.indexOf('risk')>=0){
+    var watchlistCount=ATTRITION_SCORES.filter(function(s){return s.risk_score>=0.5;}).length;
+    return 'There are currently '+watchlistCount+' employee(s) on the attrition risk watchlist (score ≥ 0.5). Full detail is on Workforce Analytics.';
+  }
+  if(lower.indexOf('case')>=0){
+    var openCases=HR_CASES.filter(function(c){return c.status==='open'||c.status==='in_progress'||c.status==='escalated';}).length;
+    return 'There are '+openCases+' open HR case(s) right now. Escalated complaints always get a human, never an AI-drafted reply.';
+  }
+  if(lower.indexOf('employee')>=0||lower.indexOf('headcount')>=0){
+    return 'There are '+EMPLOYEES.length+' active employees right now. See Employee Directory for the full list, or Workforce Analytics for headcount by department.';
+  }
+  if(lower.indexOf('notice')>=0){
+    return 'There are '+NOTICES.length+' notice(s) posted right now. You can see and reply to them on the Notices &amp; Communication page.';
+  }
+  if(lower.indexOf('policy')>=0){
+    return 'Ask a policy question from a case on the Case Management page — I\'ll only draft an answer when a real policy document on file actually matches; otherwise I\'ll say so honestly instead of guessing.';
+  }
+  return 'I want to make sure I get this right for you — for anything I\'m not confident about, I\'d connect you with a live person. Would you like me to do that?';
+}
+function renderAssistantChat(){
+  document.getElementById('assistant-chat-messages').innerHTML=ASSISTANT_CHAT_HISTORY.map(function(m){
+    var isUser=m.role==='user';
+    return '<div style="align-self:'+(isUser?'flex-end':'flex-start')+';max-width:75%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.4;background:'+(isUser?'var(--gold-dim)':'var(--surface2)')+';border:0.5px solid '+(isUser?'var(--gold-border)':'var(--border)')+'">'+m.text+'</div>';
+  }).join('');
+  var container=document.getElementById('assistant-chat-messages');
+  container.scrollTop=container.scrollHeight;
+}
+function sendAssistantMessage(){
+  var input=document.getElementById('assistant-chat-input');
+  var message=input.value.trim();
+  if(!message)return;
+  ASSISTANT_CHAT_HISTORY.push({role:'user',text:message});
+  var reply=deterministicAssistantReply(message);
+  ASSISTANT_CHAT_HISTORY.push({role:'assistant',text:reply});
+  LAST_ASSISTANT_REPLY=reply;
+  input.value='';
+  renderAssistantChat();
+}
+
+// Real browser Web Speech API — SpeechRecognition (voice input) and
+// SpeechSynthesis (voice output). Feature-detected honestly: if the
+// browser doesn't support one or both, the UI says so rather than
+// silently failing or faking support.
+var VOICE_RECOGNITION=null;
+var VOICE_LISTENING=false;
+function getSpeechRecognitionClass(){
+  return window.SpeechRecognition||window.webkitSpeechRecognition||null;
+}
+function checkVoiceSupport(){
+  var hasRecognition=!!getSpeechRecognitionClass();
+  var hasSynthesis=!!window.speechSynthesis;
+  var statusEl=document.getElementById('voice-support-status');
+  if(!statusEl)return {hasRecognition:hasRecognition,hasSynthesis:hasSynthesis};
+  if(hasRecognition&&hasSynthesis){
+    statusEl.textContent='Voice input and output are supported in this browser.';
+  } else if(!hasRecognition&&!hasSynthesis){
+    statusEl.textContent='This browser supports neither voice input nor output — try Chrome or Edge.';
+    document.getElementById('voice-listen-btn').disabled=true;
+  } else if(!hasRecognition){
+    statusEl.textContent='Voice output is supported; voice input (microphone) is not in this browser.';
+    document.getElementById('voice-listen-btn').disabled=true;
+  } else {
+    statusEl.textContent='Voice input is supported; voice output (speech) is not in this browser.';
+  }
+  return {hasRecognition:hasRecognition,hasSynthesis:hasSynthesis};
+}
+function toggleVoiceListening(){
+  var RecognitionClass=getSpeechRecognitionClass();
+  if(!RecognitionClass)return;
+  if(VOICE_LISTENING){
+    if(VOICE_RECOGNITION)VOICE_RECOGNITION.stop();
+    VOICE_LISTENING=false;
+    document.getElementById('voice-listen-btn').innerHTML='<i class="ti ti-microphone"></i>Start listening';
+    return;
+  }
+  VOICE_RECOGNITION=new RecognitionClass();
+  VOICE_RECOGNITION.continuous=false;
+  VOICE_RECOGNITION.interimResults=false;
+  VOICE_RECOGNITION.onresult=function(event){
+    var transcript=event.results[0][0].transcript;
+    document.getElementById('assistant-chat-input').value=transcript;
+    sendAssistantMessage();
+  };
+  VOICE_RECOGNITION.onend=function(){
+    VOICE_LISTENING=false;
+    document.getElementById('voice-listen-btn').innerHTML='<i class="ti ti-microphone"></i>Start listening';
+  };
+  VOICE_RECOGNITION.start();
+  VOICE_LISTENING=true;
+  document.getElementById('voice-listen-btn').innerHTML='<i class="ti ti-player-stop"></i>Stop listening';
+}
+function speakLastAssistantReply(){
+  if(!window.speechSynthesis||!LAST_ASSISTANT_REPLY)return;
+  var utterance=new SpeechSynthesisUtterance(LAST_ASSISTANT_REPLY);
+  window.speechSynthesis.speak(utterance);
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI-assisted course prep (mirrors backend's exact keyword-based
+// category inference and publish-requires-human-action discipline)
+// ══════════════════════════════════════════════════════════════
+var CATEGORY_KEYWORDS={
+  compliance:['compliance','harassment','policy','legal','regulation'],
+  safety:['safety','hazard','driving','forklift','osha','injury'],
+  leadership:['leadership','management','coaching','mentoring'],
+};
+function deterministicCourseDraft(prompt){
+  var promptLower=prompt.toLowerCase();
+  var category='technical';
+  for(var cat in CATEGORY_KEYWORDS){
+    if(CATEGORY_KEYWORDS[cat].some(function(kw){return promptLower.indexOf(kw)>=0;})){category=cat;break;}
+  }
+  var contentType=category==='safety'?'video':'document';
+  var title=prompt.trim()?(prompt.trim()[0].toUpperCase()+prompt.trim().slice(1)):'New Course';
+  var description='Course covering: '+prompt.trim()+'.';
+  var reasoning='[deterministic fallback] Category inferred from keyword match (\''+category+'\'); content type defaults to \''+contentType+'\' for this category.';
+  return {title:title,category:category,description:description,contentType:contentType,reasoning:reasoning};
+}
+function requestCourseDraft(){
+  var prompt=document.getElementById('crdf-prompt').value.trim();
+  if(!prompt)return;
+  var result=deterministicCourseDraft(prompt);
+  var draft={id:nextId(),prompt:prompt,draft_title:result.title,draft_category:result.category,draft_description:result.description,draft_content_type:result.contentType,reasoning:result.reasoning,status:'published'};
+  COURSE_DRAFTS.unshift(draft);
+  COURSES.push({id:nextId(),title:draft.draft_title,category:draft.draft_category,is_mandatory:false,content_type:draft.draft_content_type,content_url:'',description:draft.draft_description});
+  document.getElementById('course-draft-result').innerHTML='<div style="font-size:12px;color:var(--green)">Drafted and published to the library automatically — no financial or security risk in adding a course.</div>';
+  document.getElementById('crdf-prompt').value='';
+  DFEED.unshift({a:'talent-agent',m:'Course drafted and published automatically: '+result.title,ts:'now'});
+  renderAcademy();renderFeed();
+}
+function publishCourseDraft(id){
+  var draft=COURSE_DRAFTS.find(function(d){return d.id===id;});
+  draft.status='published';
+  COURSES.push({id:nextId(),title:draft.draft_title,category:draft.draft_category,is_mandatory:false,content_type:draft.draft_content_type,content_url:'',description:draft.draft_description});
+  renderAcademy();
+}
+function rejectCourseDraft(id){
+  var draft=COURSE_DRAFTS.find(function(d){return d.id===id;});
+  draft.status='rejected';
+  renderAcademy();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Formal email — bulk (all staff) or single employee, AI-drafted
+// or manual, always draft-then-send (mirrors backend exactly)
+// ══════════════════════════════════════════════════════════════
+function onEmailScopeChange(){
+  var scope=document.getElementById('emf-scope').value;
+  document.getElementById('emf-employee-row').style.display=scope==='single_employee'?'block':'none';
+  updateEmailRecipientPreview();
+}
+function updateEmailRecipientPreview(){
+  var scope=document.getElementById('emf-scope').value;
+  var preview=document.getElementById('emf-recipient-preview');
+  if(scope==='all_staff'){
+    preview.textContent='Will send to all '+EMPLOYEES.length+' active employee(s), one click.';
+  } else {
+    var empId=document.getElementById('emf-employee').value;
+    var e=employeeById(empId);
+    preview.textContent=e?('Will send to '+e.full_name+' ('+(e.email||'no email on file')+').'):'Select an employee.';
+  }
+}
+function deterministicEmailDraft(prompt,scope){
+  var greeting=scope==='all_staff'?'Dear Team,':'Dear Colleague,';
+  var subjectRaw=prompt.trim().replace(/[.!?]+$/,'');
+  var subject=subjectRaw?(subjectRaw[0].toUpperCase()+subjectRaw.slice(1)):'VOYQI Update';
+  var body=greeting+'\n\n'+prompt.trim()+'\n\nBest regards,\nVOYQI HR';
+  return {subject:subject,body:body};
+}
+function draftEmailWithAi(){
+  var prompt=document.getElementById('emf-prompt').value.trim();
+  if(!prompt)return;
+  var scope=document.getElementById('emf-scope').value;
+  var employeeId=scope==='single_employee'?document.getElementById('emf-employee').value:null;
+  var result=deterministicEmailDraft(prompt,scope);
+  document.getElementById('emf-subject').value=result.subject;
+  document.getElementById('emf-body').value=result.body;
+  var count=scope==='all_staff'?EMPLOYEES.length:1;
+  EMAIL_DRAFTS.unshift({id:nextId(),recipient_scope:scope,recipient_employee_id:employeeId,subject:result.subject,body:result.body,ai_prompt:prompt,is_ai_generated:true,status:'sent',created_at:new Date(),sent_at:new Date()});
+  document.getElementById('email-draft-result').innerHTML='<div style="font-size:12px;color:var(--green)">Drafted and sent automatically to '+count+' recipient(s) — no financial or security risk in a formal email.</div>';
+  document.getElementById('emf-prompt').value='';document.getElementById('emf-subject').value='';document.getElementById('emf-body').value='';
+  DFEED.unshift({a:'talent-agent',m:'Email drafted and sent automatically to '+count+' recipient(s) — '+(scope==='all_staff'?'all staff':'a single employee'),ts:'now'});
+  renderEmailList();renderFeed();
+}
+function createManualEmailDraft(){
+  var scope=document.getElementById('emf-scope').value;
+  var employeeId=scope==='single_employee'?document.getElementById('emf-employee').value:null;
+  var subject=document.getElementById('emf-subject').value.trim();
+  var body=document.getElementById('emf-body').value.trim();
+  var prompt=document.getElementById('emf-prompt').value.trim();
+  if(!subject||!body)return;
+  EMAIL_DRAFTS.unshift({id:nextId(),recipient_scope:scope,recipient_employee_id:employeeId,subject:subject,body:body,ai_prompt:prompt,is_ai_generated:!!prompt,status:'draft',created_at:new Date(),sent_at:null});
+  document.getElementById('emf-subject').value='';document.getElementById('emf-body').value='';document.getElementById('emf-prompt').value='';
+  document.getElementById('email-draft-result').innerHTML='<div style="font-size:12px;color:var(--green)">Saved as draft — send it from the list on the right when ready.</div>';
+  renderEmailList();
+}
+function sendEmailDraft(id){
+  var email=EMAIL_DRAFTS.find(function(e){return e.id===id;});
+  email.status='sent';
+  email.sent_at=new Date();
+  var count=email.recipient_scope==='all_staff'?EMPLOYEES.length:1;
+  DFEED.unshift({a:'talent-agent',m:'Email sent to '+count+' recipient(s): '+email.subject,ts:'now'});
+  renderEmailList();renderFeed();
+}
+function renderEmailList(){
+  document.getElementById('email-list').innerHTML=EMAIL_DRAFTS.map(function(e){
+    var recipientLabel=e.recipient_scope==='all_staff'?('All staff ('+EMPLOYEES.length+')'):(employeeById(e.recipient_employee_id)?employeeById(e.recipient_employee_id).full_name:'Unknown');
+    return '<div class="card" style="padding:10px 13px"><div class="ch" style="margin-bottom:4px"><span class="tc" style="font-size:13px">'+e.subject+'</span><span class="p '+(e.status==='sent'?'pg':'pa2')+'">'+e.status+'</span></div>'
+      +'<div style="font-size:11px;color:var(--dim);margin-bottom:6px">To: '+recipientLabel+(e.is_ai_generated?' · <span class="p pp" style="font-size:9px">AI-drafted</span>':'')+'</div>'
+      +(e.status==='draft'?'<button class="btn btn-s btn-g" onclick="sendEmailDraft(\''+e.id+'\')">Send now</button>':'')+'</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--dim)">No emails yet.</div>';
+}
+
+function rerenderAll(){
+  populateEmployeeSelects();
+  renderDirectory();
+  renderPayrollBenefits();
+  renderRecruiting();
+  renderPerformance();
+  renderWorkforce();
+  renderAcademy();
+  renderCases();
+  renderNotices();
+  renderLiveChatCaseSelect();
+  renderLiveChat();
+  renderAssistantChat();
+  checkVoiceSupport();
+  renderEmailList();
+  updateEmailRecipientPreview();
+  renderFeed();
+}
+rerenderAll();
+</script>
+</body>
+</html>

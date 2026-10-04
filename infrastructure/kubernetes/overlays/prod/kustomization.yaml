@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: voyqi
+
+resources:
+  - ../../base
+
+images:
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/api-gateway
+    newTag: stable
+
+configMapGenerator:
+  - name: gateway-config
+    literals:
+      - ENVIRONMENT=prod
+      - LOG_LEVEL=warning
+
+# Production additionally gets PodDisruptionBudgets and stricter resource
+# floors across every service — see patches below.
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "250m"
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/part-of=voyqi-mobility-os"

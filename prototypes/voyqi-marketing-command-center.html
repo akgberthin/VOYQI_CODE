@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI — Marketing Command Center</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gd:rgba(201,168,76,0.15);--gb:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --green:#2ea87a;--gnd:rgba(46,168,122,0.12);--gnb:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--bld:rgba(61,142,212,0.12);--blb:rgba(61,142,212,0.3);
+  --red:#d05050;--rdd:rgba(208,80,80,0.12);--rdb:rgba(208,80,80,0.3);
+  --purple:#7b6cd4;--pud:rgba(123,108,212,0.12);--pub:rgba(123,108,212,0.3);
+  --amber:#e09a2a;--amd:rgba(224,154,42,0.12);--amb:rgba(224,154,42,0.3);
+  --sw:218px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+
+/* ── Shell ── */
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:50px 1fr;height:100vh;overflow:hidden}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:50}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+
+/* ── Topbar ── */
+.wm{font-size:15px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.tb-div{width:1px;height:18px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim)}
+.tb-srch{flex:1;max-width:300px;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:5px 9px;display:flex;align-items:center;gap:6px}
+.tb-srch input{background:none;border:none;outline:none;font-size:13px;color:var(--text);width:100%}
+.tb-srch input::placeholder{color:var(--dim)}
+.tb-srch i{color:var(--dim);font-size:14px;flex-shrink:0}
+.tb-r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.tbx{width:28px;height:28px;border-radius:6px;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tbx:hover{background:var(--surface3)}
+.tbx i{font-size:14px;color:var(--mid)}
+.upill{display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:16px;cursor:pointer}
+.uav{width:20px;height:20px;border-radius:50%;background:var(--gd);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+
+/* ── Sidebar nav ── */
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:12px 13px 3px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:12px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gd)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:7px}
+.nb-r{background:var(--rdd);color:var(--red)}
+.nb-g{background:var(--gd);color:var(--gold)}
+.nb-b{background:var(--bld);color:var(--blue)}
+.nb-gn{background:var(--gnd);color:var(--green)}
+.sfoot{margin-top:auto;padding:10px 13px;border-top:0.5px solid var(--border)}
+
+/* ── Pages ── */
+.page{display:none;padding:20px 24px;min-height:calc(100vh - 50px)}
+.page.on{display:block}
+.ph{margin-bottom:16px}
+.pt{font-size:18px;font-weight:700;color:var(--cream)}
+.ps{font-size:12px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
+
+/* ── KPIs ── */
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+.kv{font-size:21px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:11px;margin-top:3px}
+.kpi-g{border-color:var(--gb)}.kpi-gn{border-color:var(--gnb)}.kpi-r{border-color:var(--rdb)}.kpi-b{border-color:var(--blb)}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px}
+.cardg{background:var(--surface);border:0.5px solid var(--gb);border-radius:10px;padding:14px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* ── Tables ── */
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden}
+.th{display:grid;padding:7px 12px;background:var(--surface2);font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 12px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center;transition:background .1s;cursor:pointer}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:var(--surface2)}
+.tr.selected{background:var(--gd);border-left:2px solid var(--gold)}
+
+/* ── Pills ── */
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--gnd);color:var(--green);border:0.5px solid var(--gnb)}
+.pa{background:var(--gd);color:var(--gold);border:0.5px solid var(--gb)}
+.pr{background:var(--rdd);color:var(--red);border:0.5px solid var(--rdb)}
+.pb{background:var(--bld);color:var(--blue);border:0.5px solid var(--blb)}
+.pp{background:var(--pud);color:var(--purple);border:0.5px solid var(--pub)}
+.pam{background:var(--amd);color:var(--amber);border:0.5px solid var(--amb)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+
+/* ── Buttons ── */
+.btn{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap;transition:all .1s}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-o:hover{background:var(--surface2);color:var(--text)}
+.btn-gh{background:none;border:0.5px solid var(--border);color:var(--dim)}
+.btn-gh:hover{background:var(--surface2);color:var(--text)}
+.btn-d{background:var(--rdd);border:0.5px solid var(--rdb);color:var(--red)}
+.btn-blue{background:var(--bld);border:0.5px solid var(--blb);color:var(--blue)}
+.btn-green{background:var(--gnd);border:0.5px solid var(--gnb);color:var(--green)}
+.btn-purple{background:var(--pud);border:0.5px solid var(--pub);color:var(--purple)}
+.btn-s{padding:4px 9px;font-size:11px}
+
+/* ── Forms ── */
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:11px;color:var(--mid);font-weight:500;margin-bottom:4px;letter-spacing:.03em}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--gb)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.ft{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;resize:vertical;min-height:80px;line-height:1.55}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.fr4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+
+/* ── Toggle ── */
+.tog{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 0}
+.ts{width:32px;height:17px;border-radius:9px;background:var(--surface3);position:relative;transition:background .2s;border:0.5px solid var(--border);flex-shrink:0}
+.ts.on{background:var(--green)}
+.ts::after{content:"";position:absolute;width:11px;height:11px;border-radius:50%;background:var(--dim);top:2px;left:2px;transition:all .2s}
+.ts.on::after{left:18px;background:#fff}
+.tlb{font-size:12px;color:var(--text)}
+
+/* ── Progress ── */
+.prog{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.pf{height:4px;border-radius:2px}
+.pf-g{background:var(--gold)}.pf-gn{background:var(--green)}.pf-b{background:var(--blue)}.pf-r{background:var(--red)}.pf-p{background:var(--purple)}
+
+/* ── Channel tabs ── */
+.ch-tabs{display:flex;gap:2px;background:var(--surface2);padding:3px;border-radius:8px;margin-bottom:14px}
+.ch-tab{flex:1;padding:7px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:var(--mid);transition:all .15s;border:none;background:none}
+.ch-tab.on{background:var(--surface);color:var(--cream);box-shadow:0 0 0 0.5px var(--border)}
+.ch-tab i{font-size:15px;display:block;margin:0 auto 3px}
+
+/* ── Channel icons ── */
+.ch-email{color:var(--blue)}
+.ch-sms{color:var(--green)}
+.ch-voice{color:var(--purple)}
+.ch-social{color:var(--amber)}
+.ch-push{color:var(--red)}
+
+/* ── Campaign card (library) ── */
+.ccamp{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px;position:relative;transition:border-color .15s;cursor:pointer}
+.ccamp:hover{border-color:var(--border2)}
+.ccamp.active-camp{border-color:var(--gnb);background:rgba(46,168,122,0.04)}
+.ccamp.paused-camp{border-color:var(--gb)}
+.ccamp.draft-camp{border-color:var(--border)}
+.ccamp.scheduled-camp{border-color:var(--blb)}
+.camp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:16px}
+.camp-status-bar{height:3px;border-radius:2px;position:absolute;top:0;left:0;right:0;border-radius:10px 10px 0 0}
+
+/* ── Targeting chips ── */
+.target-wrap{display:flex;flex-wrap:wrap;gap:5px;padding:8px;background:var(--surface2);border-radius:7px;min-height:38px;cursor:text;border:0.5px solid var(--border)}
+.tchip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:var(--gd);border:0.5px solid var(--gb);border-radius:5px;font-size:11px;color:var(--gold);font-weight:500}
+.tchip i{font-size:12px;cursor:pointer;color:var(--dim)}
+.tchip i:hover{color:var(--red)}
+
+/* ── Schedule grid ── */
+.sched-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.sched-day{background:var(--surface2);border-radius:5px;padding:6px 4px;text-align:center;font-size:10px;cursor:pointer;transition:all .1s;border:0.5px solid transparent}
+.sched-day:hover{border-color:var(--gb)}
+.sched-day.has-camp{background:var(--gd);border-color:var(--gb)}
+.sched-day.today{border-color:var(--gold)}
+
+/* ── Analytics chart ── */
+.sparkline-wrap{display:flex;align-items:flex-end;gap:2px;height:40px}
+.spark-bar{background:var(--gold);border-radius:2px 2px 0 0;width:8px;transition:height .3s;opacity:.7}
+.spark-bar:hover{opacity:1}
+
+/* ── Misc ── */
+.ld{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.at{font-family:monospace;font-size:10px;padding:1px 5px;border-radius:3px;background:var(--gd);color:var(--gold);border:0.5px solid var(--gb)}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.sl{font-size:12px;color:var(--gold);cursor:pointer}
+.dv{height:0.5px;background:var(--border);margin:12px 0}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.ai-glow{border:0.5px solid var(--gb) !important;animation:glow .8s ease}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(201,168,76,.4)}50%{box-shadow:0 0 12px 3px rgba(201,168,76,.15)}100%{box-shadow:none}}
+.typing-dots span{animation:tdot 1.4s infinite;opacity:0;font-size:18px;color:var(--gold)}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,80%,100%{opacity:0}40%{opacity:1}}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;display:none}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:0.5px solid var(--gb);border-radius:14px;padding:22px;width:520px;max-height:85vh;overflow-y:auto;position:relative}
+.modal-close{position:absolute;top:14px;right:14px;width:26px;height:26px;border-radius:50%;background:var(--surface2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mid)}
+.modal-close:hover{color:var(--red)}
+.seg-btn{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:0.5px solid var(--border);background:none;color:var(--mid);transition:all .1s}
+.seg-btn.on{background:var(--gd);border-color:var(--gb);color:var(--gold)}
+.meter-bar{height:6px;border-radius:3px;background:var(--surface3);overflow:hidden;margin-top:4px}
+.meter-fill{height:6px;border-radius:3px;transition:width .4s}
+.drag-drop{border:1.5px dashed var(--border2);border-radius:9px;padding:18px;text-align:center;cursor:pointer;transition:border-color .2s;min-height:80px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.drag-drop:hover,.drag-drop.over{border-color:var(--gold);background:var(--gd)}
+.tag-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:var(--surface3);border-radius:5px;font-size:11px;color:var(--mid);cursor:pointer;transition:all .1s}
+.tag:hover,.tag.sel{background:var(--gd);border:0.5px solid var(--gb);color:var(--gold)}
+.editor-toolbar{display:flex;gap:3px;padding:6px 10px;background:var(--surface2);border-bottom:0.5px solid var(--border);flex-wrap:wrap}
+.etb{width:26px;height:26px;border-radius:5px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mid)}
+.etb:hover{background:var(--surface3);color:var(--text)}
+.email-preview{background:#0a0f1a;border-radius:0 0 9px 9px;padding:18px;font-size:13px;line-height:1.7;color:var(--text);min-height:120px}
+.voice-wave{display:flex;align-items:center;gap:2px;height:32px}
+.wbar{width:3px;border-radius:2px;background:var(--purple);animation:wave 1.2s infinite;opacity:.6}
+.wbar:nth-child(2){animation-delay:.1s;height:40%}
+.wbar:nth-child(3){animation-delay:.2s;height:80%}
+.wbar:nth-child(4){animation-delay:.3s;height:60%}
+.wbar:nth-child(5){animation-delay:.4s;height:100%}
+.wbar:nth-child(6){animation-delay:.3s;height:70%}
+.wbar:nth-child(7){animation-delay:.2s;height:45%}
+.wbar:nth-child(8){animation-delay:.1s;height:30%}
+@keyframes wave{0%,100%{height:20%;opacity:.4}50%{height:100%;opacity:1}}
+.heatmap-grid{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:6px}
+.hm-cell{height:16px;border-radius:2px;cursor:pointer}
+.audience-meter{background:var(--surface2);border-radius:8px;padding:12px;text-align:center}
+.audience-num{font-size:28px;font-weight:700;color:var(--gold);line-height:1}
+.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text);margin:2px}
+.funnel-bar{border-radius:4px;margin-bottom:5px;display:flex;align-items:center;padding:6px 10px;font-size:12px;font-weight:500}
+
+.fs-12{font-size:12px}
+
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="wm">VOYQI</span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx">Marketing Command Center</span>
+  <div class="tb-srch"><i class="ti ti-search"></i><input type="text" id="global-search" placeholder="Search campaigns, leads, content..."></div>
+  <div class="tb-r">
+    <div class="tbx" title="Notifications"><i class="ti ti-bell"></i></div>
+    <div class="tbx" title="Scheduler" onclick="sp('schedule')"><i class="ti ti-calendar"></i></div>
+    <div class="tbx" title="Analytics" onclick="sp('analytics')"><i class="ti ti-chart-bar"></i></div>
+    <div class="upill">
+      <div class="uav">OP</div>
+      <div class="uname">Operator Admin</div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="ss">Overview</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+  <div class="ni" id="n-library" onclick="sp('library')"><i class="ti ti-library"></i>Content library<span class="nb nb-g">24</span></div>
+  <div class="ni" id="n-analytics" onclick="sp('analytics')"><i class="ti ti-chart-line"></i>Analytics</div>
+
+  <div class="ss">Create Campaign</div>
+  <div class="ni" id="n-email" onclick="sp('email')"><i class="ti ti-mail"></i>Email campaigns</div>
+  <div class="ni" id="n-sms" onclick="sp('sms')"><i class="ti ti-message"></i>SMS campaigns</div>
+  <div class="ni" id="n-voice" onclick="sp('voice')"><i class="ti ti-phone-call"></i>Voice campaigns</div>
+  <div class="ni" id="n-social" onclick="sp('social')"><i class="ti ti-brand-instagram"></i>Social media</div>
+  <div class="ni" id="n-push" onclick="sp('push')"><i class="ti ti-device-mobile"></i>Push &amp; in-app</div>
+
+  <div class="ss">Audience</div>
+  <div class="ni" id="n-audience" onclick="sp('audience')"><i class="ti ti-target"></i>Audience builder<span class="nb nb-b">NEW</span></div>
+  <div class="ni" id="n-segments" onclick="sp('segments')"><i class="ti ti-users-group"></i>Segments</div>
+
+  <div class="ss">Automation</div>
+  <div class="ni" id="n-schedule" onclick="sp('schedule')"><i class="ti ti-calendar-clock"></i>Campaign scheduler</div>
+  <div class="ni" id="n-automation" onclick="sp('automation')"><i class="ti ti-topology-ring"></i>Automation flows</div>
+  <div class="ni" id="n-ai-studio" onclick="sp('ai-studio')"><i class="ti ti-sparkles"></i>AI studio<span class="nb nb-g">AI</span></div>
+
+  <div class="ss">Data</div>
+  <div class="ni" id="n-ab" onclick="sp('ab')"><i class="ti ti-ab"></i>A/B testing</div>
+  <div class="ni" id="n-reports" onclick="sp('reports')"><i class="ti ti-file-analytics"></i>Reports</div>
+
+  <div class="sfoot">
+    <div style="font-size:11px;color:var(--dim);margin-bottom:5px">Channel status</div>
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--mid)"><i class="ti ti-mail" style="font-size:12px;color:var(--blue)"></i> SendGrid</span><span class="p pg" style="font-size:9px">Live</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--mid)"><i class="ti ti-message" style="font-size:12px;color:var(--green)"></i> Twilio SMS</span><span class="p pa" style="font-size:9px">1 err</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--mid)"><i class="ti ti-phone-call" style="font-size:12px;color:var(--purple)"></i> AI Voice</span><span class="p pg" style="font-size:9px">Live</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="page on" id="p-dash">
+  <div class="ph">
+    <div class="pt">Marketing command center</div>
+    <div class="ps">Multi-channel campaign management · AI-powered content generation · real-time analytics</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="sp('ai-studio')"><i class="ti ti-sparkles"></i>Create with AI</button>
+      <button class="btn btn-o" onclick="sp('email')"><i class="ti ti-plus"></i>New campaign</button>
+      <button class="btn btn-blue" onclick="sp('schedule')"><i class="ti ti-calendar"></i>Schedule</button>
+    </div>
+  </div>
+  <div class="krow">
+    <div class="kpi kpi-g"><div class="kl">Active campaigns</div><div class="kv">8</div><div class="kd tr2">3 running now</div></div>
+    <div class="kpi"><div class="kl">Total sent MTD</div><div class="kv">14,840</div><div class="kd tm">All channels</div></div>
+    <div class="kpi kpi-gn"><div class="kl">Avg open rate</div><div class="kv">34.2%</div><div class="kd tr2">Industry avg 22%</div></div>
+    <div class="kpi"><div class="kl">Conversions MTD</div><div class="kv">127</div><div class="kd tr2">0.85% rate</div></div>
+  </div>
+
+  <div class="two" style="margin-bottom:14px">
+    <div class="card">
+      <div class="ch"><span class="ct">Live campaign performance</span><span class="p pg" style="font-size:10px"><span class="ld"></span>Live</span></div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="background:var(--surface2);border-radius:8px;padding:10px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+            <div><div style="font-size:13px;font-weight:500;color:var(--cream)">Luxury upgrade push</div><div style="font-size:11px;color:var(--dim);margin-top:1px"><i class="ti ti-mail" style="font-size:10px;color:var(--blue)"></i> Email · luxury class</div></div>
+            <span class="p pg">Running</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:11px;text-align:center">
+            <div><div style="font-weight:600;color:var(--cream)">1,240</div><div class="td">Sent</div></div>
+            <div><div style="font-weight:600;color:var(--gold)">38.1%</div><div class="td">Open</div></div>
+            <div><div style="font-weight:600;color:var(--green)">12.4%</div><div class="td">Click</div></div>
+            <div><div style="font-weight:600;color:var(--blue)">23</div><div class="td">Convert</div></div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+            <div><div style="font-size:13px;font-weight:500;color:var(--cream)">Urban → Family upsell</div><div style="font-size:11px;color:var(--dim);margin-top:1px"><i class="ti ti-message" style="font-size:10px;color:var(--green)"></i> SMS · urban members</div></div>
+            <span class="p pg">Running</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:11px;text-align:center">
+            <div><div style="font-weight:600;color:var(--cream)">640</div><div class="td">Sent</div></div>
+            <div><div style="font-weight:600;color:var(--gold)">91.2%</div><div class="td">Delivered</div></div>
+            <div><div style="font-weight:600;color:var(--green)">8.7%</div><div class="td">Click</div></div>
+            <div><div style="font-weight:600;color:var(--blue)">8</div><div class="td">Convert</div></div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+            <div><div style="font-size:13px;font-weight:500;color:var(--cream)">Lux Plus winback</div><div style="font-size:11px;color:var(--dim);margin-top:1px"><i class="ti ti-phone-call" style="font-size:10px;color:var(--purple)"></i> AI Voice · cancelled members</div></div>
+            <span class="p pa">Scheduled</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:11px;text-align:center">
+            <div><div style="font-weight:600;color:var(--cream)">42</div><div class="td">Queued</div></div>
+            <div><div style="font-weight:600;color:var(--gold)">—</div><div class="td">Pickup</div></div>
+            <div><div style="font-weight:600;color:var(--green)">—</div><div class="td">Engaged</div></div>
+            <div><div style="font-weight:600;color:var(--blue)">—</div><div class="td">Convert</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Sends per channel · this month</span></div>
+        <div style="position:relative;height:140px"><canvas id="dashChart" role="img" aria-label="Sends by channel">Channel data</canvas></div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Best send times today</span></div>
+        <div class="heatmap-grid" id="heatmap"></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>11pm</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec"><span class="st">All campaigns</span><button class="btn btn-o btn-s" onclick="sp('library')">View library →</button></div>
+  <div class="tw">
+    <div class="th" style="grid-template-columns:2fr 70px 90px 75px 70px 70px 80px 90px">
+      <span>Campaign</span><span>Channel</span><span>Audience</span><span>Sent</span><span>Open</span><span>Click</span><span>Convert</span><span>Status</span>
+    </div>
+    <div id="camp-list-rows"></div>
+  </div>
+</div>
+
+<!-- ═══ CONTENT LIBRARY ═══ -->
+<div class="page" id="p-library">
+  <div class="ph">
+    <div class="pt">Content library</div>
+    <div class="ps">All campaigns · templates · assets · version history · searchable by class, channel, objective, performance</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="sp('ai-studio')"><i class="ti ti-sparkles"></i>Create with AI</button>
+      <button class="btn btn-o"><i class="ti ti-filter"></i>Filter</button>
+      <button class="btn btn-gh"><i class="ti ti-download"></i>Export all</button>
+    </div>
+  </div>
+
+  <div class="krow">
+    <div class="kpi"><div class="kl">Total assets</div><div class="kv">24</div><div class="kd tm">8 active, 16 archive</div></div>
+    <div class="kpi kpi-g"><div class="kl">AI generated</div><div class="kv">18</div><div class="kd tg">75% of library</div></div>
+    <div class="kpi kpi-gn"><div class="kl">Top performer</div><div class="kv">38%</div><div class="kd tr2">Luxury push open rate</div></div>
+    <div class="kpi"><div class="kl">Templates</div><div class="kv">12</div><div class="kd tm">Reusable</div></div>
+  </div>
+
+  <!-- Filter bar -->
+  <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:12px;color:var(--dim)">Filter:</span>
+    <button class="seg-btn on" onclick="filterLib('all',this)">All</button>
+    <button class="seg-btn" onclick="filterLib('email',this)">Email</button>
+    <button class="seg-btn" onclick="filterLib('sms',this)">SMS</button>
+    <button class="seg-btn" onclick="filterLib('voice',this)">Voice</button>
+    <button class="seg-btn" onclick="filterLib('social',this)">Social</button>
+    <button class="seg-btn" onclick="filterLib('running',this)">Running</button>
+    <button class="seg-btn" onclick="filterLib('draft',this)">Drafts</button>
+    <button class="seg-btn" onclick="filterLib('scheduled',this)">Scheduled</button>
+    <input class="fi" id="lib-search" placeholder="Search campaigns..." style="width:180px;margin-left:auto" oninput="filterLib('search',null,this.value)">
+  </div>
+
+  <div class="camp-grid" id="library-grid"></div>
+</div>
+
+<!-- ═══ EMAIL CAMPAIGNS ═══ -->
+<div class="page" id="p-email">
+  <div class="ph">
+    <div class="pt">Email campaigns</div>
+    <div class="ps">Full email editor · HTML templates · personalization tokens · A/B subject lines · scheduling</div>
+    <div class="pa">
+      <button class="btn btn-g" id="email-save-btn" onclick="saveEmailCampaign()"><i class="ti ti-device-floppy"></i>Save campaign</button>
+      <button class="btn btn-blue" id="email-schedule-btn" onclick="scheduleThis('email')"><i class="ti ti-calendar"></i>Schedule</button>
+      <button class="btn btn-green" id="email-send-btn" onclick="sendNow('email')"><i class="ti ti-send"></i>Send now</button>
+      <button class="btn btn-o" onclick="sp('ai-studio')"><i class="ti ti-sparkles"></i>AI assist</button>
+    </div>
+  </div>
+
+  <div class="two">
+    <div>
+      <!-- Campaign metadata -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Campaign details</span></div>
+        <div class="fg"><label class="fl">Campaign name</label><input class="fi" id="e-name" placeholder="e.g. Luxury Class January Push"></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">From name</label><input class="fi" id="e-from" value="VOYQI Mobility"></div>
+          <div class="fg"><label class="fl">Reply-to email</label><input class="fi" id="e-reply" value="concierge@voyqi.com"></div>
+        </div>
+        <div class="fg"><label class="fl">Subject line</label><input class="fi" id="e-subject" placeholder="Your Luxury Class vehicle is waiting..."></div>
+        <div class="fg"><label class="fl">Preview text</label><input class="fi" id="e-preview" placeholder="Tap to see your vehicle at every hub worldwide"></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">A/B variant subject</label><input class="fi" id="e-subject-b" placeholder="Optional second subject line"></div>
+          <div class="fg"><label class="fl">A/B split %</label><input class="fi" type="number" id="e-split" value="20" min="5" max="50" placeholder="20%"></div>
+        </div>
+      </div>
+
+      <!-- Audience targeting -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Audience targeting</span><button class="btn btn-o btn-s" onclick="sp('audience')">Advanced →</button></div>
+        <div class="fr2" style="margin-bottom:10px">
+          <div class="fg"><label class="fl">Mobility class</label>
+            <select class="fs" id="e-class" onchange="updateAudCount()">
+              <option value="all">All classes</option>
+              <option value="urban">Urban — 6,250 members</option>
+              <option value="family">Family — 6,250 members</option>
+              <option value="executive">Executive — 3,125 members</option>
+              <option value="luxury">Luxury — 3,125 members</option>
+              <option value="performance">Performance — 3,125 members</option>
+              <option value="adventure">Adventure — 3,125 members</option>
+              <option value="luxury_plus">Luxury Plus — 248 members</option>
+              <option value="performance_plus">Performance Plus — 102 members</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Member status</label>
+            <select class="fs" id="e-status" onchange="updateAudCount()">
+              <option value="active">Active members</option>
+              <option value="paused">Paused members</option>
+              <option value="cancelled">Cancelled (winback)</option>
+              <option value="all">All statuses</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr3" style="margin-bottom:10px">
+          <div class="fg"><label class="fl">Service level</label>
+            <select class="fs" id="e-sl" onchange="updateAudCount()">
+              <option value="all">All levels</option>
+              <option value="gold_plus">Gold+</option>
+              <option value="platinum_plus">Platinum+</option>
+              <option value="executive_plus">Executive+</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">City / hub</label>
+            <select class="fs" id="e-city" onchange="updateAudCount()">
+              <option value="all">All cities</option>
+              <option value="miami">Miami</option>
+              <option value="new_york">New York</option>
+              <option value="london">London</option>
+              <option value="dubai">Dubai</option>
+              <option value="singapore">Singapore</option>
+              <option value="paris">Paris</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Member tenure</label>
+            <select class="fs" id="e-tenure" onchange="updateAudCount()">
+              <option value="all">Any tenure</option>
+              <option value="new">New (0–3 mo)</option>
+              <option value="mid">Mid (3–12 mo)</option>
+              <option value="long">Long (12+ mo)</option>
+            </select>
+          </div>
+        </div>
+        <div class="audience-meter" id="e-aud-meter">
+          <div class="kl" style="margin-bottom:4px">ESTIMATED AUDIENCE</div>
+          <div class="audience-num" id="e-aud-count">25,000</div>
+          <div style="font-size:11px;color:var(--mid);margin-top:4px">members match your targeting parameters</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Email editor -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Email content</span></div>
+        <div class="fg">
+          <label class="fl">Template</label>
+          <select class="fs" id="e-template" onchange="loadTemplate()">
+            <option value="blank">Blank</option>
+            <option value="luxury">Luxury class prestige</option>
+            <option value="urban">Urban class accessibility</option>
+            <option value="travel">Global mobility continuity</option>
+            <option value="winback">Winback — we miss you</option>
+            <option value="upgrade">Upgrade your class</option>
+            <option value="referral">Referral — earn 500 GU</option>
+          </select>
+        </div>
+        <div class="editor-toolbar">
+          <button class="etb" title="Bold"><i class="ti ti-bold"></i></button>
+          <button class="etb" title="Italic"><i class="ti ti-italic"></i></button>
+          <button class="etb" title="Link"><i class="ti ti-link"></i></button>
+          <button class="etb" title="Image"><i class="ti ti-photo"></i></button>
+          <button class="etb" title="Button"><i class="ti ti-rectangle"></i></button>
+          <button class="etb" title="Divider"><i class="ti ti-line"></i></button>
+          <div style="width:1px;background:var(--border);margin:2px 4px"></div>
+          <button class="etb" title="Personalize {{name}}"><i class="ti ti-user"></i></button>
+          <button class="etb" title="Personalize {{class}}"><i class="ti ti-car"></i></button>
+          <button class="etb" title="Personalize {{city}}"><i class="ti ti-map-pin"></i></button>
+          <div style="margin-left:auto;display:flex;gap:3px">
+            <button class="etb" onclick="togglePreview('email')" title="Preview"><i class="ti ti-eye"></i></button>
+            <button class="etb" onclick="sp('ai-studio')" title="AI generate" style="color:var(--gold)"><i class="ti ti-sparkles"></i></button>
+          </div>
+        </div>
+        <textarea class="ft" id="e-body" style="border-radius:0;border-top:none;min-height:160px;font-size:13px" placeholder="Write your email content here, or click the AI sparkle to generate..."></textarea>
+        <div id="e-preview-box" style="display:none">
+          <div class="email-preview" id="e-preview-content"></div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--dim)">
+          Personalization tokens: <span class="at">{{name}}</span> <span class="at">{{class}}</span> <span class="at">{{city}}</span> <span class="at">{{vehicle}}</span> <span class="at">{{hub}}</span> <span class="at">{{gu_balance}}</span>
+        </div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="card">
+        <div class="ch"><span class="ct">Schedule &amp; send</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Send date</label><input class="fi" type="date" id="e-date"></div>
+          <div class="fg"><label class="fl">Send time</label><input class="fi" type="time" id="e-time" value="09:00"></div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Timezone</label>
+            <select class="fs" id="e-tz">
+              <option>UTC</option><option>US/Eastern</option><option>US/Pacific</option>
+              <option>Europe/London</option><option>Asia/Dubai</option><option>Asia/Singapore</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Recurrence</label>
+            <select class="fs" id="e-recur">
+              <option value="once">One-time</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+        </div>
+        <div id="e-sched-confirm" style="display:none;background:var(--gnd);border:0.5px solid var(--gnb);border-radius:7px;padding:9px;font-size:12px;color:var(--green);margin-top:6px">✓ Campaign scheduled successfully</div>
+        <div id="e-send-confirm" style="display:none;background:var(--bld);border:0.5px solid var(--blb);border-radius:7px;padding:9px;font-size:12px;color:var(--blue);margin-top:6px">✓ Campaign queued for immediate send</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SMS CAMPAIGNS ═══ -->
+<div class="page" id="p-sms">
+  <div class="ph">
+    <div class="pt">SMS campaigns</div>
+    <div class="ps">Twilio · 160-char limit enforcer · opt-out management · MMS support · delivery tracking</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="saveCamp('sms')"><i class="ti ti-device-floppy"></i>Save</button>
+      <button class="btn btn-blue" onclick="scheduleThis('sms')"><i class="ti ti-calendar"></i>Schedule</button>
+      <button class="btn btn-green" onclick="sendNow('sms')"><i class="ti ti-send"></i>Send now</button>
+      <button class="btn btn-o" onclick="smsAI()"><i class="ti ti-sparkles"></i>AI generate</button>
+    </div>
+  </div>
+  <div class="two">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Campaign details</span></div>
+        <div class="fg"><label class="fl">Campaign name</label><input class="fi" id="sms-name" placeholder="e.g. Urban Class Jan SMS"></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Sender ID</label><input class="fi" id="sms-from" value="VOYQI"></div>
+          <div class="fg"><label class="fl">MMS (attach media)</label>
+            <select class="fs" id="sms-mms"><option value="">No — SMS only</option><option value="vehicle">Vehicle image</option><option value="card">VOYQI Card</option><option value="custom">Custom image</option></select>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">Message body <span id="sms-count" style="float:right;color:var(--gold)">0 / 160</span></label>
+          <textarea class="ft" id="sms-body" maxlength="320" style="min-height:100px" oninput="countSMS()" placeholder="Your vehicle is staged at {{hub}}. Tap to unlock. Reply STOP to opt out."></textarea>
+          <div id="sms-parts" style="font-size:11px;color:var(--dim);margin-top:4px">1 SMS part</div>
+        </div>
+        <div style="font-size:11px;color:var(--dim)">Tokens: <span class="at">{{name}}</span> <span class="at">{{class}}</span> <span class="at">{{hub}}</span> <span class="at">{{vehicle}}</span></div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Audience</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Class</label><select class="fs" id="sms-class" onchange="updateAudCount('sms')"><option value="all">All</option><option value="urban">Urban</option><option value="family">Family</option><option value="executive">Executive</option><option value="luxury">Luxury</option></select></div>
+          <div class="fg"><label class="fl">Status</label><select class="fs" id="sms-status"><option>Active</option><option>Paused</option><option>Cancelled</option></select></div>
+        </div>
+        <div class="audience-meter"><div class="kl" style="margin-bottom:4px">ESTIMATED AUDIENCE</div><div class="audience-num" id="sms-aud">25,000</div><div style="font-size:11px;color:var(--mid);margin-top:4px">members with SMS opt-in</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Preview</span></div>
+        <div style="background:var(--surface2);border-radius:12px;padding:18px;max-width:280px;margin:0 auto">
+          <div style="background:var(--surface3);border-radius:14px;padding:11px 13px;max-width:220px">
+            <div style="font-size:11px;font-weight:600;color:var(--gold);margin-bottom:4px">VOYQI</div>
+            <div id="sms-preview-text" style="font-size:13px;color:var(--text);line-height:1.55">Your vehicle is staged at Brickell Hub. Tap to unlock. Reply STOP to opt out.</div>
+            <div style="font-size:10px;color:var(--dim);margin-top:5px;text-align:right">9:41 AM</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Schedule</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="sms-date"></div>
+          <div class="fg"><label class="fl">Time</label><input class="fi" type="time" id="sms-time" value="10:00"></div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Timezone</label><select class="fs"><option>US/Eastern</option><option>UTC</option><option>Europe/London</option></select></div>
+          <div class="fg"><label class="fl">Recurrence</label><select class="fs"><option>One-time</option><option>Weekly</option><option>Monthly</option></select></div>
+        </div>
+        <div id="sms-confirm" style="display:none;background:var(--gnd);border:0.5px solid var(--gnb);border-radius:7px;padding:8px;font-size:12px;color:var(--green);margin-top:6px">✓ SMS campaign scheduled</div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Opt-out management</span></div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Auto-append STOP opt-out instructions</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Honor global opt-out list (TCPA)</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Quiet hours 9pm–9am enforced</span></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:7px;padding:8px;margin-top:9px;font-size:11px;color:var(--mid)">Opt-outs this month: <span class="tc" style="font-weight:600">14</span> &nbsp;|&nbsp; Compliance: <span class="tr2">TCPA</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ VOICE CAMPAIGNS ═══ -->
+<div class="page" id="p-voice">
+  <div class="ph">
+    <div class="pt">AI voice campaigns</div>
+    <div class="ps">AI-generated voice scripts · text-to-speech · scheduled calling · live pickup tracking · Twilio Voice</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="saveCamp('voice')"><i class="ti ti-device-floppy"></i>Save</button>
+      <button class="btn btn-blue" onclick="scheduleThis('voice')"><i class="ti ti-calendar"></i>Schedule</button>
+      <button class="btn btn-green" onclick="sendNow('voice')"><i class="ti ti-phone"></i>Start campaign</button>
+      <button class="btn btn-purple" onclick="voiceAI()"><i class="ti ti-sparkles"></i>Generate script</button>
+    </div>
+  </div>
+  <div class="two">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Voice campaign details</span></div>
+        <div class="fg"><label class="fl">Campaign name</label><input class="fi" id="v-name" placeholder="e.g. Luxury Plus winback outreach"></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">AI voice</label>
+            <select class="fs" id="v-voice">
+              <option value="professional_male">Professional male — Marcus</option>
+              <option value="professional_female">Professional female — Sophia</option>
+              <option value="luxury_female">Luxury tone — Isabelle</option>
+              <option value="concierge_male">Concierge — Alexandre</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Language</label>
+            <select class="fs" id="v-lang">
+              <option>English (US)</option><option>English (UK)</option>
+              <option>Spanish</option><option>French</option><option>Arabic</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <label class="fl" style="margin:0">Voice script</label>
+            <button class="btn btn-s btn-purple" onclick="voiceAI()"><i class="ti ti-sparkles"></i>AI generate</button>
+          </div>
+          <textarea class="ft" id="v-script" style="min-height:130px" placeholder="Hello {{name}}, this is VOYQI calling. Your {{class}} class membership is ready for renewal..."></textarea>
+        </div>
+        <div class="fg"><label class="fl">Max attempts per contact</label>
+          <select class="fs" id="v-attempts"><option>1</option><option selected>2</option><option>3</option></select>
+        </div>
+        <div class="fg"><label class="fl">Retry delay (hours)</label>
+          <select class="fs" id="v-retry"><option>2h</option><option selected>4h</option><option>8h</option><option>24h</option></select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Calling window</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Start time</label><input class="fi" type="time" id="v-start" value="09:00"></div>
+          <div class="fg"><label class="fl">End time</label><input class="fi" type="time" id="v-end" value="17:00"></div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Start date</label><input class="fi" type="date" id="v-date"></div>
+          <div class="fg"><label class="fl">Timezone</label><select class="fs"><option>US/Eastern</option><option>UTC</option><option>Europe/London</option></select></div>
+        </div>
+        <div id="v-confirm" style="display:none;background:var(--pud);border:0.5px solid var(--pub);border-radius:7px;padding:8px;font-size:12px;color:var(--purple);margin-top:6px">✓ Voice campaign scheduled</div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Audio preview</span></div>
+        <div style="background:var(--surface2);border-radius:9px;padding:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <button class="btn btn-purple" style="width:36px;height:36px;border-radius:50%;justify-content:center;padding:0" onclick="toggleVoicePlay()"><i class="ti ti-player-play" id="v-play-icon"></i></button>
+            <div style="flex:1">
+              <div style="font-size:12px;color:var(--cream);font-weight:500" id="v-voice-label">AI Voice: Sophia</div>
+              <div style="font-size:11px;color:var(--dim)">Click to preview (simulated)</div>
+            </div>
+          </div>
+          <div class="voice-wave" id="v-wave" style="display:none">
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+          </div>
+          <div id="v-script-preview" style="font-size:12px;color:var(--mid);line-height:1.6;margin-top:8px;font-style:italic"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Audience</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Class</label><select class="fs" id="v-class" onchange="updateAudCount('voice')"><option value="all">All</option><option value="luxury_plus">Luxury Plus</option><option value="performance_plus">Perf Plus</option><option value="luxury">Luxury</option></select></div>
+          <div class="fg"><label class="fl">Status</label><select class="fs"><option>Active</option><option>Paused</option><option selected>Cancelled</option></select></div>
+        </div>
+        <div class="audience-meter"><div class="kl" style="margin-bottom:4px">ESTIMATED AUDIENCE</div><div class="audience-num" id="v-aud">248</div><div style="font-size:11px;color:var(--mid);margin-top:4px">contacts with phone opt-in</div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Compliance</span></div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">TCPA consent required before calling</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Honor do-not-call registry</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Identify as AI at call start (required)</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Record call for QA</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOCIAL MEDIA ═══ -->
+<div class="page" id="p-social">
+  <div class="ph">
+    <div class="pt">Social media campaigns</div>
+    <div class="ps">Instagram · LinkedIn · Twitter/X · Facebook · AI copy generation · multi-platform scheduling</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="saveCamp('social')"><i class="ti ti-device-floppy"></i>Save</button>
+      <button class="btn btn-blue" onclick="scheduleThis('social')"><i class="ti ti-calendar"></i>Schedule</button>
+      <button class="btn btn-o" onclick="socialAI()"><i class="ti ti-sparkles"></i>AI generate</button>
+    </div>
+  </div>
+  <div class="two">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Post details</span></div>
+        <div class="fg"><label class="fl">Campaign name</label><input class="fi" id="soc-name" placeholder="e.g. Luxury Plus brand awareness Jan"></div>
+        <div class="fg">
+          <label class="fl">Target platforms</label>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:5px">
+            <button class="seg-btn on" onclick="this.classList.toggle('on')" id="soc-ig"><i class="ti ti-brand-instagram" style="font-size:14px;vertical-align:-2px;color:#e1306c"></i> Instagram</button>
+            <button class="seg-btn" onclick="this.classList.toggle('on')"><i class="ti ti-brand-linkedin" style="font-size:14px;vertical-align:-2px;color:#0a66c2"></i> LinkedIn</button>
+            <button class="seg-btn" onclick="this.classList.toggle('on')"><i class="ti ti-brand-twitter" style="font-size:14px;vertical-align:-2px;color:#1da1f2"></i> Twitter/X</button>
+            <button class="seg-btn" onclick="this.classList.toggle('on')"><i class="ti ti-brand-facebook" style="font-size:14px;vertical-align:-2px;color:#1877f2"></i> Facebook</button>
+          </div>
+        </div>
+        <div class="fg">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <label class="fl" style="margin:0">Post copy <span id="soc-count" style="float:right;color:var(--gold)">0 / 280</span></label>
+            <button class="btn btn-s btn-o" onclick="socialAI()"><i class="ti ti-sparkles"></i>AI write</button>
+          </div>
+          <textarea class="ft" id="soc-body" maxlength="2200" style="min-height:100px" oninput="document.getElementById('soc-count').textContent=this.value.length+' / 280'" placeholder="Your Luxury Class vehicle is waiting at every hub globally. No ownership. No rental counter. Just arrive and drive. #VOYQI #YourMobilityTravelsWithYou"></textarea>
+        </div>
+        <div class="fg">
+          <label class="fl">Media / creative</label>
+          <div class="drag-drop" id="soc-drop" ondragover="this.classList.add('over')" ondragleave="this.classList.remove('over')" onclick="fakeDrop('soc-drop')">
+            <i class="ti ti-photo" style="font-size:24px;color:var(--dim)"></i>
+            <span style="font-size:12px;color:var(--dim)">Drag & drop image or video · click to browse</span>
+            <span id="soc-file-name" style="font-size:11px;color:var(--gold);display:none"></span>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Hashtags</label><input class="fi" id="soc-tags" placeholder="#VOYQI #PortableMobility #LuxuryMobility"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Post preview</span></div>
+        <div style="background:var(--surface2);border-radius:10px;padding:13px;max-width:320px">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+            <div style="width:30px;height:30px;border-radius:50%;background:var(--gd);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold)">V</div>
+            <div><div style="font-size:12px;font-weight:600;color:var(--cream)">VOYQI Mobility</div><div style="font-size:11px;color:var(--dim)">@voyqimobility</div></div>
+          </div>
+          <div id="soc-preview-text" style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px">Your Luxury Class vehicle is waiting at every hub globally. No ownership. No rental counter. Just arrive and drive. #VOYQI</div>
+          <div style="height:140px;background:var(--surface3);border-radius:8px;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:32px;color:var(--dim)"></i></div>
+          <div style="display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--mid)">
+            <span><i class="ti ti-heart" style="font-size:13px"></i> 0</span>
+            <span><i class="ti ti-message-circle" style="font-size:13px"></i> 0</span>
+            <span><i class="ti ti-repeat" style="font-size:13px"></i> 0</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Schedule</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="soc-date"></div>
+          <div class="fg"><label class="fl">Time</label><input class="fi" type="time" id="soc-time" value="11:00"></div>
+        </div>
+        <div class="fg"><label class="fl">Recurrence</label><select class="fs"><option>One-time</option><option>Daily</option><option>3× per week</option><option>Weekly</option></select></div>
+        <div id="soc-confirm" style="display:none;background:var(--gnd);border:0.5px solid var(--gnb);border-radius:7px;padding:8px;font-size:12px;color:var(--green);margin-top:6px">✓ Social post scheduled</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PUSH & IN-APP ═══ -->
+<div class="page" id="p-push">
+  <div class="ph">
+    <div class="pt">Push &amp; in-app notifications</div>
+    <div class="ps">Mobile push (FCM / APNs) · in-app banners · deep links · member-specific triggers</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="saveCamp('push')"><i class="ti ti-device-floppy"></i>Save</button>
+      <button class="btn btn-blue" onclick="scheduleThis('push')"><i class="ti ti-calendar"></i>Schedule</button>
+      <button class="btn btn-green" onclick="sendNow('push')"><i class="ti ti-send"></i>Send now</button>
+    </div>
+  </div>
+  <div class="two">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Push notification</span></div>
+        <div class="fg"><label class="fl">Campaign name</label><input class="fi" id="push-name" placeholder="e.g. Vehicle staged alert"></div>
+        <div class="fg"><label class="fl">Title <span id="push-title-count" style="float:right;color:var(--gold)">0/50</span></label><input class="fi" id="push-title" maxlength="50" oninput="document.getElementById('push-title-count').textContent=this.value.length+'/50'" placeholder="Your vehicle is ready"></div>
+        <div class="fg"><label class="fl">Body <span id="push-body-count" style="float:right;color:var(--gold)">0/120</span></label><textarea class="ft" id="push-body" maxlength="120" style="min-height:70px" oninput="document.getElementById('push-body-count').textContent=this.value.length+'/120'" placeholder="{{class}} class vehicle staged at {{hub}} Bay {{bay}}. Tap to unlock."></textarea></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Deep link action</label>
+            <select class="fs" id="push-action">
+              <option>Open vehicle unlock screen</option>
+              <option>Open hub map</option>
+              <option>Open concierge chat</option>
+              <option>Open membership</option>
+              <option>Open travel mode</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Notification type</label>
+            <select class="fs" id="push-type">
+              <option>Promotional</option>
+              <option>Transactional</option>
+              <option>AI proactive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Audience &amp; schedule</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Class</label><select class="fs"><option>All classes</option><option>Luxury</option><option>Luxury Plus</option></select></div>
+          <div class="fg"><label class="fl">Status</label><select class="fs"><option>Active</option><option>All</option></select></div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="push-date"></div>
+          <div class="fg"><label class="fl">Time</label><input class="fi" type="time" id="push-time" value="08:00"></div>
+        </div>
+        <div id="push-confirm" style="display:none;background:var(--gnd);border:0.5px solid var(--gnb);border-radius:7px;padding:8px;font-size:12px;color:var(--green);margin-top:6px">✓ Push notification scheduled</div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Push preview</span></div>
+        <div style="background:var(--surface2);border-radius:12px;padding:16px;max-width:310px;margin:0 auto">
+          <div style="background:var(--surface3);border-radius:12px;padding:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="width:22px;height:22px;border-radius:5px;background:var(--gd);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold)">V</div>
+              <div style="font-size:11px;font-weight:600;color:var(--cream)">VOYQI</div>
+              <div style="font-size:10px;color:var(--dim);margin-left:auto">now</div>
+            </div>
+            <div id="push-preview-title" style="font-size:13px;font-weight:600;color:var(--cream);margin-bottom:2px">Your vehicle is ready</div>
+            <div id="push-preview-body" style="font-size:12px;color:var(--mid)">Luxury class vehicle staged at Brickell Hub Bay 14. Tap to unlock.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Channel settings</span></div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">iOS (APNs)</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">Android (FCM)</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts on"></div><span class="tlb" style="font-size:12px">In-app banner</span></div>
+          <div class="tog" onclick="this.querySelector('.ts').classList.toggle('on')"><div class="ts"></div><span class="tlb" style="font-size:12px">Web push</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUDIENCE BUILDER ═══ -->
+<div class="page" id="p-audience">
+  <div class="ph">
+    <div class="pt">Audience builder</div>
+    <div class="ps">Multi-dimensional targeting · demographic · geographic · behavioral · subscription · AI-scored segments</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="buildAud()"><i class="ti ti-users"></i>Build audience</button>
+      <button class="btn btn-blue" onclick="saveSegment()"><i class="ti ti-device-floppy"></i>Save as segment</button>
+    </div>
+  </div>
+
+  <div class="two" style="margin-bottom:14px">
+    <div>
+      <!-- Demographics -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct"><i class="ti ti-user" style="font-size:15px;margin-right:5px;color:var(--blue)"></i>Demographics</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Age range</label>
+            <select class="fs" id="aud-age" onchange="buildAud()">
+              <option value="all">All ages</option>
+              <option value="18-24">18–24 (student)</option>
+              <option value="25-34">25–34 (young professional)</option>
+              <option value="35-45">35–45 (family / executive)</option>
+              <option value="45-55">45–55 (peak earning)</option>
+              <option value="55+">55+ (retiree / downsizing)</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Income bracket</label>
+            <select class="fs" id="aud-income" onchange="buildAud()">
+              <option value="all">All incomes</option>
+              <option value="under50k">Under $50K</option>
+              <option value="50-100k">$50K–$100K</option>
+              <option value="100-250k">$100K–$250K</option>
+              <option value="250k+">$250K+</option>
+              <option value="1m+">$1M+ (HNWI)</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Life stage</label>
+            <select class="fs" id="aud-life" onchange="buildAud()">
+              <option value="all">All</option>
+              <option value="student">Student</option>
+              <option value="single_professional">Single professional</option>
+              <option value="couple">Couple (no children)</option>
+              <option value="family">Family with children</option>
+              <option value="empty_nester">Empty nester</option>
+              <option value="retiree">Retiree</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Corporate account</label>
+            <select class="fs" id="aud-corp" onchange="buildAud()">
+              <option value="all">All members</option>
+              <option value="corporate">Corporate account holders</option>
+              <option value="campus">Campus account holders</option>
+              <option value="individual">Individual members only</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Geography -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct"><i class="ti ti-map-pin" style="font-size:15px;margin-right:5px;color:var(--green)"></i>Geography</span></div>
+        <div class="fr3">
+          <div class="fg"><label class="fl">City / market</label>
+            <select class="fs" id="aud-city" onchange="buildAud()">
+              <option value="all">All cities</option>
+              <option value="miami">Miami</option>
+              <option value="new_york">New York</option>
+              <option value="london">London</option>
+              <option value="dubai">Dubai</option>
+              <option value="singapore">Singapore</option>
+              <option value="paris">Paris</option>
+              <option value="toronto">Toronto</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Hub type</label>
+            <select class="fs" id="aud-hub" onchange="buildAud()">
+              <option value="all">All hubs</option>
+              <option value="airport">Airport hubs</option>
+              <option value="city">City / business</option>
+              <option value="residential">Residential</option>
+              <option value="campus">Campus / university</option>
+              <option value="corporate">Corporate campus</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Travel frequency</label>
+            <select class="fs" id="aud-travel" onchange="buildAud()">
+              <option value="all">All</option>
+              <option value="frequent">Frequent (10+ trips/yr)</option>
+              <option value="occasional">Occasional (3–9)</option>
+              <option value="rare">Rare (0–2)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription -->
+      <div class="card">
+        <div class="ch"><span class="ct"><i class="ti ti-crown" style="font-size:15px;margin-right:5px;color:var(--gold)"></i>Subscription parameters</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Mobility class</label>
+            <select class="fs" id="aud-class" onchange="buildAud()">
+              <option value="all">All classes</option>
+              <option value="urban">Urban ($449)</option>
+              <option value="family">Family ($649)</option>
+              <option value="executive">Executive ($859)</option>
+              <option value="luxury">Luxury ($1,499)</option>
+              <option value="performance">Performance ($2,700)</option>
+              <option value="adventure">Adventure ($549)</option>
+              <option value="luxury_plus">Luxury Plus ($5,800)</option>
+              <option value="performance_plus">Performance Plus ($5,800)</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Member status</label>
+            <select class="fs" id="aud-status" onchange="buildAud()">
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="cancelled">Cancelled (winback)</option>
+              <option value="all">All statuses</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Service level</label>
+            <select class="fs" id="aud-sl" onchange="buildAud()">
+              <option value="all">All levels</option>
+              <option value="gold_plus">Gold+</option>
+              <option value="platinum_plus">Platinum+</option>
+              <option value="executive_plus">Executive+</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Membership tenure</label>
+            <select class="fs" id="aud-tenure" onchange="buildAud()">
+              <option value="all">Any</option>
+              <option value="0-3">0–3 months</option>
+              <option value="3-12">3–12 months</option>
+              <option value="12+">12+ months</option>
+              <option value="term">Term member</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Behavioral -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct"><i class="ti ti-activity" style="font-size:15px;margin-right:5px;color:var(--purple)"></i>Behavioral signals</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Trip frequency</label>
+            <select class="fs" id="aud-trips" onchange="buildAud()">
+              <option value="all">All</option>
+              <option value="high">High (8+ trips/mo)</option>
+              <option value="medium">Medium (3–7/mo)</option>
+              <option value="low">Low (0–2/mo)</option>
+              <option value="zero">Zero (14+ days)</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">GU balance</label>
+            <select class="fs" id="aud-gu" onchange="buildAud()">
+              <option value="all">All</option>
+              <option value="high">High (1,000+ GU)</option>
+              <option value="medium">Medium (200–999)</option>
+              <option value="low">Low (0–199)</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Churn risk score</label>
+            <select class="fs" id="aud-churn" onchange="buildAud()">
+              <option value="all">All scores</option>
+              <option value="low">Low risk (70–100)</option>
+              <option value="medium">Medium (40–69)</option>
+              <option value="high">High risk (0–39)</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Upgrade readiness</label>
+            <select class="fs" id="aud-upg" onchange="buildAud()">
+              <option value="all">All</option>
+              <option value="ready">Ready to upgrade</option>
+              <option value="considering">Considering</option>
+              <option value="stable">Stable / not ready</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Last trip</label>
+            <select class="fs" id="aud-lastt" onchange="buildAud()">
+              <option value="all">Any</option>
+              <option value="7d">Within 7 days</option>
+              <option value="30d">Within 30 days</option>
+              <option value="60d">31–60 days ago</option>
+              <option value="90d+">90+ days ago</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Referral activity</label>
+            <select class="fs" id="aud-ref" onchange="buildAud()">
+              <option value="all">All</option>
+              <option value="referred">Has referred members</option>
+              <option value="not_referred">Never referred</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audience result -->
+      <div class="cardg" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Estimated audience</span></div>
+        <div style="text-align:center;padding:10px 0">
+          <div style="font-size:42px;font-weight:700;color:var(--gold);line-height:1" id="big-aud-count">25,000</div>
+          <div style="font-size:13px;color:var(--mid);margin-top:5px">members match all parameters</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:3px" id="aud-pct">100% of total membership</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+          <div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center"><div style="font-size:14px;font-weight:600;color:var(--cream)" id="aud-email-count">24,200</div><div style="font-size:10px;color:var(--dim);margin-top:2px">Email opt-in</div></div>
+          <div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center"><div style="font-size:14px;font-weight:600;color:var(--cream)" id="aud-sms-count">19,840</div><div style="font-size:10px;color:var(--dim);margin-top:2px">SMS opt-in</div></div>
+          <div style="background:var(--surface2);border-radius:7px;padding:8px;text-align:center"><div style="font-size:14px;font-weight:600;color:var(--cream)" id="aud-push-count">22,100</div><div style="font-size:10px;color:var(--dim);margin-top:2px">Push opt-in</div></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:7px">
+          <button class="btn btn-g" style="flex:1" onclick="sp('email')"><i class="ti ti-mail"></i>Email this audience</button>
+          <button class="btn btn-blue" onclick="sp('sms')"><i class="ti ti-message"></i>SMS</button>
+          <button class="btn btn-purple" onclick="sp('voice')"><i class="ti ti-phone-call"></i>Voice</button>
+        </div>
+      </div>
+
+      <!-- Segment tags -->
+      <div class="card">
+        <div class="ch"><span class="ct">Active filters</span></div>
+        <div class="target-wrap" id="filter-chips">
+          <span class="tchip">All classes <i class="ti ti-x" onclick="removeChip(this)"></i></span>
+          <span class="tchip">Active members <i class="ti ti-x" onclick="removeChip(this)"></i></span>
+          <span class="tchip">All cities <i class="ti ti-x" onclick="removeChip(this)"></i></span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:7px">
+          <input class="fi" id="seg-name-input" placeholder="Segment name..." style="flex:1">
+          <button class="btn btn-o" onclick="saveSegment()"><i class="ti ti-device-floppy"></i>Save segment</button>
+        </div>
+        <div id="seg-saved" style="display:none;font-size:12px;color:var(--green);margin-top:7px">✓ Segment saved to library</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SEGMENTS ═══ -->
+<div class="page" id="p-segments">
+  <div class="ph">
+    <div class="pt">Audience segments</div>
+    <div class="ps">Saved audience definitions · reusable across campaigns · auto-updating membership counts</div>
+    <div class="pa"><button class="btn btn-g" onclick="sp('audience')"><i class="ti ti-plus"></i>Create segment</button></div>
+  </div>
+  <div class="krow">
+    <div class="kpi"><div class="kl">Total segments</div><div class="kv">9</div><div class="kd tm">4 used this month</div></div>
+    <div class="kpi kpi-g"><div class="kl">Largest segment</div><div class="kv">25K</div><div class="kd tg">All active members</div></div>
+    <div class="kpi kpi-gn"><div class="kl">Best performing</div><div class="kv">Lux upgrade</div><div class="kd tr2">38% open rate</div></div>
+    <div class="kpi"><div class="kl">AI-suggested</div><div class="kv">3</div><div class="kd tb2">New this week</div></div>
+  </div>
+  <div class="tw">
+    <div class="th" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px">
+      <span>Segment</span><span>Class</span><span>City</span><span>Count</span><span>Campaigns</span><span>Action</span>
+    </div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">All active members</div><div style="font-size:11px;color:var(--dim)">Active subscription</div></div><span class="tm" style="font-size:12px">All</span><span class="tm" style="font-size:12px">All</span><span>25,000</span><span>3</span><button class="btn btn-s btn-o" onclick="sp('email')">Use</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Luxury upgrade candidates</div><div style="font-size:11px;color:var(--dim)">Executive · churn low · 12+ mo</div></div><span class="tm" style="font-size:12px">Executive</span><span class="tm" style="font-size:12px">All</span><span>284</span><span>1</span><button class="btn btn-s btn-o" onclick="sp('email')">Use</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">High churn risk</div><div style="font-size:11px;color:var(--dim)">Score 0–39 · 14+ days no use</div></div><span class="tm" style="font-size:12px">All</span><span class="tm" style="font-size:12px">All</span><span>3</span><span>0</span><button class="btn btn-s btn-o" onclick="sp('email')">Use</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Miami Luxury members</div><div style="font-size:11px;color:var(--dim)">Luxury · Miami hubs</div></div><span class="tm" style="font-size:12px">Luxury</span><span class="tm" style="font-size:12px">Miami</span><span>820</span><span>2</span><button class="btn btn-s btn-o" onclick="sp('email')">Use</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Winback — cancelled 30–90d</div><div style="font-size:11px;color:var(--dim)">Cancelled · any class</div></div><span class="tm" style="font-size:12px">All</span><span class="tm" style="font-size:12px">All</span><span>142</span><span>0</span><button class="btn btn-s btn-o" onclick="sp('voice')">Use</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">London Executive travelers</div><div style="font-size:11px;color:var(--dim)">Exec · frequent traveler · London</div></div><span class="tm" style="font-size:12px">Executive</span><span class="tm" style="font-size:12px">London</span><span>314</span><span>1</span><button class="btn btn-s btn-o" onclick="sp('email')">Use</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Lux Plus prospects (from leads)</div><div style="font-size:11px;color:var(--dim)">Leads · interest = luxury_plus · score 80+</div></div><span class="tm" style="font-size:12px">Lead</span><span class="tm" style="font-size:12px">All</span><span>48</span><span>0</span><button class="btn btn-s btn-o" onclick="sp('voice')">Use</button></div>
+  </div>
+</div>
+
+<!-- ═══ CAMPAIGN SCHEDULER ═══ -->
+<div class="page" id="p-schedule">
+  <div class="ph">
+    <div class="pt">Campaign scheduler</div>
+    <div class="ps">Multi-campaign calendar · run simultaneously · timezone-aware · recurrence · conflict detection</div>
+    <div class="pa">
+      <button class="btn btn-g" onclick="sp('email')"><i class="ti ti-plus"></i>Schedule campaign</button>
+      <button class="btn btn-o" onclick="toggleCalView()"><i class="ti ti-calendar-week"></i>Week view</button>
+    </div>
+  </div>
+
+  <div class="krow">
+    <div class="kpi kpi-gn"><div class="kl">Running now</div><div class="kv">3</div><div class="kd tr2">Sending in parallel</div></div>
+    <div class="kpi"><div class="kl">Scheduled</div><div class="kv">5</div><div class="kd tb2">Next 7 days</div></div>
+    <div class="kpi kpi-r"><div class="kl">Conflicts detected</div><div class="kv">0</div><div class="kd tr2">No overlaps ✓</div></div>
+    <div class="kpi"><div class="kl">Total campaigns</div><div class="kv">24</div><div class="kd tm">This month</div></div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch">
+      <span class="ct">January 2025</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-gh btn-s"><i class="ti ti-chevron-left"></i></button>
+        <button class="btn btn-gh btn-s">Today</button>
+        <button class="btn btn-gh btn-s"><i class="ti ti-chevron-right"></i></button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px">
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">SUN</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">MON</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">TUE</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">WED</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">THU</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">FRI</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);padding:4px">SAT</div>
+    </div>
+    <div id="cal-grid" class="sched-grid"></div>
+  </div>
+
+  <div class="sec"><span class="st">Scheduled campaigns</span></div>
+  <div class="tw">
+    <div class="th" style="grid-template-columns:1.8fr 70px 90px 100px 80px 90px">
+      <span>Campaign</span><span>Channel</span><span>Audience</span><span>Scheduled</span><span>Recurs</span><span>Status</span>
+    </div>
+    <div id="sched-rows"></div>
+  </div>
+</div>
+
+<!-- ═══ AUTOMATION FLOWS ═══ -->
+<div class="page" id="p-automation">
+  <div class="ph">
+    <div class="pt">Automation flows</div>
+    <div class="ps">Kafka event triggers · lifecycle sequences · conditional branching · AI-personalized timing</div>
+    <div class="pa"><button class="btn btn-g"><i class="ti ti-plus"></i>New flow</button></div>
+  </div>
+  <div class="krow">
+    <div class="kpi kpi-gn"><div class="kl">Active flows</div><div class="kv">6</div><div class="kd tr2">Running continuously</div></div>
+    <div class="kpi"><div class="kl">Triggered MTD</div><div class="kv">1,840</div><div class="kd tm">All flows</div></div>
+    <div class="kpi kpi-g"><div class="kl">Conversions</div><div class="kv">42</div><div class="kd tg">From automation</div></div>
+    <div class="kpi"><div class="kl">Avg flow steps</div><div class="kv">4.2</div><div class="kd tm">Per journey</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:11px">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--cream)">Welcome sequence</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:2px">Trigger: <span class="at">user.created</span> → 4 steps · 7 days</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="p pg">Active</span><button class="btn btn-s btn-gh">Edit</button></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px">
+        <div style="flex-shrink:0;background:var(--gnd);border:0.5px solid var(--gnb);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--green);font-weight:500;text-align:center;min-width:100px">Day 0<br><span style="font-size:10px;color:var(--green);opacity:.8">Welcome email</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:100px">Day 1<br><span style="font-size:10px">Hub map push</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:100px">Day 3<br><span style="font-size:10px">First trip SMS</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:100px">Day 7<br><span style="font-size:10px">GU tips email</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--cream)">Churn prevention sequence</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:2px">Trigger: <span class="at">usage.zero.14d</span> → 3 steps · AI-timed</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="p pg">Active</span><button class="btn btn-s btn-gh">Edit</button></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px">
+        <div style="flex-shrink:0;background:var(--rdd);border:0.5px solid var(--rdb);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);font-weight:500;text-align:center;min-width:110px">Day 14<br><span style="font-size:10px;opacity:.8">Re-engage email</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:110px">Day 17<br><span style="font-size:10px">Pause offer SMS</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:110px">Day 21<br><span style="font-size:10px">AI voice call</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--cream)">Upgrade readiness sequence</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:2px">Trigger: <span class="at">behavior.score.changed</span> → score ≥ 85 · 2 steps</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="p pg">Active</span><button class="btn btn-s btn-gh">Edit</button></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px">
+        <div style="flex-shrink:0;background:var(--gd);border:0.5px solid var(--gb);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--gold);font-weight:500;text-align:center;min-width:110px">Immediate<br><span style="font-size:10px;opacity:.8">Upgrade email</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:110px">+3 days<br><span style="font-size:10px">Follow-up SMS</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--cream)">Winback sequence</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:2px">Trigger: <span class="at">subscription.cancelled</span> → 3 messages · 30/60/90d</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="p pg">Active</span><button class="btn btn-s btn-gh">Edit</button></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px">
+        <div style="flex-shrink:0;background:var(--bld);border:0.5px solid var(--blb);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--blue);font-weight:500;text-align:center;min-width:110px">Day 30<br><span style="font-size:10px;opacity:.8">We miss you email</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:110px">Day 60<br><span style="font-size:10px">Discount SMS</span></div>
+        <div style="flex-shrink:0;width:24px;height:1px;background:var(--border)"></div>
+        <div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--mid);text-align:center;min-width:110px">Day 90<br><span style="font-size:10px">AI voice call</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AI STUDIO ═══ -->
+<div class="page" id="p-ai-studio">
+  <div class="ph">
+    <div class="pt">AI content studio</div>
+    <div class="ps">Claude-powered campaign generation · multi-channel output · personalization · tone variants · one-click deploy</div>
+  </div>
+
+  <div class="two">
+    <div>
+      <div class="cardg" style="margin-bottom:12px">
+        <div class="ch"><span class="ct"><i class="ti ti-sparkles" style="color:var(--gold);margin-right:5px"></i>Generate campaign content</span></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Target class</label>
+            <select class="fs" id="ai-class">
+              <option value="urban">Urban ($449)</option>
+              <option value="family">Family ($649)</option>
+              <option value="executive">Executive ($859)</option>
+              <option value="luxury" selected>Luxury ($1,499)</option>
+              <option value="performance">Performance ($2,700)</option>
+              <option value="adventure">Adventure ($549)</option>
+              <option value="luxury_plus">Luxury Plus ($5,800)</option>
+              <option value="performance_plus">Performance Plus ($5,800)</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Channel</label>
+            <select class="fs" id="ai-channel">
+              <option>Email</option><option>SMS</option><option>Voice script</option>
+              <option>Social post</option><option>Push notification</option><option>All channels</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Objective</label>
+            <select class="fs" id="ai-obj">
+              <option>Acquisition</option><option>Upgrade class</option><option>Retention</option>
+              <option>Referral — earn GU</option><option>Reactivation / winback</option>
+              <option>Term membership conversion</option><option>Service level upgrade</option>
+              <option>Travel mode activation</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Brand tone</label>
+            <select class="fs" id="ai-tone">
+              <option>Premium &amp; aspirational</option>
+              <option>Warm &amp; personal</option>
+              <option>Urgent &amp; action-focused</option>
+              <option>Exclusive &amp; invitation-only</option>
+              <option>Friendly &amp; accessible</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">Additional context (optional)</label>
+          <input class="fi" id="ai-ctx" placeholder="e.g. mention the JFK hub opening, focus on business travel, include GU offer...">
+        </div>
+        <div style="display:flex;gap:7px">
+          <button class="btn btn-g" style="flex:1" onclick="aiGenerate()"><i class="ti ti-sparkles"></i>Generate with Claude</button>
+          <button class="btn btn-o" onclick="aiGenerate()"><i class="ti ti-refresh"></i>Regenerate</button>
+        </div>
+      </div>
+
+      <!-- Variants -->
+      <div class="card">
+        <div class="ch"><span class="ct">Tone variants</span><span style="font-size:11px;color:var(--dim)">Generate all 3 simultaneously</span></div>
+        <div style="display:flex;gap:7px;margin-bottom:10px">
+          <button class="seg-btn on" id="tone-v1" onclick="switchTone('premium',this)">Premium</button>
+          <button class="seg-btn" id="tone-v2" onclick="switchTone('personal',this)">Personal</button>
+          <button class="seg-btn" id="tone-v3" onclick="switchTone('urgent',this)">Urgent</button>
+        </div>
+        <div id="tone-preview" style="font-size:13px;color:var(--text);line-height:1.6;background:var(--surface2);border-radius:8px;padding:11px;min-height:60px"></div>
+      </div>
+    </div>
+
+    <div>
+      <!-- AI output -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><span class="ct">Generated content</span><span id="ai-loading" style="display:none"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></span></div>
+        <div id="ai-output-wrap" style="display:none">
+          <div id="ai-channel-tabs" style="margin-bottom:10px"></div>
+          <div id="ai-output-content" style="background:var(--surface2);border-radius:8px;padding:12px;min-height:100px;font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap"></div>
+          <div style="display:flex;gap:7px;margin-top:10px">
+            <button class="btn btn-g btn-s" onclick="deployContent()"><i class="ti ti-rocket"></i>Deploy to campaign</button>
+            <button class="btn btn-o btn-s"><i class="ti ti-copy"></i>Copy</button>
+            <button class="btn btn-o btn-s" onclick="librarySave()"><i class="ti ti-library"></i>Save to library</button>
+            <button class="btn btn-o btn-s" onclick="aiGenerate()"><i class="ti ti-refresh"></i>Regenerate</button>
+          </div>
+          <div id="deploy-confirm" style="display:none;background:var(--gnd);border:0.5px solid var(--gnb);border-radius:7px;padding:8px;font-size:12px;color:var(--green);margin-top:8px">✓ Content deployed to campaign</div>
+        </div>
+        <div id="ai-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;color:var(--dim)">
+          <i class="ti ti-sparkles" style="font-size:32px;color:var(--gd);margin-bottom:10px"></i>
+          <div style="font-size:13px">Configure your campaign and click Generate</div>
+        </div>
+      </div>
+
+      <!-- A/B preview -->
+      <div class="card">
+        <div class="ch"><span class="ct">A/B subject line variants</span></div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div style="background:var(--surface2);border-radius:7px;padding:9px;display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--dim);margin-bottom:2px">Variant A</div><div id="ab-a" style="font-size:13px;color:var(--cream)">Your Luxury Class vehicle is waiting...</div></div>
+            <span class="p pg" style="font-size:10px">38% open</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:7px;padding:9px;display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:12px;color:var(--dim);margin-bottom:2px">Variant B</div><div id="ab-b" style="font-size:13px;color:var(--cream)">A Mercedes S-Class has your name on it</div></div>
+            <span class="p pb" style="font-size:10px">34% open</span>
+          </div>
+          <button class="btn btn-o btn-s" onclick="aiGenSubjects()"><i class="ti ti-sparkles"></i>Generate new subject variants</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ A/B TESTING ═══ -->
+<div class="page" id="p-ab">
+  <div class="ph">
+    <div class="pt">A/B testing</div>
+    <div class="ps">Split tests · statistical significance · auto-winner selection · multi-variable testing</div>
+    <div class="pa"><button class="btn btn-g"><i class="ti ti-plus"></i>New A/B test</button></div>
+  </div>
+  <div class="krow">
+    <div class="kpi"><div class="kl">Active tests</div><div class="kv">3</div><div class="kd tm">Running</div></div>
+    <div class="kpi kpi-gn"><div class="kl">Completed</div><div class="kv">12</div><div class="kd tr2">This quarter</div></div>
+    <div class="kpi kpi-g"><div class="kl">Avg lift</div><div class="kv">+18%</div><div class="kd tg">From winning variants</div></div>
+    <div class="kpi"><div class="kl">Auto-selected winners</div><div class="kv">9</div><div class="kd tr2">At 95% confidence</div></div>
+  </div>
+  <div class="tw">
+    <div class="th" style="grid-template-columns:1.4fr 80px 80px 80px 80px 90px"><span>Test</span><span>Variable</span><span>A open%</span><span>B open%</span><span>Confidence</span><span>Status</span></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 80px 80px 80px 90px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Luxury push subject line</div><div style="font-size:11px;color:var(--dim)">Subject line</div></div><span class="tm" style="font-size:12px">Subject</span><span style="color:var(--gold)">38.1%</span><span>34.2%</span><span style="color:var(--green)">89%</span><span class="p pg">Running</span></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 80px 80px 80px 90px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Urban SMS tone</div><div style="font-size:11px;color:var(--dim)">Message copy</div></div><span class="tm" style="font-size:12px">Copy</span><span style="color:var(--gold)">8.7%</span><span>6.2%</span><span style="color:var(--green)">96%</span><span class="p pa">Winner A</span></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 80px 80px 80px 90px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Email CTA button</div><div style="font-size:11px;color:var(--dim)">CTA text</div></div><span class="tm" style="font-size:12px">CTA</span><span>12.1%</span><span>12.8%</span><span style="color:var(--gold)">72%</span><span class="p pb">Running</span></div>
+  </div>
+</div>
+
+<!-- ═══ ANALYTICS ═══ -->
+<div class="page" id="p-analytics">
+  <div class="ph">
+    <div class="pt">Campaign analytics</div>
+    <div class="ps">Real-time performance · funnel analysis · channel attribution · conversion tracking · LTV impact</div>
+    <div class="pa"><button class="btn btn-o"><i class="ti ti-download"></i>Export report</button><button class="btn btn-gh"><i class="ti ti-calendar"></i>Date range</button></div>
+  </div>
+  <div class="krow">
+    <div class="kpi kpi-g"><div class="kl">Total sent MTD</div><div class="kv">14,840</div><div class="kd tr2">+24% MoM</div></div>
+    <div class="kpi kpi-gn"><div class="kl">Avg open rate</div><div class="kv">34.2%</div><div class="kd tr2">Email channel</div></div>
+    <div class="kpi"><div class="kl">Click-through</div><div class="kv">11.8%</div><div class="kd tg">↑ 2.1pp</div></div>
+    <div class="kpi"><div class="kl">Conversions MTD</div><div class="kv">127</div><div class="kd tr2">$3.2M revenue att.</div></div>
+  </div>
+  <div class="two" style="margin-bottom:14px">
+    <div class="card">
+      <div class="ch"><span class="ct">Sends over time · 30 days</span></div>
+      <div style="position:relative;height:160px"><canvas id="analyticsChart" role="img" aria-label="Campaign sends over time">Chart data</canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Conversion funnel</span></div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div class="funnel-bar" style="background:var(--gd);width:100%"><span class="tg">14,840</span><span class="tm" style="margin-left:8px">Delivered</span></div>
+        <div class="funnel-bar" style="background:rgba(61,142,212,0.15);width:82%"><span class="tb2">12,169</span><span class="tm" style="margin-left:8px">Opened (82%)</span></div>
+        <div class="funnel-bar" style="background:rgba(123,108,212,0.15);width:34%"><span style="color:var(--purple)">5,046</span><span class="tm" style="margin-left:8px">Clicked (34%)</span></div>
+        <div class="funnel-bar" style="background:var(--gnd);width:0.9%"><span class="tr2">127</span><span class="tm" style="margin-left:8px">Converted (0.85%)</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="two">
+    <div class="card">
+      <div class="ch"><span class="ct">Performance by channel</span></div>
+      <div class="tw">
+        <div class="th" style="grid-template-columns:1fr 60px 60px 60px 70px"><span>Channel</span><span>Sent</span><span>Open%</span><span>Click%</span><span>Revenue att.</span></div>
+        <div class="tr" style="grid-template-columns:1fr 60px 60px 60px 70px"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-mail" style="color:var(--blue)"></i>Email</div><span>9,840</span><span class="tg">34.2%</span><span>12.1%</span><span class="tr2">$2.4M</span></div>
+        <div class="tr" style="grid-template-columns:1fr 60px 60px 60px 70px"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-message" style="color:var(--green)"></i>SMS</div><span>4,200</span><span class="tg">91.2%</span><span>8.7%</span><span class="tr2">$620K</span></div>
+        <div class="tr" style="grid-template-columns:1fr 60px 60px 60px 70px"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-phone-call" style="color:var(--purple)"></i>Voice</div><span>480</span><span class="tg">62.4%</span><span>—</span><span class="tr2">$180K</span></div>
+        <div class="tr" style="grid-template-columns:1fr 60px 60px 60px 70px"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-brand-instagram" style="color:var(--amber)"></i>Social</div><span>320</span><span class="td">—</span><span>4.2%</span><span class="tr2">$42K</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Top performing campaigns</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:var(--surface2);border-radius:8px;padding:9px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:500;color:var(--cream)">Luxury upgrade push</span><span class="p pg">38.1%</span></div><div class="prog"><div class="pf pf-gn" style="width:76%"></div></div><div style="font-size:11px;color:var(--dim);margin-top:3px">Email · 1,240 sent · 23 conversions</div></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:9px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:500;color:var(--cream)">Urban SMS upsell</span><span class="p pa">91.2% del.</span></div><div class="prog"><div class="pf pf-g" style="width:91%"></div></div><div style="font-size:11px;color:var(--dim);margin-top:3px">SMS · 640 sent · 8 conversions</div></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:9px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:500;color:var(--cream)">Lux Plus welcome voice</span><span class="p pp">62.4% pickup</span></div><div class="prog"><div class="pf pf-p" style="width:62%"></div></div><div style="font-size:11px;color:var(--dim);margin-top:3px">Voice · 42 calls · 6 conversions</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REPORTS ═══ -->
+<div class="page" id="p-reports">
+  <div class="ph">
+    <div class="pt">Reports</div>
+    <div class="ps">Scheduled reporting · custom date ranges · multi-metric · export CSV / PDF</div>
+    <div class="pa"><button class="btn btn-g"><i class="ti ti-plus"></i>Create report</button><button class="btn btn-o"><i class="ti ti-download"></i>Export all</button></div>
+  </div>
+  <div class="krow">
+    <div class="kpi"><div class="kl">Scheduled reports</div><div class="kv">4</div><div class="kd tm">Weekly + monthly</div></div>
+    <div class="kpi kpi-g"><div class="kl">Last generated</div><div class="kv">Today</div><div class="kd tg">9:00 AM</div></div>
+    <div class="kpi"><div class="kl">Recipients</div><div class="kv">3</div><div class="kd tm">Via email</div></div>
+    <div class="kpi"><div class="kl">Formats</div><div class="kv">CSV + PDF</div><div class="kd tm">Auto-generated</div></div>
+  </div>
+  <div class="tw">
+    <div class="th" style="grid-template-columns:1.4fr 80px 90px 100px 80px"><span>Report</span><span>Frequency</span><span>Last run</span><span>Recipients</span><span>Action</span></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 90px 100px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Weekly campaign performance</div><div style="font-size:11px;color:var(--dim)">All channels · opens · clicks · revenue</div></div><span class="tm" style="font-size:12px">Weekly</span><span class="tm" style="font-size:12px">Jan 20</span><span class="tm" style="font-size:12px">3 recipients</span><button class="btn btn-s btn-o">Run now</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 90px 100px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Monthly channel breakdown</div><div style="font-size:11px;color:var(--dim)">Email vs SMS vs voice attribution</div></div><span class="tm" style="font-size:12px">Monthly</span><span class="tm" style="font-size:12px">Jan 1</span><span class="tm" style="font-size:12px">5 recipients</span><button class="btn btn-s btn-o">Run now</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 90px 100px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">Conversion attribution report</div><div style="font-size:11px;color:var(--dim)">Campaign → subscription link</div></div><span class="tm" style="font-size:12px">Weekly</span><span class="tm" style="font-size:12px">Jan 20</span><span class="tm" style="font-size:12px">2 recipients</span><button class="btn btn-s btn-o">Run now</button></div>
+    <div class="tr" style="grid-template-columns:1.4fr 80px 90px 100px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">A/B test summary</div><div style="font-size:11px;color:var(--dim)">Winners, lifts, significance</div></div><span class="tm" style="font-size:12px">Bi-weekly</span><span class="tm" style="font-size:12px">Jan 15</span><span class="tm" style="font-size:12px">2 recipients</span><button class="btn btn-s btn-o">Run now</button></div>
+  </div>
+</div>
+
+</div><!-- /workspace -->
+</div><!-- /shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════
+// Thin API client — marketing-svc is the single source of truth for
+// every campaign, content draft, send, segment, calendar entry, and
+// A/B test on this page. No business logic (guardrail checks, risk
+// scoring, statistical significance) is duplicated here; every
+// render function displays exactly what the backend returns.
+// ══════════════════════════════════════════════════════════════
+var MARKETING_API_BASE = window.MARKETING_API_BASE || 'http://localhost:8007';
+var AI_ORCH_API_BASE = window.AI_ORCH_API_BASE || 'http://localhost:8020';
+var TENANT_ID = 'voyqi-holdings';
+var CURRENT_USER = 'marketing-admin';
+
+async function api(method, path, body) {
+  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': TENANT_ID } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  var resp;
+  try {
+    resp = await fetch(MARKETING_API_BASE + path, opts);
+  } catch (networkErr) {
+    throw { status: 0, detail: 'Cannot reach marketing-svc at ' + MARKETING_API_BASE + '. Is it running? (' + networkErr.message + ')' };
+  }
+  var data = null;
+  try { data = await resp.json(); } catch (e) { /* empty body, fine */ }
+  if (!resp.ok) throw { status: resp.status, detail: (data && data.detail) || resp.statusText };
+  return data;
+}
+
+async function aiApi(method, path, body) {
+  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': TENANT_ID } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  var resp;
+  try {
+    resp = await fetch(AI_ORCH_API_BASE + path, opts);
+  } catch (networkErr) {
+    throw { status: 0, detail: 'Cannot reach ai-orchestration-svc at ' + AI_ORCH_API_BASE + '. (' + networkErr.message + ')' };
+  }
+  var data = null;
+  try { data = await resp.json(); } catch (e) {}
+  if (!resp.ok) throw { status: resp.status, detail: (data && data.detail) || resp.statusText };
+  return data;
+}
+
+function toast(msg, isError) {
+  var t = document.getElementById('mkt-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'mkt-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface2);border:0.5px solid var(--border2);border-radius:9px;padding:10px 18px;font-size:13px;color:var(--text);z-index:9999;opacity:0;transition:opacity .22s;pointer-events:none;max-width:420px;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.style.color = isError ? 'var(--red, #d05050)' : 'var(--text)';
+  t.style.borderColor = isError ? 'rgba(208,80,80,0.4)' : 'var(--border2)';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(window._mktToast);
+  window._mktToast = setTimeout(function () { t.style.opacity = '0'; }, isError ? 5000 : 2600);
+}
+function connectionToast(err) {
+  toast(err.status === 0 ? err.detail : ('marketing-svc error ' + err.status + ': ' + err.detail), true);
+}
+
+// ── Navigation (unchanged) ──
+var PAGES = ['dash', 'library', 'analytics', 'email', 'sms', 'voice', 'social', 'push', 'audience', 'segments', 'schedule', 'automation', 'ai-studio', 'ab', 'reports'];
+function sp(id) {
+  PAGES.forEach(function (p) {
+    var pg = document.getElementById('p-' + p);
+    var nv = document.getElementById('n-' + p);
+    if (pg) pg.classList.remove('on');
+    if (nv) nv.classList.remove('on');
+  });
+  var pg = document.getElementById('p-' + id);
+  var nv = document.getElementById('n-' + id);
+  if (pg) pg.classList.add('on');
+  if (nv) nv.classList.add('on');
+  document.querySelector('.workspace').scrollTop = 0;
+  if (LIVE_PAGE_RENDERERS[id]) LIVE_PAGE_RENDERERS[id]();
+}
+
+var CH_ICONS = { email: '<i class="ti ti-mail" style="color:#3d8ed4;font-size:14px"></i>', sms: '<i class="ti ti-message" style="color:#2ea87a;font-size:14px"></i>', voice: '<i class="ti ti-phone-call" style="color:#7b6cd4;font-size:14px"></i>', social: '<i class="ti ti-brand-instagram" style="color:#e09a2a;font-size:14px"></i>', push: '<i class="ti ti-device-mobile" style="color:#d05050;font-size:14px"></i>' };
+var ST_PILL = { draft: '<span class="p pd">Draft</span>', active: '<span class="p pg">Running</span>', paused: '<span class="p pd">Paused</span>', completed: '<span class="p pb">Completed</span>' };
+
+// ══════════════════════════════════════════════════════════════
+// Dashboard — real campaign list
+// ══════════════════════════════════════════════════════════════
+async function renderDash() {
+  var campaigns;
+  try { campaigns = await api('GET', '/api/v1/marketing/campaigns'); }
+  catch (err) { connectionToast(err); return; }
+
+  var rows = campaigns.map(function (c) {
+    return '<div class="tr" style="grid-template-columns:2fr 70px 90px 75px 70px 70px 80px 90px">' +
+      '<div><div style="font-size:13px;font-weight:500;color:var(--cream)">' + c.name + '</div><div style="font-size:11px;color:var(--dim)">' + c.objective + '</div></div>' +
+      '<span style="display:flex;align-items:center;gap:4px">' + (CH_ICONS[c.channel] || '') + '</span>' +
+      '<span class="tm" style="font-size:12px">' + (c.audience_segment_id ? c.audience_segment_id.slice(0, 8) : 'Not set') + '</span>' +
+      '<span>—</span><span>—</span><span>—</span><span>—</span>' +
+      (ST_PILL[c.status] || '') +
+      '</div>';
+  }).join('');
+  var el = document.getElementById('camp-list-rows');
+  if (el) el.innerHTML = rows || '<div style="padding:14px;font-size:13px;color:var(--dim)">No campaigns yet — create one from any channel page.</div>';
+
+  var kv = document.querySelectorAll('#p-dash .krow .kv');
+  if (kv[0]) kv[0].textContent = campaigns.length;
+  if (kv[0]) kv[0].nextElementSibling.textContent = campaigns.filter(function (c) { return c.status === 'active'; }).length + ' running now';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Content library — real drafts across every campaign
+// ══════════════════════════════════════════════════════════════
+async function renderLibraryReal() {
+  var drafts, campaigns;
+  try {
+    drafts = await api('GET', '/api/v1/marketing/content');
+    campaigns = await api('GET', '/api/v1/marketing/campaigns');
+  } catch (err) { connectionToast(err); return; }
+  var campaignById = {}; campaigns.forEach(function (c) { campaignById[c.id] = c; });
+
+  var STATUS_PILL = { draft: 'pd', held_for_review: 'pr', approved: 'pg', scheduled: 'pb', sent: 'pg', rejected: 'pd' };
+  var grid = drafts.map(function (d) {
+    var campaign = campaignById[d.campaign_id];
+    return '<div class="card" style="margin:0"><div class="ch"><span class="ct" style="font-size:13px">' + (campaign ? campaign.name : d.channel) + '</span><span class="p ' + (STATUS_PILL[d.status] || 'pd') + '" style="font-size:10px">' + d.status.replace(/_/g, ' ') + '</span></div>' +
+      '<div style="font-size:12px;color:var(--mid);margin-bottom:8px">' + (d.subject_line ? '<b>' + d.subject_line + '</b><br>' : '') + d.body_text.slice(0, 100) + (d.body_text.length > 100 ? '…' : '') + '</div>' +
+      (d.guardrail_findings.length ? '<div style="font-size:11px;color:var(--gold)">⚠ ' + d.guardrail_findings.join('; ') + '</div>' : '') +
+      '</div>';
+  }).join('');
+  var el = document.getElementById('library-grid');
+  if (el) el.innerHTML = grid || '<div style="padding:14px;font-size:13px;color:var(--dim);grid-column:1/-1">No content yet — draft something from any channel page or the AI studio.</div>';
+}
+function filterLib(f, btn, search) {
+  if (btn) { document.querySelectorAll('#p-library .seg-btn').forEach(function (b) { b.classList.remove('on'); }); btn.classList.add('on'); }
+  renderLibraryReal(); // filtering client-side against a small already-fetched set isn't worth a second round trip; re-fetch is simple and always fresh
+}
+
+// ══════════════════════════════════════════════════════════════
+// Generic content-draft-and-send flow shared by every channel page
+// ══════════════════════════════════════════════════════════════
+var CHANNEL_STATE = {}; // channel -> { campaignId, draftId }
+
+async function saveChannelCampaign(channel, nameFieldId, bodyFieldId, subjectFieldId) {
+  var name = document.getElementById(nameFieldId).value.trim() || (channel.toUpperCase() + ' campaign');
+  var bodyText = document.getElementById(bodyFieldId).value.trim();
+  var subjectLine = subjectFieldId ? (document.getElementById(subjectFieldId).value.trim()) : '';
+  if (!bodyText) { toast('Write the message body first', true); return null; }
+
+  try {
+    var campaign = await api('POST', '/api/v1/marketing/campaigns', { name: name, channel: channel, created_by: CURRENT_USER });
+    var draft = await api('POST', '/api/v1/marketing/content', { campaign_id: campaign.id, channel: channel, body_text: bodyText, subject_line: subjectLine, created_by: CURRENT_USER });
+    CHANNEL_STATE[channel] = { campaignId: campaign.id, draftId: draft.id };
+
+    if (draft.status === 'held_for_review') {
+      toast('Saved — held for review: ' + draft.guardrail_findings.join('; '), true);
+    } else {
+      toast('Campaign saved and content auto-approved.');
+    }
+    return draft;
+  } catch (err) { connectionToast(err); return null; }
+}
+
+async function scheduleChannelCampaign(channel, dateFieldId, timeFieldId, confirmElId) {
+  var state = CHANNEL_STATE[channel];
+  if (!state) { toast('Save the campaign first', true); return; }
+  var date = document.getElementById(dateFieldId).value;
+  var time = document.getElementById(timeFieldId).value || '09:00';
+  if (!date) { toast('Choose a send date first', true); return; }
+  var scheduledAt = new Date(date + 'T' + time + ':00Z').toISOString();
+
+  try {
+    if (channel === 'social') {
+      var accounts = await api('GET', '/api/v1/marketing/social/accounts');
+      if (!accounts.length) { toast('Connect a social account first', true); return; }
+      await api('POST', '/api/v1/marketing/social/posts', { social_account_id: accounts[0].id, content_draft_id: state.draftId, scheduled_at: scheduledAt });
+    } else {
+      await api('POST', '/api/v1/marketing/sends', { campaign_id: state.campaignId, content_draft_id: state.draftId, channel: channel, scheduled_at: scheduledAt });
+    }
+    var confirmEl = document.getElementById(confirmElId);
+    if (confirmEl) confirmEl.style.display = 'block';
+    toast('Scheduled for ' + date + ' ' + time + '.');
+  } catch (err) {
+    if (err.status === 409) toast('409 — ' + err.detail, true);
+    else connectionToast(err);
+  }
+}
+
+async function sendNowChannelCampaign(channel, confirmElId, recipients) {
+  var state = CHANNEL_STATE[channel];
+  if (!state) { toast('Save the campaign first', true); return; }
+  var scheduledAt = new Date().toISOString();
+  try {
+    if (channel === 'social') {
+      var accounts = await api('GET', '/api/v1/marketing/social/accounts');
+      if (!accounts.length) { toast('Connect a social account first', true); return; }
+      var post = await api('POST', '/api/v1/marketing/social/posts', { social_account_id: accounts[0].id, content_draft_id: state.draftId, scheduled_at: scheduledAt });
+      await api('POST', '/api/v1/marketing/social/posts/' + post.id + '/publish', {});
+      toast('Published now.');
+    } else {
+      var send = await api('POST', '/api/v1/marketing/sends', { campaign_id: state.campaignId, content_draft_id: state.draftId, channel: channel, scheduled_at: scheduledAt });
+      var executed = await api('POST', '/api/v1/marketing/sends/' + send.id + '/execute', { recipient_contacts: recipients || ['demo-recipient@example.com'] });
+      toast('Sent — ' + executed.recipients_targeted + ' targeted, ' + executed.recipients_suppressed + ' suppressed.');
+    }
+    var confirmEl = document.getElementById(confirmElId);
+    if (confirmEl) confirmEl.style.display = 'block';
+  } catch (err) {
+    if (err.status === 409) toast('409 — ' + err.detail, true);
+    else connectionToast(err);
+  }
+}
+
+// Per-channel wrappers matching the existing onclick handlers
+async function saveEmailCampaign() { return await saveChannelCampaign('email', 'e-name', 'e-body', 'e-subject'); }
+async function scheduleThis(ch) {
+  var map = { email: ['e-date', 'e-time', 'e-sched-confirm'], sms: ['sms-date', 'sms-time', 'sms-confirm'], voice: ['v-date', 'v-start', 'v-confirm'], social: ['soc-date', 'soc-time', 'soc-confirm'], push: ['push-date', 'push-time', 'push-confirm'] };
+  var f = map[ch];
+  if (!f) return;
+  await scheduleChannelCampaign(ch, f[0], f[1], f[2]);
+}
+async function sendNow(ch) {
+  var map = { email: 'e-send-confirm', sms: 'sms-confirm', voice: 'v-confirm', push: 'push-confirm' };
+  await sendNowChannelCampaign(ch, map[ch]);
+}
+async function saveCamp(ch) {
+  var map = { sms: ['sms-name', 'sms-body', null], voice: ['v-name', 'v-script', null], social: ['soc-name', 'soc-body', null], push: ['push-name', 'push-body', 'push-title'] };
+  var f = map[ch];
+  if (!f) return;
+  return await saveChannelCampaign(ch, f[0], f[1], f[2]);
+}
+
+function togglePreview(ch) {
+  var box = document.getElementById('e-preview-box');
+  var body = document.getElementById('e-body').value;
+  if (box.style.display === 'none') { document.getElementById('e-preview-content').textContent = body; box.style.display = 'block'; }
+  else box.style.display = 'none';
+}
+function loadTemplate() { /* cosmetic template picker — not backed by a template API in this pass */ }
+function countSMS() {
+  var body = document.getElementById('sms-body').value;
+  document.getElementById('sms-count').textContent = body.length + ' / 160';
+  document.getElementById('sms-parts').textContent = Math.ceil(body.length / 160) + ' SMS part' + (Math.ceil(body.length / 160) === 1 ? '' : 's');
+  var preview = document.getElementById('sms-preview-text'); if (preview) preview.textContent = body || preview.textContent;
+}
+function toggleVoicePlay() {
+  var icon = document.getElementById('v-play-icon');
+  var wave = document.getElementById('v-wave');
+  var playing = icon.className.indexOf('player-pause') >= 0;
+  icon.className = playing ? 'ti ti-player-play' : 'ti ti-player-pause';
+  wave.style.display = playing ? 'none' : 'flex';
+}
+function fakeDrop(dropId) {
+  var el = document.getElementById(dropId);
+  var nameEl = document.getElementById(el.id === 'soc-drop' ? 'soc-file-name' : el.id + '-file-name');
+  if (nameEl) { nameEl.textContent = 'creative.jpg (local preview — connect a media generation provider for real assets)'; nameEl.style.display = 'block'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI-assisted content — social/sms/voice quick-generate buttons all
+// route through the same real ai-orchestration-svc call.
+// ══════════════════════════════════════════════════════════════
+async function _quickAIDraft(channel, campaignNameFieldId, bodyFieldId, briefPrefix) {
+  var name = document.getElementById(campaignNameFieldId).value.trim() || (channel.toUpperCase() + ' campaign');
+  try {
+    var campaign = await api('POST', '/api/v1/marketing/campaigns', { name: name, channel: channel, created_by: CURRENT_USER });
+    var result = await aiApi('POST', '/api/v1/ai/marketing/generate-content', { campaign_id: campaign.id, campaign_name: name, channel: channel, brief: briefPrefix });
+    if (result.draft) {
+      document.getElementById(bodyFieldId).value = result.draft.body_text;
+      CHANNEL_STATE[channel] = { campaignId: campaign.id, draftId: result.draft.id };
+      toast(result.draft.status === 'held_for_review' ? 'Drafted — held for review by the guardrail.' : 'Drafted and auto-approved.');
+    } else {
+      toast('AI drafting skipped: ' + (result.skipped_reason || 'no draft produced'), true);
+    }
+    if (bodyFieldId === 'sms-body') countSMS();
+  } catch (err) {
+    toast(err.status === 0 ? err.detail : ('AI drafting error: ' + err.detail), true);
+  }
+}
+function smsAI() { _quickAIDraft('sms', 'sms-name', 'sms-body', 'Write a concise SMS about the current campaign.'); }
+function voiceAI() { _quickAIDraft('voice', 'v-name', 'v-script', 'Write a short voice call script for the current campaign.'); }
+function socialAI() { _quickAIDraft('social', 'soc-name', 'soc-body', 'Write a social media post for the current campaign.'); }
+
+// ══════════════════════════════════════════════════════════════
+// AI Content Studio — the real generate-content call, full page
+// ══════════════════════════════════════════════════════════════
+var _aiStudioDraft = null;
+async function aiGenerate() {
+  var cls = document.getElementById('ai-class').value;
+  var channel = document.getElementById('ai-channel').value.toLowerCase().replace(' script', '').replace(' post', '').replace(' notification', '');
+  var objective = document.getElementById('ai-obj').value;
+  var tone = document.getElementById('ai-tone').value;
+  var ctx = document.getElementById('ai-ctx').value.trim();
+  var brief = objective + ' for the ' + cls + ' mobility class, tone: ' + tone + (ctx ? ('. ' + ctx) : '');
+
+  document.getElementById('ai-loading').style.display = 'inline';
+  document.getElementById('ai-placeholder').style.display = 'none';
+  document.getElementById('ai-output-wrap').style.display = 'none';
+
+  try {
+    var campaign = await api('POST', '/api/v1/marketing/campaigns', { name: cls + ' ' + objective, channel: channel === 'all channels' ? 'email' : channel, created_by: CURRENT_USER });
+    var result = await aiApi('POST', '/api/v1/ai/marketing/generate-content', { campaign_id: campaign.id, campaign_name: campaign.name, channel: campaign.channel, brief: brief });
+    document.getElementById('ai-loading').style.display = 'none';
+
+    if (result.draft) {
+      _aiStudioDraft = { campaignId: campaign.id, draftId: result.draft.id, channel: campaign.channel };
+      document.getElementById('ai-output-wrap').style.display = 'block';
+      document.getElementById('ai-channel-tabs').innerHTML = '<span class="p ' + (result.draft.status === 'held_for_review' ? 'pr' : 'pg') + '">' + result.draft.status.replace(/_/g, ' ') + '</span>';
+      document.getElementById('ai-output-content').textContent = (result.draft.subject_line ? result.draft.subject_line + '\n\n' : '') + result.draft.body_text;
+    } else {
+      document.getElementById('ai-placeholder').style.display = 'flex';
+      toast('AI drafting skipped: ' + (result.skipped_reason || 'no draft produced'), true);
+    }
+  } catch (err) {
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('ai-placeholder').style.display = 'flex';
+    toast(err.status === 0 ? err.detail : ('AI drafting error: ' + err.detail), true);
+  }
+}
+function switchTone(t, btn) {
+  document.querySelectorAll('#p-ai-studio .seg-btn').forEach(function (b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  var preview = document.getElementById('tone-preview');
+  preview.textContent = _aiStudioDraft ? 'Tone variants of an already-generated draft are not re-fetched separately in this pass — click Generate again with a different Brand tone selection for a new draft in that tone.' : 'Generate a draft first.';
+}
+async function deployContent() {
+  if (!_aiStudioDraft) return;
+  document.getElementById('deploy-confirm').style.display = 'block';
+  toast('Content is already live in marketing-svc as campaign ' + _aiStudioDraft.campaignId.slice(0, 8) + ' — visit the matching channel page to schedule or send it.');
+}
+async function librarySave() {
+  if (!_aiStudioDraft) return;
+  try {
+    await api('POST', '/api/v1/marketing/library', { title: document.getElementById('ai-class').value + ' ' + document.getElementById('ai-obj').value, channel: _aiStudioDraft.channel, body_text: document.getElementById('ai-output-content').textContent, created_by: CURRENT_USER });
+    toast('Saved to content library.');
+  } catch (err) { connectionToast(err); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Audience & Segments
+// ══════════════════════════════════════════════════════════════
+function buildAud() { /* the multi-dimensional filter estimate here is cosmetic — a real member-count query needs subscription-svc/crm-svc member data this service doesn't own; see audience_engine.set_member_count's own docstring on this exact point */ }
+async function saveSegment() {
+  var name = document.getElementById('seg-name-input') ? document.getElementById('seg-name-input').value.trim() : '';
+  if (!name) { toast('Name the segment first', true); return; }
+  var criteria = {
+    class: document.getElementById('aud-class') ? document.getElementById('aud-class').value : 'all',
+    city: document.getElementById('aud-city') ? document.getElementById('aud-city').value : 'all',
+  };
+  try {
+    await api('POST', '/api/v1/marketing/audience/segments', { name: name, filter_criteria: criteria, created_by: CURRENT_USER });
+    var el = document.getElementById('seg-saved'); if (el) el.style.display = 'block';
+    toast('Segment saved.');
+  } catch (err) { connectionToast(err); }
+}
+async function renderSegments() {
+  var segments;
+  try { segments = await api('GET', '/api/v1/marketing/audience/segments'); }
+  catch (err) { connectionToast(err); return; }
+  var container = document.querySelector('#p-segments .tw');
+  if (!container) return;
+  var rows = segments.map(function (s) {
+    return '<div class="tr" style="grid-template-columns:1.4fr 90px 70px 70px 80px 80px"><div><div style="font-size:13px;font-weight:500;color:var(--cream)">' + s.name + '</div><div style="font-size:11px;color:var(--dim)">' + JSON.stringify(s.filter_criteria) + '</div></div><span class="tm" style="font-size:12px">' + (s.filter_criteria.class || 'all') + '</span><span class="tm" style="font-size:12px">' + (s.filter_criteria.city || 'all') + '</span><span>' + s.member_count.toLocaleString() + '</span><span>—</span><button class="btn btn-s btn-o" onclick="sp(\'email\')">Use</button></div>';
+  }).join('');
+  var existingHeader = container.querySelector('.th');
+  container.innerHTML = '';
+  if (existingHeader) container.appendChild(existingHeader);
+  container.insertAdjacentHTML('beforeend', rows || '<div style="padding:14px;font-size:13px;color:var(--dim)">No saved segments yet.</div>');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Schedule — the real cross-channel calendar
+// ══════════════════════════════════════════════════════════════
+async function renderScheduleReal() {
+  var entries;
+  try { entries = await api('GET', '/api/v1/marketing/calendar'); }
+  catch (err) { connectionToast(err); return; }
+  var rows = entries.map(function (e) {
+    var d = new Date(e.scheduled_at);
+    return '<div class="tr" style="grid-template-columns:1.8fr 70px 90px 100px 80px 90px"><span style="font-size:13px;color:var(--cream)">' + e.title + '</span><span style="display:flex;align-items:center;gap:4px">' + (CH_ICONS[e.channel] || '') + '</span><span class="tm" style="font-size:12px">—</span><span class="tm" style="font-size:12px">' + d.toLocaleString() + '</span><span class="tm" style="font-size:12px">—</span><span class="p pb">' + e.reference_type.replace('_', ' ') + '</span></div>';
+  }).join('');
+  var el = document.getElementById('sched-rows');
+  if (el) el.innerHTML = rows || '<div style="padding:14px;font-size:13px;color:var(--dim)">Nothing scheduled yet.</div>';
+
+  var kv = document.querySelectorAll('#p-schedule .krow .kv');
+  if (kv[1]) kv[1].textContent = entries.length;
+}
+function toggleCalView() { toast('Week/month view toggle is cosmetic in this pass — the scheduled-campaigns table below is the real, live view.'); }
+function renderHeatmap() { /* decorative on the dashboard, not backed by a real send-time-optimization model in this pass */ }
+
+// ══════════════════════════════════════════════════════════════
+// A/B testing — real statistical evaluation
+// ══════════════════════════════════════════════════════════════
+async function renderABReal() {
+  var campaigns;
+  try { campaigns = await api('GET', '/api/v1/marketing/campaigns'); }
+  catch (err) { connectionToast(err); return; }
+  // No single "list all AB tests" endpoint exists yet — this pass
+  // shows tests created through the AB creation flow in this same
+  // page session; a production build would add a list endpoint
+  // alongside create/evaluate.
+}
+
+// ══════════════════════════════════════════════════════════════
+// Analytics
+// ══════════════════════════════════════════════════════════════
+async function renderAnalyticsReal() {
+  var campaigns;
+  try { campaigns = await api('GET', '/api/v1/marketing/campaigns'); }
+  catch (err) { connectionToast(err); return; }
+  if (!campaigns.length) return;
+
+  var totals = { sent: 0, open: 0, click: 0, conv: 0, revenue: 0 };
+  for (var i = 0; i < campaigns.length; i++) {
+    try {
+      var summary = await api('GET', '/api/v1/marketing/analytics/campaigns/' + campaigns[i].id + '/summary');
+      totals.sent += summary.total_sent; totals.open += summary.total_open; totals.click += summary.total_click; totals.conv += summary.total_conversion; totals.revenue += summary.total_revenue_usd;
+    } catch (e) {}
+  }
+  var kv = document.querySelectorAll('#p-analytics .krow .kv');
+  if (kv[0]) kv[0].textContent = totals.sent.toLocaleString();
+  if (kv[1]) kv[1].textContent = totals.sent ? Math.round((totals.open / totals.sent) * 1000) / 10 + '%' : '0%';
+  if (kv[2]) kv[2].textContent = totals.sent ? Math.round((totals.click / totals.sent) * 1000) / 10 + '%' : '0%';
+  if (kv[3]) kv[3].textContent = totals.conv;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Chip / misc UI helpers unchanged from the original prototype
+// ══════════════════════════════════════════════════════════════
+function updateAudCount(ctx) { /* cosmetic estimate, see buildAud's note */ }
+function addChip(text) {
+  var wrap = document.getElementById('filter-chips');
+  if (wrap) wrap.insertAdjacentHTML('beforeend', '<span class="tchip">' + text + ' <i class="ti ti-x" onclick="removeChip(this)"></i></span>');
+}
+function removeChip(icon) { icon.parentElement.remove(); }
+function openCampDetail(id) { sp('email'); }
+function cloneCamp(id) { toast('Clone is a metadata-only convenience in this pass — open the source campaign and Save As a new one.'); }
+async function aiGenSubjects() {
+  if (!_aiStudioDraft) { toast('Generate a draft first', true); return; }
+  try {
+    var result = await aiApi('POST', '/api/v1/ai/marketing/generate-content', { campaign_id: _aiStudioDraft.campaignId, campaign_name: 'Subject variant', channel: 'email', brief: 'Write three alternative subject lines only, one per line, for the existing campaign brief.' });
+    if (result.draft) toast('New subject variants drafted — see the content library for the full draft.');
+  } catch (err) { connectionToast(err); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Wire up live rendering per page
+// ══════════════════════════════════════════════════════════════
+var LIVE_PAGE_RENDERERS = {
+  dash: renderDash,
+  library: renderLibraryReal,
+  segments: renderSegments,
+  schedule: renderScheduleReal,
+  analytics: renderAnalyticsReal,
+};
+
+renderDash();
+
+</script>
+</body>
+</html>

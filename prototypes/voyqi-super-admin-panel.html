@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOYQI Holdings — Super Admin Panel</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1320;--surface2:#111b2e;--surface3:#162036;--surface4:#1c2840;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.28);
+  --cream:#edeae0;--dim:#4a5a6e;--mid:#6e8096;--text:#cdd5de;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --green:#2ea87a;--green-dim:rgba(46,168,122,0.12);--green-border:rgba(46,168,122,0.3);
+  --blue:#3d8ed4;--blue-dim:rgba(61,142,212,0.12);--blue-border:rgba(61,142,212,0.3);
+  --red:#d05050;--red-dim:rgba(208,80,80,0.12);--red-border:rgba(208,80,80,0.3);
+  --amber:#c9a84c;--purple:#7b6cd4;--purple-dim:rgba(123,108,212,0.12);
+  --sw:220px
+}
+html,body{height:100%;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:52px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.workspace{overflow-y:auto;background:var(--bg)}
+.wordmark{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.1em;flex-shrink:0}
+.tb-div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.tb-ctx{font-size:12px;color:var(--dim);flex-shrink:0}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.upill{display:flex;align-items:center;gap:7px;padding:3px 8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px}
+.uav{width:22px;height:22px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);flex-shrink:0}
+.uname{font-size:12px;font-weight:500;color:var(--text)}
+.urole{font-size:10px;color:var(--mid)}
+.ss{font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;color:var(--mid);border-left:2px solid transparent;transition:all .1s;user-select:none}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.ni.on i{color:var(--gold)}
+.ni i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-weight:600;padding:1px 5px;border-radius:8px}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.nb-g{background:var(--gold-dim);color:var(--gold)}
+.page{display:none;padding:22px 26px;min-height:calc(100vh - 52px)}
+.page.on{display:block}
+.ph{margin-bottom:18px}
+.pt{font-size:19px;font-weight:700;color:var(--cream);line-height:1.2}
+.ps{font-size:13px;color:var(--mid);margin-top:3px}
+.pa{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:13px 15px}
+.kl{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.kv{font-size:22px;font-weight:700;color:var(--cream);line-height:1.1}
+.kd{font-size:12px;margin-top:4px}
+.kpi-g{border-color:var(--gold-border)}
+.kpi-green{border-color:var(--green-border)}
+.kpi-red{border-color:var(--red-border)}
+.kpi-b{border-color:var(--blue-border)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;padding:15px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.ct{font-size:13px;font-weight:600;color:var(--cream)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.tw{background:var(--surface);border:0.5px solid var(--border);border-radius:11px;overflow:hidden}
+.th{display:grid;padding:8px 13px;background:var(--surface2);font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--border)}
+.tr{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);font-size:13px;align-items:center}
+.tr:last-child{border-bottom:none}
+.p{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;font-size:11px;font-weight:500;white-space:nowrap}
+.pg{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.pa2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.pr{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.pb{background:var(--blue-dim);color:var(--blue);border:0.5px solid var(--blue-border)}
+.pp{background:var(--purple-dim);color:var(--purple);border:0.5px solid rgba(123,108,212,.3)}
+.pd{background:var(--surface2);color:var(--mid);border:0.5px solid var(--border)}
+.btn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;white-space:nowrap}
+.btn i{font-size:14px}
+.btn-g{background:var(--gold);color:#0a0e18}
+.btn-g:hover{background:#b8963e}
+.btn-o{background:none;border:0.5px solid var(--border2);color:var(--mid)}
+.btn-o:hover{background:var(--surface2);color:var(--text)}
+.btn-gh{background:none;border:0.5px solid var(--border);color:var(--dim)}
+.btn-d{background:var(--red-dim);border:0.5px solid var(--red-border);color:var(--red)}
+.btn-s{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;color:var(--mid);font-weight:500;margin-bottom:4px}
+.fi{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none}
+.fi:focus{border-color:var(--gold-border)}
+.fi::placeholder{color:var(--dim)}
+.fs{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);outline:none;cursor:pointer;appearance:none}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.st{font-size:13px;font-weight:600;color:var(--cream)}
+.tg{color:var(--gold)}.tr2{color:var(--green)}.tb2{color:var(--blue)}.trr{color:var(--red)}.tm{color:var(--mid)}.td{color:var(--dim)}.tc{color:var(--cream)}.fm{font-family:monospace}
+.tier{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.03em;font-family:monospace}
+.tier1{background:var(--green-dim);color:var(--green);border:0.5px solid var(--green-border)}
+.tier2{background:var(--gold-dim);color:var(--gold);border:0.5px solid var(--gold-border)}
+.tier3{background:var(--red-dim);color:var(--red);border:0.5px solid var(--red-border)}
+.aip{background:linear-gradient(135deg,var(--gold-dim),transparent);border:0.5px solid var(--gold-border);border-radius:10px;padding:12px 14px}
+.aip-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gold);margin-bottom:6px}
+.aip-body{font-size:13px;color:var(--text);line-height:1.5}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mid);margin-bottom:16px;background:var(--surface);border:0.5px solid var(--border);border-radius:9px;padding:10px 13px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <span class="wordmark">VOYQI</span>
+  <div class="tb-div"></div>
+  <span class="tb-ctx">Super Admin Panel · admin.voyqi.com/super-admin</span>
+  <div class="tb-right">
+    <div class="upill">
+      <div class="uav">GS</div>
+      <div><div class="uname">Garth S.</div><div class="urole">super_admin</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar">
+  <div class="ss">Global Directory</div>
+  <div class="ni on" id="n-dash" onclick="sp('dash')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+  <div class="ni" id="n-tenants" onclick="sp('tenants')"><i class="ti ti-building-skyscraper"></i>Tenants (SAP-001)</div>
+
+  <div class="ss">RBAC (SAP-002)</div>
+  <div class="ni" id="n-users" onclick="sp('users')"><i class="ti ti-users"></i>Platform users</div>
+  <div class="ni" id="n-roles" onclick="sp('roles')"><i class="ti ti-shield"></i>Roles &amp; assignments</div>
+  <div class="ni" id="n-overrides" onclick="sp('overrides')"><i class="ti ti-key"></i>Permission overrides<span class="nb nb-r" id="nb-overrides">0</span></div>
+
+  <div class="ss">ABAC (SAP-003)</div>
+  <div class="ni" id="n-abac" onclick="sp('abac')"><i class="ti ti-git-branch"></i>Policy authoring</div>
+
+  <div class="ss">Distribution (SAP-004)</div>
+  <div class="ni" id="n-modules" onclick="sp('modules')"><i class="ti ti-apps"></i>Module &amp; panel grants</div>
+
+  <div class="ss">AI Orchestration</div>
+  <div class="ni" id="n-ai-agents" onclick="sp('ai-agents')"><i class="ti ti-robot"></i>Agent control</div>
+  <div class="ni" id="n-ai-goals" onclick="sp('ai-goals')"><i class="ti ti-target"></i>Goal state</div>
+
+  <div class="ss">Platform Configuration (SAP-006)</div>
+  <div class="ni" id="n-theme" onclick="sp('theme')"><i class="ti ti-palette"></i>Colors &amp; theme</div>
+  <div class="ni" id="n-builder" onclick="sp('builder')"><i class="ti ti-layout-grid"></i>Website builder</div>
+  <div class="ni" id="n-media" onclick="sp('media')"><i class="ti ti-photo"></i>Media library</div>
+  <div class="ni" id="n-ai-content" onclick="sp('ai-content')"><i class="ti ti-sparkles"></i>AI assist settings</div>
+  <div class="ni" id="n-settings" onclick="sp('settings')"><i class="ti ti-settings"></i>Platform settings</div>
+  <div class="ni" id="n-content" onclick="sp('content')"><i class="ti ti-file-text"></i>Page management</div>
+
+  <div class="ss">Audit (SAP-005)</div>
+  <div class="ni" id="n-audit" onclick="sp('audit')"><i class="ti ti-file-search"></i>Platform audit log</div>
+</div>
+
+<div class="workspace">
+
+<!-- ============ DASHBOARD ============ -->
+<div class="page on" id="p-dash">
+<div id="global-error" style="display:none;background:var(--red-dim);border:0.5px solid var(--red-border);border-radius:9px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--red)"></div>
+<div class="ph"><div class="pt">Super Admin Panel</div><div class="ps">Every panel across every subsidiary console is provisioned from here. This UI holds no business logic of its own — every number and decision below comes from a live call to rbac-svc at <span class="fm" id="dash-api-url"></span>. Two distinct human-only gates exist on this platform, and they are not the same shape — see the legend below.</div></div>
+<div class="legend">
+  <div><span class="tier tier1">T1 · AUTO</span> executes immediately, logged, no gate</div>
+  <div><span class="tier tier2">T2 · RISK REVIEW</span> below threshold auto-acts; at/above threshold queues for a human</div>
+  <div><span class="tier tier3">T3 · ALWAYS HUMAN</span> hard-blocked, structurally — no threshold reaches it</div>
+</div>
+<div class="krow">
+  <div class="kpi kpi-g"><div class="kl">Tenants</div><div class="kv" id="dk-tenants">—</div><div class="kd tm">Across all subsidiaries</div></div>
+  <div class="kpi kpi-red"><div class="kl">Overrides needing review</div><div class="kv" id="dk-overrides">—</div><div class="kd trr">Risk score at/above threshold</div></div>
+  <div class="kpi kpi-b"><div class="kl">ABAC policies applied</div><div class="kv" id="dk-abac">—</div><div class="kd tb2">Always human, always accountable</div></div>
+  <div class="kpi kpi-green"><div class="kl">Modules provisioned</div><div class="kv" id="dk-modules">—</div><div class="kd tr2">Active grants</div></div>
+</div>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="ct">Recent platform activity</span></div>
+    <div id="dash-feed" style="display:flex;flex-direction:column;gap:2px"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Subsidiaries</span></div>
+    <div id="dash-subsidiaries" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ SAP-001 TENANTS ============ -->
+<div class="page" id="p-tenants">
+<div class="ph"><div class="pt">Global Tenant Directory</div><div class="ps">SAP-001 · One row per tenant across the whole platform. Creating, suspending, and reactivating a tenant is fully autonomous-eligible — provisioning itself carries none of the access-control risk RBAC/ABAC below govern.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('tenant-form')"><i class="ti ti-plus"></i>Add tenant</button></div></div>
+<div class="card" id="tenant-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Tenant key</label><input class="fi" id="tf-key" placeholder="dealer-auto-group"></div>
+    <div class="fg"><label class="fl">Name</label><input class="fi" id="tf-name" placeholder="Auto Group"></div>
+    <div class="fg"><label class="fl">Subsidiary</label><select class="fs" id="tf-subsidiary">
+      <option value="auto_group">Auto Group</option><option value="fleet">Fleet</option>
+      <option value="mobility">Mobility</option><option value="rental">Rental</option>
+      <option value="real_estate">Real Estate</option><option value="capital">Capital</option>
+    </select></div>
+  </div>
+  <button class="btn btn-g" onclick="createTenant()"><i class="ti ti-check"></i>Create tenant</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.5fr 1fr 1fr 90px"><span>Tenant</span><span>Key</span><span>Subsidiary</span><span>Status</span></div>
+  <div id="tenant-rows"></div>
+</div>
+</div>
+
+<!-- ============ SAP-002 USERS ============ -->
+<div class="page" id="p-users">
+<div class="ph"><div class="pt">Platform Users</div><div class="ps">SAP-002 · Cross-tenant user directory.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('user-form')"><i class="ti ti-plus"></i>Add user</button></div></div>
+<div class="card" id="user-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="uf-email" placeholder="gm@voyqi.com"></div>
+    <div class="fg"><label class="fl">Display name</label><input class="fi" id="uf-name" placeholder="Dealership GM"></div>
+  </div>
+  <button class="btn btn-g" onclick="createUser()"><i class="ti ti-check"></i>Create user</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.4fr 1fr 90px"><span>User</span><span>Roles</span><span>MFA</span></div>
+  <div id="user-rows"></div>
+</div>
+</div>
+
+<!-- ============ SAP-002 ROLES & ASSIGNMENTS ============ -->
+<div class="page" id="p-roles">
+<div class="ph"><div class="pt">Roles &amp; Assignments</div><div class="ps">SAP-002 · Assigning an already-defined role to a user is fully autonomous — it's a routine grant of an already-reviewed bundle, not new access-control policy authorship. Authoring what a role itself grants is ABAC's job, with its own hard gate.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('role-form')"><i class="ti ti-plus"></i>Define role</button></div></div>
+<div class="card" id="role-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Role key</label><input class="fi" id="rf-key" placeholder="sales_manager"></div>
+    <div class="fg"><label class="fl">Name</label><input class="fi" id="rf-name" placeholder="Sales Manager"></div>
+  </div>
+  <div class="fg"><label class="fl">Permission keys (comma-separated)</label><input class="fi" id="rf-perms" placeholder="deals.approve, inventory.view"></div>
+  <button class="btn btn-g" onclick="createRole()"><i class="ti ti-check"></i>Create role</button>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Defined roles</span></div>
+    <div class="tw" style="margin-bottom:14px">
+      <div class="th" style="grid-template-columns:1fr 1.4fr"><span>Role</span><span>Permissions</span></div>
+      <div id="role-rows"></div>
+    </div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Assign role to user</span></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="fg"><label class="fl">User</label><select class="fs" id="af-user"></select></div>
+      <div class="fg"><label class="fl">Role</label><select class="fs" id="af-role"></select></div>
+      <button class="btn btn-s btn-g" onclick="assignRole()"><i class="ti ti-check"></i>Assign (executes immediately)</button>
+    </div>
+    <div class="sec"><span class="st">Active assignments</span></div>
+    <div id="assignment-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ SAP-002 PERMISSION OVERRIDES ============ -->
+<div class="page" id="p-overrides">
+<div class="ph"><div class="pt">Permission Overrides</div><div class="ps">SAP-002 · Tier 2, deliberately not full automation: below the risk threshold, a clearly unwarranted override is auto-revoked; at or above threshold, it's flagged and queued for a human instead. An identity/access anomaly is exactly the ambiguous case a risk threshold fits better than an unconditional rule. DENY overrides are structurally exempt from auto-revocation — there's no "unwarranted" case for revoking a restriction.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('override-form')"><i class="ti ti-plus"></i>Grant override</button></div></div>
+<div class="card" id="override-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">User</label><select class="fs" id="of-user"></select></div>
+    <div class="fg"><label class="fl">Permission key</label><input class="fi" id="of-perm" placeholder="reports.export"></div>
+    <div class="fg"><label class="fl">Effect</label><select class="fs" id="of-effect"><option value="allow">Allow</option><option value="deny">Deny</option></select></div>
+  </div>
+  <div class="fg"><label class="fl">Reason</label><input class="fi" id="of-reason" placeholder="quarterly board deck"></div>
+  <button class="btn btn-g" onclick="createOverride()"><i class="ti ti-check"></i>Grant override</button>
+</div>
+<div class="sec"><span class="st">Active &amp; recently revoked overrides</span></div>
+<div id="override-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ SAP-003 ABAC POLICY AUTHORING ============ -->
+<div class="page" id="p-abac">
+<div class="ph"><div class="pt">ABAC Policy Authoring</div><div class="ps">SAP-003 · Simulation is Tier 1 — it re-runs automatically on every edit, no approval needed to preview. Applying a policy is a hard Tier 3 gate: it structurally requires a named accountable role and cannot be reached by any risk score, no matter how low. Broad access-control grants are the one place on this platform where "auto-apply if it looks safe" is never the right model.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('policy-form')"><i class="ti ti-plus"></i>Author policy</button></div></div>
+<div class="card" id="policy-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Policy name</label><input class="fi" id="pf-name" placeholder="Dealership GM inherits Sales Manager"></div>
+    <div class="fg"><label class="fl">Source role</label><select class="fs" id="pf-source"></select></div>
+    <div class="fg"><label class="fl">Target bundle to inherit</label><select class="fs" id="pf-target"></select></div>
+  </div>
+  <button class="btn btn-g" onclick="createPolicy()"><i class="ti ti-check"></i>Create policy (draft)</button>
+</div>
+<div id="policy-cards" style="display:flex;flex-direction:column;gap:12px"></div>
+</div>
+
+<!-- ============ SAP-004 MODULE & PANEL DISTRIBUTION ============ -->
+<div class="page" id="p-modules">
+<div class="ph"><div class="pt">Module &amp; Panel Distribution</div><div class="ps">SAP-004 · Every panel in every subsidiary console — Fleet, DMS, HRM, Mobility admin — is provisioned from here, down to individual sub-sections. A sub-section can only be granted while its parent module is enabled, and revoking a parent autonomously cascades to disable every sub-section beneath it. Fully autonomous either way — provisioning is not an access-control decision.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('module-form')"><i class="ti ti-plus"></i>Grant top-level module</button></div></div>
+<div class="card" id="module-form" style="display:none;margin-bottom:14px">
+  <div class="fg"><label class="fl">Module key</label><select class="fs" id="mf-key">
+    <option value="fleet-management">Fleet Management</option>
+    <option value="dealer-center">Dealer Center</option>
+    <option value="hrm">HRM</option>
+    <option value="mobility-admin">Mobility Admin</option>
+    <option value="rental">Rental</option>
+  </select></div>
+  <button class="btn btn-g" onclick="grantModule()"><i class="ti ti-check"></i>Grant (executes immediately)</button>
+</div>
+<div id="module-tree" style="display:flex;flex-direction:column;gap:14px"></div>
+</div>
+
+<!-- ============ AI AGENT CONTROL ============ -->
+<div class="page" id="p-ai-agents">
+<div class="ph"><div class="pt">AI Agent Control</div><div class="ps">Pause, resume, or disable any agent platform-wide — the human override switch every agent must have. This calls ai-orchestration-svc directly; nothing here is re-implemented, only displayed.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('agent-form')"><i class="ti ti-plus"></i>Register agent</button></div></div>
+<div class="card" id="agent-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Agent key</label><input class="fi" id="agf-key" placeholder="fleet_intelligence_agent"></div>
+    <div class="fg"><label class="fl">Display name</label><input class="fi" id="agf-name" placeholder="Fleet Intelligence Agent"></div>
+  </div>
+  <div class="fg"><label class="fl">Human approval threshold (0-100)</label><input class="fi" id="agf-threshold" placeholder="50" value="50"></div>
+  <button class="btn btn-g" onclick="registerAgent()"><i class="ti ti-check"></i>Register</button>
+</div>
+<div id="agent-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ AI GOAL STATE ============ -->
+<div class="page" id="p-ai-goals">
+<div class="ph"><div class="pt">AI Goal State</div><div class="ps">Set operator targets — every agent recalibrates on its very next reasoning pass, no redeploy needed. Read/write directly against ai-orchestration-svc's GoalState model.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('goal-form')"><i class="ti ti-plus"></i>Set a goal</button></div></div>
+<div class="card" id="goal-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Agent key</label><input class="fi" id="gf-agent" placeholder="fleet_intelligence_agent"></div>
+    <div class="fg"><label class="fl">Goal key</label><input class="fi" id="gf-key" placeholder="fleet_utilization_target"></div>
+    <div class="fg"><label class="fl">Target value</label><input class="fi" id="gf-target" placeholder="80"></div>
+  </div>
+  <div class="fg"><label class="fl">Unit</label><input class="fi" id="gf-unit" placeholder="%"></div>
+  <button class="btn btn-g" onclick="createGoal()"><i class="ti ti-check"></i>Create goal</button>
+</div>
+<div class="tw">
+  <div class="th" style="grid-template-columns:1.3fr 1.3fr 100px 70px 100px"><span>Agent</span><span>Goal</span><span>Target</span><span>Unit</span><span>Updated by</span></div>
+  <div id="goal-rows"></div>
+</div>
+</div>
+
+<!-- ============ SAP-006 PLATFORM SETTINGS ============ -->
+<div class="page" id="p-settings">
+<div class="ph"><div class="pt">Platform Settings</div><div class="ps">SAP-006 · Payment gateways, branding/UI-UX, feature flags, general configuration. Fully autonomous — none of this touches access control, which stays RBAC/ABAC's exclusive job.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('setting-form')"><i class="ti ti-plus"></i>Add setting</button></div></div>
+<div class="card" id="setting-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Category</label><select class="fs" id="sf-category">
+      <option value="payment_gateway">Payment gateway</option>
+      <option value="branding">Branding / UI-UX</option>
+      <option value="feature_flag">Feature flag</option>
+      <option value="general">General</option>
+    </select></div>
+    <div class="fg"><label class="fl">Key</label><input class="fi" id="sf-key" placeholder="stripe"></div>
+    <div class="fg"><label class="fl">Value (JSON)</label><input class="fi" id="sf-value" placeholder='{"public_key":"pk_...","enabled":true}'></div>
+  </div>
+  <button class="btn btn-g" onclick="upsertSetting()"><i class="ti ti-check"></i>Save setting</button>
+</div>
+<div class="two">
+  <div>
+    <div class="sec"><span class="st">Payment gateways</span></div>
+    <div id="settings-payment_gateway" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div class="sec"><span class="st">Branding / UI-UX</span></div>
+    <div id="settings-branding" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div>
+    <div class="sec"><span class="st">Feature flags</span></div>
+    <div id="settings-feature_flag" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div class="sec"><span class="st">General</span></div>
+    <div id="settings-general" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ SAP-006 PAGE CONTENT ============ -->
+<div class="page" id="p-content">
+<div class="ph"><div class="pt">Page Management</div><div class="ps">SAP-006 · Page metadata — title, slug, SEO, template. Manage a page's actual section-by-section content in the Website Builder. Fully autonomous; publishing carries none of the access-control risk RBAC/ABAC govern.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('page-form')"><i class="ti ti-plus"></i>New page</button></div></div>
+<div class="card" id="page-form" style="display:none;margin-bottom:14px">
+  <div class="fr2">
+    <div class="fg"><label class="fl">Page key</label><input class="fi" id="pgf-key" placeholder="terms-of-service"></div>
+    <div class="fg"><label class="fl">Title</label><input class="fi" id="pgf-title" placeholder="Terms of Service"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Slug</label><input class="fi" id="pgf-slug" placeholder="terms-of-service"></div>
+    <div class="fg"><label class="fl">Template</label><select class="fs" id="pgf-template"><option value="default">Default</option><option value="landing">Landing</option><option value="full-width">Full width</option></select></div>
+  </div>
+  <div class="fg"><label class="fl">SEO title</label><input class="fi" id="pgf-seo-title" placeholder="Terms of Service — VOYQI"></div>
+  <div class="fg"><label class="fl">SEO description</label><input class="fi" id="pgf-seo-desc" placeholder="Read the terms of service for VOYQI membership."></div>
+  <div class="fg"><label class="fl">Body (for simple pages with no section structure)</label><textarea class="fi" id="pgf-body" rows="4" style="resize:vertical" placeholder="Page content..."></textarea></div>
+  <button class="btn btn-g" onclick="upsertPage()"><i class="ti ti-check"></i>Save page</button>
+</div>
+<div id="page-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+</div>
+
+<!-- ============ SAP-006 COLORS & THEME ============ -->
+<div class="page" id="p-theme">
+<div class="ph"><div class="pt">Colors &amp; Theme</div><div class="ps">SAP-006 · Full color palette management. Exactly one theme is active platform-wide at any time — activating a theme deactivates every other one automatically. Fully autonomous.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('theme-form')"><i class="ti ti-plus"></i>New theme</button></div></div>
+<div class="card" id="theme-form" style="display:none;margin-bottom:14px">
+  <div class="fg"><label class="fl">Theme name</label><input class="fi" id="thf-name" placeholder="Auto Group Branding"></div>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mid);margin-bottom:10px"><input type="checkbox" id="thf-seed" checked> Seed with default palette</label>
+  <button class="btn btn-g" onclick="createTheme()"><i class="ti ti-check"></i>Create theme</button>
+</div>
+<div id="theme-cards" style="display:flex;flex-direction:column;gap:14px"></div>
+</div>
+
+<!-- ============ SAP-006 WEBSITE BUILDER ============ -->
+<div class="page" id="p-builder">
+<div class="ph"><div class="pt">Website Builder</div><div class="ps">SAP-006 · Full section-by-section and subsection-by-subsection control over every page — visibility, ordering, and parallax are independent at every level. Fully autonomous; none of this touches access control.</div></div>
+<div class="fg"><label class="fl">Page</label><select class="fs" id="wb-page-select" onchange="renderBuilder()" style="max-width:400px"></select></div>
+<div class="pa" style="margin-top:0;margin-bottom:14px"><button class="btn btn-g" onclick="toggleForm('section-form')"><i class="ti ti-plus"></i>Add section</button></div>
+<div class="card" id="section-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Section key</label><input class="fi" id="secf-key" placeholder="hero"></div>
+    <div class="fg"><label class="fl">Type</label><select class="fs" id="secf-type">
+      <option value="hero">Hero</option><option value="text">Text</option><option value="image">Image</option>
+      <option value="gallery">Gallery</option><option value="testimonial">Testimonial</option><option value="cta">CTA</option>
+      <option value="features">Features</option><option value="footer">Footer</option><option value="custom">Custom</option>
+    </select></div>
+    <div class="fg"><label class="fl">Title</label><input class="fi" id="secf-title" placeholder="Hero banner"></div>
+  </div>
+  <button class="btn btn-g" onclick="createSection()"><i class="ti ti-check"></i>Add section</button>
+</div>
+<div id="builder-tree" style="display:flex;flex-direction:column;gap:14px"></div>
+</div>
+
+<!-- ============ SAP-006 MEDIA LIBRARY ============ -->
+<div class="page" id="p-media">
+<div class="ph"><div class="pt">Media Library</div><div class="ps">SAP-006 · Images available to every section and subsection above — hero backgrounds, gallery images, icons. Fully autonomous.</div>
+<div class="pa"><button class="btn btn-g" onclick="toggleForm('media-form')"><i class="ti ti-plus"></i>Add image</button></div></div>
+<div class="card" id="media-form" style="display:none;margin-bottom:14px">
+  <div class="fr3">
+    <div class="fg"><label class="fl">Filename</label><input class="fi" id="mdf-filename" placeholder="hero-bg.jpg"></div>
+    <div class="fg"><label class="fl">URL</label><input class="fi" id="mdf-url" placeholder="https://cdn.example.com/hero-bg.jpg"></div>
+    <div class="fg"><label class="fl">Category</label><select class="fs" id="mdf-category">
+      <option value="hero">Hero</option><option value="gallery">Gallery</option><option value="icon">Icon</option><option value="background">Background</option><option value="general">General</option>
+    </select></div>
+  </div>
+  <div class="fg"><label class="fl">Alt text</label><input class="fi" id="mdf-alt" placeholder="Description for accessibility"></div>
+  <button class="btn btn-g" onclick="uploadMedia()"><i class="ti ti-check"></i>Add to library</button>
+</div>
+<div class="pa" style="margin-top:0;margin-bottom:12px">
+  <select class="fs" id="media-filter" style="max-width:200px" onchange="renderMedia()">
+    <option value="">All categories</option>
+    <option value="hero">Hero</option><option value="gallery">Gallery</option><option value="icon">Icon</option><option value="background">Background</option><option value="general">General</option>
+  </select>
+</div>
+<div id="media-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+</div>
+
+<!-- ============ AI ASSIST CONTENT SETTINGS ============ -->
+<div class="page" id="p-ai-content">
+<div class="ph"><div class="pt">AI Assist Settings</div><div class="ps">Controls for AI-assisted content generation across the Website Builder — brand voice, auto-generate behavior, and whether a human must review AI-drafted copy before it publishes. Stored as platform settings under the ai_content_assist category; fully autonomous to configure.</div></div>
+<div class="card" style="margin-bottom:14px">
+  <div class="fg"><label class="fl">Brand voice / tone prompt</label><textarea class="fi" id="aic-voice" rows="3" style="resize:vertical" placeholder="Confident, precise, no exclamation points. Speaks to founders and operators, not consumers."></textarea></div>
+  <div class="fr2">
+    <div class="fg"><label class="fl">Default model</label><select class="fs" id="aic-model">
+      <option value="claude-sonnet-5">Claude Sonnet 5</option><option value="claude-opus-4-8">Claude Opus 4.8</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+    </select></div>
+    <div class="fg"><label class="fl">Auto-generate on new section</label><select class="fs" id="aic-autogen"><option value="false">Off — draft manually</option><option value="true">On — AI drafts a first pass</option></select></div>
+  </div>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mid);margin-bottom:10px"><input type="checkbox" id="aic-review-required" checked> Require human review before AI-drafted copy is published <span class="tier tier3" style="margin-left:4px">recommended</span></label>
+  <button class="btn btn-g" onclick="saveAIContentSettings()"><i class="ti ti-check"></i>Save settings</button>
+</div>
+<div id="ai-content-status" style="font-size:12px;color:var(--dim)"></div>
+</div>
+
+<!-- ============ SAP-005 AUDIT LOG ============ -->
+<div class="page" id="p-audit">
+<div class="ph"><div class="pt">Platform Audit Log</div><div class="ps">SAP-005 · Every human admin action and every AI-originated action on this platform gets a row here — distinct from each subsidiary's own AI decision log, which only covers AI-originated decisions. "Who did what" is answerable platform-wide.</div>
+<div class="pa">
+  <select class="fs" id="audit-filter" style="width:150px" onchange="renderAudit()">
+    <option value="all">All actors</option>
+    <option value="human">Human only</option>
+    <option value="ai">AI only</option>
+  </select>
+</div></div>
+<div id="audit-rows" style="display:flex;flex-direction:column;gap:2px"></div>
+</div>
+
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Super Admin Panel — thin API client. Every deny-wins resolution,
+// risk score, and the ABAC Tier-3 gate lives in rbac-svc, in exactly
+// one place. Nothing here recomputes any of that; this file only
+// calls the real endpoints and renders what comes back.
+// ══════════════════════════════════════════════════════════════
+var RBAC_API_BASE = window.RBAC_API_BASE || 'http://localhost:8011';
+var AI_ORCH_API_BASE = window.AI_ORCH_API_BASE || 'http://localhost:8020';
+var TENANT_ID = 'voyqi-holdings';
+var CURRENT_USER = 'garth';
+
+// Second fetch wrapper for ai-orchestration-svc — separate base URL,
+// and its goal-state writes carry an X-Actor-Id header the agent
+// endpoints use to attribute the change, distinct from X-Tenant-Id.
+async function aiApi(method, path, body){
+  var opts={method:method,headers:{'Content-Type':'application/json','X-Tenant-Id':TENANT_ID,'X-Actor-Id':CURRENT_USER}};
+  if(body!==undefined)opts.body=JSON.stringify(body);
+  var resp;
+  try{
+    resp=await fetch(AI_ORCH_API_BASE+path, opts);
+  }catch(networkErr){
+    throw {status:0,detail:'Cannot reach ai-orchestration-svc at '+AI_ORCH_API_BASE+'. Is it running? ('+networkErr.message+')'};
+  }
+  var data=null;
+  try{data=await resp.json();}catch(e){}
+  if(!resp.ok){throw {status:resp.status, detail:(data&&data.detail)||resp.statusText};}
+  return data;
+}
+
+function sp(id){
+  ['dash','tenants','users','roles','overrides','abac','modules','ai-agents','ai-goals','theme','builder','media','ai-content','settings','content','audit'].forEach(function(p){
+    var pg=document.getElementById('p-'+p);var nv=document.getElementById('n-'+p);
+    if(pg)pg.classList.remove('on');if(nv)nv.classList.remove('on');
+  });
+  document.getElementById('p-'+id).classList.add('on');
+  var nv=document.getElementById('n-'+id);if(nv)nv.classList.add('on');
+}
+function toggleForm(id){var el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
+function fmtDate(d){return new Date(d).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+
+// ── Core fetch wrapper: every call carries the tenant header, every
+// failure surfaces to the user instead of failing silently. ──
+async function api(method, path, body){
+  var opts={method:method,headers:{'Content-Type':'application/json','X-Tenant-Id':TENANT_ID}};
+  if(body!==undefined)opts.body=JSON.stringify(body);
+  var resp;
+  try{
+    resp=await fetch(RBAC_API_BASE+path, opts);
+  }catch(networkErr){
+    throw {status:0,detail:'Cannot reach rbac-svc at '+RBAC_API_BASE+'. Is it running? ('+networkErr.message+')'};
+  }
+  var data=null;
+  try{data=await resp.json();}catch(e){/* empty body, fine */}
+  if(!resp.ok){
+    throw {status:resp.status, detail:(data&&data.detail)||resp.statusText};
+  }
+  return data;
+}
+
+function showBanner(containerId, message, isError){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  el.style.display='block';
+  el.style.color=isError?'var(--red)':'var(--green)';
+  el.textContent=message;
+  setTimeout(function(){el.style.display='none';}, isError?6000:3000);
+}
+function connectionBanner(err, containerId){
+  var msg=err.status===0?err.detail:('rbac-svc error '+err.status+': '+err.detail);
+  showBanner(containerId||'global-error', msg, true);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-001 Tenants
+// ══════════════════════════════════════════════════════════════
+async function createTenant(){
+  var key=document.getElementById('tf-key').value.trim();
+  if(!key)return;
+  try{
+    await api('POST','/api/v1/rbac/tenants',{tenant_key:key,name:document.getElementById('tf-name').value.trim()||key,subsidiary:document.getElementById('tf-subsidiary').value,actor_id:CURRENT_USER});
+    toggleForm('tenant-form');
+    await renderTenants();await renderDash();
+  }catch(err){connectionBanner(err);}
+}
+async function suspendTenant(id){
+  try{await api('POST','/api/v1/rbac/tenants/'+id+'/suspend?actor_id='+CURRENT_USER);await renderTenants();}
+  catch(err){connectionBanner(err);}
+}
+async function reactivateTenant(id){
+  try{await api('POST','/api/v1/rbac/tenants/'+id+'/reactivate?actor_id='+CURRENT_USER);await renderTenants();}
+  catch(err){connectionBanner(err);}
+}
+async function renderTenants(){
+  var tenants;
+  try{tenants=await api('GET','/api/v1/rbac/tenants');}
+  catch(err){connectionBanner(err);document.getElementById('tenant-rows').innerHTML='<div style="padding:14px;font-size:13px;color:var(--red)">Could not load tenants — see banner above.</div>';return;}
+  document.getElementById('tenant-rows').innerHTML=tenants.map(function(t){
+    var action=t.status==='active'
+      ?'<button class="btn btn-s btn-o" onclick="suspendTenant(\''+t.id+'\')">Suspend</button>'
+      :'<button class="btn btn-s btn-g" onclick="reactivateTenant(\''+t.id+'\')">Reactivate</button>';
+    return '<div class="tr" style="grid-template-columns:1.5fr 1fr 1fr 90px 90px">'
+      +'<span class="tc">'+t.name+'</span><span class="fm tm">'+t.tenant_key+'</span><span class="tm">'+t.subsidiary+'</span>'
+      +'<span class="p '+(t.status==='active'?'pg':'pd')+'">'+t.status+'</span>'+action+'</div>';
+  }).join('')||'<div style="padding:14px;font-size:13px;color:var(--dim)">No tenants yet.</div>';
+  document.getElementById('dk-tenants').textContent=tenants.length;
+  return tenants;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-002 Users, roles, assignments
+// ══════════════════════════════════════════════════════════════
+async function createUser(){
+  var email=document.getElementById('uf-email').value.trim();
+  if(!email)return;
+  try{
+    await api('POST','/api/v1/rbac/users',{email:email,display_name:document.getElementById('uf-name').value.trim()||email});
+    toggleForm('user-form');await renderUsers();await populateSelects();
+  }catch(err){connectionBanner(err);}
+}
+async function fetchUsersAndAssignments(){
+  var users=await api('GET','/api/v1/rbac/users');
+  var roles=await api('GET','/api/v1/rbac/roles');
+  return {users:users, roles:roles};
+}
+async function renderUsers(){
+  var users, roles;
+  try{
+    users=await api('GET','/api/v1/rbac/users');
+    roles=await api('GET','/api/v1/rbac/roles');
+  }catch(err){connectionBanner(err);return;}
+  // Effective roles per user come from rbac-svc's own resolution —
+  // fetched per user rather than recomputed here.
+  var rows=[];
+  for(var i=0;i<users.length;i++){
+    var u=users[i];
+    var roleNames='—';
+    try{
+      var ctx=await api('GET','/api/v1/rbac/users/'+u.id+'/context');
+      roleNames=ctx.roles.map(function(r){return r.name;}).join(', ')||'—';
+    }catch(e){/* leave as — if unavailable */}
+    rows.push('<div class="tr" style="grid-template-columns:1.4fr 1fr 90px">'
+      +'<div><div class="tc" style="font-size:13px">'+u.display_name+'</div><div class="tm" style="font-size:11px">'+u.email+'</div></div>'
+      +'<span class="tm" style="font-size:12px">'+roleNames+'</span>'
+      +'<span class="p '+(u.mfa_enabled?'pg':'pr')+'">'+(u.mfa_enabled?'Enabled':'Off')+'</span></div>');
+  }
+  document.getElementById('user-rows').innerHTML=rows.join('')||'<div style="padding:14px;font-size:13px;color:var(--dim)">No users yet.</div>';
+}
+
+async function createRole(){
+  var key=document.getElementById('rf-key').value.trim();
+  if(!key)return;
+  var perms=document.getElementById('rf-perms').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  try{
+    await api('POST','/api/v1/rbac/roles',{key:key,name:document.getElementById('rf-name').value.trim()||key,permission_keys:perms});
+    toggleForm('role-form');await renderRoles();await populateSelects();
+  }catch(err){connectionBanner(err);}
+}
+async function assignRole(){
+  var userId=document.getElementById('af-user').value;
+  var roleId=document.getElementById('af-role').value;
+  if(!userId||!roleId)return;
+  try{
+    // Fully autonomous — assigning an already-defined role executes
+    // immediately, no separate approval call.
+    await api('POST','/api/v1/rbac/role-assignments',{user_id:userId,role_id:roleId,assigned_by:CURRENT_USER});
+    await renderRoles();await renderUsers();
+  }catch(err){connectionBanner(err);}
+}
+async function renderRoles(){
+  var roles;
+  try{roles=await api('GET','/api/v1/rbac/roles');}
+  catch(err){connectionBanner(err);return;}
+  document.getElementById('role-rows').innerHTML=roles.map(function(r){
+    return '<div class="tr" style="grid-template-columns:1fr 1.4fr"><span class="tc">'+r.name+(r.is_system_role?' <span class="p pb" style="font-size:9px">system</span>':'')+'</span>'
+      +'<span class="tm fm" style="font-size:11px">'+r.permission_keys.join(', ')+'</span></div>';
+  }).join('')||'<div style="padding:14px;font-size:13px;color:var(--dim)">No roles defined.</div>';
+
+  // Assignments aren't independently listable via a single endpoint —
+  // rendered per-user via context below instead.
+  var usersResp;
+  try{usersResp=await api('GET','/api/v1/rbac/users');}catch(err){return;}
+  var rows=[];
+  for(var i=0;i<usersResp.length;i++){
+    var u=usersResp[i];
+    try{
+      var ctx=await api('GET','/api/v1/rbac/users/'+u.id+'/context');
+      ctx.roles.forEach(function(r){
+        rows.push('<div class="tr" style="grid-template-columns:1fr 1fr"><span class="tc" style="font-size:12px">'+u.display_name+'</span><span class="tm" style="font-size:12px">'+r.name+'</span></div>');
+      });
+    }catch(e){/* skip */}
+  }
+  document.getElementById('assignment-rows').innerHTML=rows.join('')||'<div style="font-size:13px;color:var(--dim)">No assignments yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-002 Permission overrides — the Tier 2 risk-threshold loop.
+// The scoring and the revoke decision both happen inside rbac-svc;
+// this only triggers the call and displays the result.
+// ══════════════════════════════════════════════════════════════
+var AUTO_REVOKE_THRESHOLD=50;
+async function createOverride(){
+  var userId=document.getElementById('of-user').value;
+  var perm=document.getElementById('of-perm').value.trim();
+  if(!userId||!perm)return;
+  try{
+    var override=await api('POST','/api/v1/rbac/permission-overrides',{
+      user_id:userId, permission_key:perm, effect:document.getElementById('of-effect').value,
+      granted_by:CURRENT_USER, reason:document.getElementById('of-reason').value.trim(),
+    });
+    // Fully autonomous risk evaluation runs immediately on grant —
+    // the Compliance/Audit Agent doesn't wait for a separate trigger.
+    // rbac-svc decides revoke-vs-flag; this call just invokes that.
+    await api('POST','/api/v1/rbac/permission-overrides/'+override.id+'/auto-revoke-if-unwarranted',{threshold:AUTO_REVOKE_THRESHOLD, revoked_by:'compliance_audit_agent'});
+    toggleForm('override-form');
+    document.getElementById('of-reason').value='';document.getElementById('of-perm').value='';
+    await renderOverrides();
+  }catch(err){connectionBanner(err);}
+}
+async function manualRevoke(id){
+  try{
+    await api('POST','/api/v1/rbac/permission-overrides/'+id+'/revoke',{revoked_by:CURRENT_USER, reason:'Manually revoked after human review.'});
+    await renderOverrides();
+  }catch(err){connectionBanner(err);}
+}
+async function renderOverrides(){
+  var overrides, users;
+  try{
+    overrides=await api('GET','/api/v1/rbac/permission-overrides');
+    users=await api('GET','/api/v1/rbac/users');
+  }catch(err){connectionBanner(err);document.getElementById('override-cards').innerHTML='<div style="font-size:13px;color:var(--red)">Could not load overrides — see banner above.</div>';return;}
+  var userById={};users.forEach(function(u){userById[u.id]=u;});
+
+  document.getElementById('override-cards').innerHTML=overrides.map(function(o){
+    var u=userById[o.user_id];
+    var statusPill=o.revoked?'<span class="p pd">Revoked</span>':(o.risk_flagged?'<span class="p pr">Flagged — needs review</span>':'<span class="p pg">Active</span>');
+    var tierBadge=o.effect==='deny'?'<span class="tier tier1" style="margin-left:6px">T1 · exempt</span>':(o.risk_flagged&&!o.revoked?'<span class="tier tier2" style="margin-left:6px">T2 · human review</span>':'<span class="tier tier1" style="margin-left:6px">T1 · auto</span>');
+    var reviewAction=(!o.revoked&&o.risk_flagged)?'<button class="btn btn-s btn-d" style="margin-top:8px" onclick="manualRevoke(\''+o.id+'\')">Human review: revoke</button>':'';
+    return '<div class="card"><div class="ch"><div><span class="ct">'+(u?u.display_name:o.user_id)+'</span>'+tierBadge+'</div>'+statusPill+'</div>'
+      +'<div style="font-size:13px;color:var(--text);margin-bottom:6px"><span class="fm">'+o.permission_key+'</span> — <b>'+o.effect.toUpperCase()+'</b></div>'
+      +'<div style="font-size:12px;color:var(--mid)">Reason: '+(o.reason||'<span class="trr">none given</span>')+'</div>'
+      +(o.revoked?'<div style="font-size:11px;color:var(--dim);margin-top:6px">'+o.revoked_reason+' (by '+o.revoked_by+')</div>':'')
+      +reviewAction
+      +'</div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">No permission overrides yet.</div>';
+
+  var needingReview=overrides.filter(function(o){return !o.revoked&&o.risk_flagged;});
+  document.getElementById('nb-overrides').textContent=needingReview.length;
+  document.getElementById('dk-overrides').textContent=needingReview.length;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-003 ABAC — simulate (Tier 1, free) and apply (hard Tier 3,
+// rbac-svc rejects with 422/409; this surfaces those codes verbatim).
+// ══════════════════════════════════════════════════════════════
+async function createPolicy(){
+  var name=document.getElementById('pf-name').value.trim();
+  if(!name)return;
+  try{
+    await api('POST','/api/v1/rbac/abac-policies',{name:name,source_role_key:document.getElementById('pf-source').value,target_bundle_key:document.getElementById('pf-target').value});
+    toggleForm('policy-form');await renderPolicies();
+  }catch(err){connectionBanner(err);}
+}
+async function simulatePolicyUI(id){
+  try{await api('POST','/api/v1/rbac/abac-policies/'+id+'/simulate');await renderPolicies();}
+  catch(err){connectionBanner(err);}
+}
+async function applyPolicyUI(id){
+  var input=document.getElementById('accountable-'+id);
+  var role=input?input.value:'';
+  try{
+    await api('POST','/api/v1/rbac/abac-policies/'+id+'/apply',{accountable_role:role,applied_by:CURRENT_USER});
+    await renderPolicies();
+  }catch(err){
+    var errEl=document.getElementById('policy-err-'+id);
+    if(errEl){
+      errEl.style.display='block';
+      errEl.textContent=err.status===422
+        ?'422 — '+err.detail+'. No threshold or AI path reaches this gate.'
+        :(err.status===409?'409 — '+err.detail:('rbac-svc error '+err.status+': '+err.detail));
+    }
+  }
+}
+async function rejectPolicyUI(id){
+  try{await api('POST','/api/v1/rbac/abac-policies/'+id+'/reject');await renderPolicies();}
+  catch(err){connectionBanner(err);}
+}
+async function renderPolicies(){
+  await populatePolicySelects();
+  var policies;
+  try{policies=await api('GET','/api/v1/rbac/abac-policies');}
+  catch(err){connectionBanner(err);document.getElementById('policy-cards').innerHTML='<div style="font-size:13px;color:var(--red)">Could not load policies — see banner above.</div>';return;}
+
+  document.getElementById('policy-cards').innerHTML=policies.map(function(p){
+    var statusPill={draft:'pd',simulated:'pb',applied:'pg',rejected:'pr'}[p.status];
+    var statusLabel={draft:'Draft',simulated:'Simulated',applied:'Applied',rejected:'Rejected'}[p.status];
+    var conflictsHtml=p.conflicts_detected.length
+      ?'<div style="font-size:12px;color:var(--gold);margin-top:6px">⚠ '+p.conflicts_detected.join('; ')+'</div>'
+      :(p.status!=='draft'?'<div style="font-size:12px;color:var(--green);margin-top:6px">No conflicts detected</div>':'');
+    var actions='';
+    if(p.status==='draft'||p.status==='simulated'){
+      actions='<div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-s btn-o" onclick="simulatePolicyUI(\''+p.id+'\')"><span class="tier tier1" style="margin-right:5px">T1</span>Simulate (re-run freely)</button></div>'
+        +'<div style="border-top:1px dashed var(--border);margin-top:10px;padding-top:10px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="fm" style="font-size:10px;color:var(--dim)">TO APPLY:</span><span class="tier tier3">T3 · always human</span></div>'
+        +'<div style="display:flex;gap:6px"><input class="fi" id="accountable-'+p.id+'" placeholder="Select accountable role (e.g. VP Sales Operations)" style="flex:1"><button class="btn btn-s btn-g" onclick="applyPolicyUI(\''+p.id+'\')">Apply policy</button></div>'
+        +'<div id="policy-err-'+p.id+'" style="display:none;font-size:11px;color:var(--red);margin-top:6px"></div>'
+        +'<button class="btn btn-s btn-gh" style="margin-top:6px" onclick="rejectPolicyUI(\''+p.id+'\')">Reject</button>'
+        +'</div>';
+    } else if(p.status==='applied'){
+      actions='<div style="font-size:12px;color:var(--green);margin-top:8px">Applied by '+p.applied_by+' · accountable: <b>'+p.accountable_role+'</b> · '+fmtDate(p.applied_at)+'</div>';
+    }
+    return '<div class="card"><div class="ch"><span class="ct">'+p.name+'</span><span class="p '+statusPill+'">'+statusLabel+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid)">'+p.source_role_key+' → inherits → '+p.target_bundle_key+'</div>'
+      +conflictsHtml+actions+'</div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">No policies authored yet.</div>';
+  document.getElementById('dk-abac').textContent=policies.filter(function(p){return p.status==='applied';}).length;
+}
+async function populatePolicySelects(){
+  var roles;
+  try{roles=await api('GET','/api/v1/rbac/roles');}catch(e){return;}
+  var opts=roles.map(function(r){return '<option value="'+r.key+'">'+r.name+'</option>';}).join('');
+  var src=document.getElementById('pf-source'),tgt=document.getElementById('pf-target');
+  if(src)src.innerHTML=opts;
+  if(tgt)tgt.innerHTML=opts;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-004 Module distribution — hierarchical
+// ══════════════════════════════════════════════════════════════
+var MODULE_LABELS={'fleet-management':'Fleet Management','dealer-center':'Dealer Center','hrm':'HRM','mobility-admin':'Mobility Admin','rental':'Rental'};
+var SUB_MODULE_CATALOG={
+  'fleet-management':[
+    {key:'flt-001-intake',label:'FLT-001 Intake'},
+    {key:'flt-003-staging',label:'FLT-003 Staging'},
+    {key:'flt-004-maintenance',label:'FLT-004 Maintenance'},
+    {key:'flt-005-incidents',label:'FLT-005 Incidents'},
+    {key:'flt-013-analytics',label:'FLT-013 Analytics'},
+  ],
+  'dealer-center':[
+    {key:'dms-002-inventory',label:'DMS-002 Retail Inventory'},
+    {key:'dms-003-sales-desk',label:'DMS-003 Sales Desk'},
+    {key:'dms-004-fi',label:'DMS-004 F&I & Compliance'},
+    {key:'dms-005-appraisal',label:'DMS-005 Trade-in Appraisal'},
+    {key:'dms-009-pl',label:'DMS-009 P&L'},
+  ],
+  'hrm':[
+    {key:'hrm-006-academy',label:'HRM-006 Academy'},
+    {key:'hrm-008-notices',label:'HRM-008 Notices & Communication'},
+  ],
+  'mobility-admin':[
+    {key:'mob-fleet-command',label:'Fleet Command'},
+    {key:'mob-revenue',label:'Revenue'},
+    {key:'mob-member-intel',label:'Member Intelligence'},
+  ],
+  'rental':[
+    {key:'rental-pricing',label:'Pricing Engine'},
+    {key:'rental-hubs',label:'Hub Network'},
+  ],
+};
+
+async function grantModule(){
+  var key=document.getElementById('mf-key').value;
+  try{
+    await api('POST','/api/v1/rbac/module-grants',{module_key:key,label:MODULE_LABELS[key]||key,granted_by:CURRENT_USER});
+    toggleForm('module-form');await renderModules();
+  }catch(err){connectionBanner(err);}
+}
+async function grantSubModule(parentKey,subKey,subLabel){
+  try{
+    await api('POST','/api/v1/rbac/module-grants',{module_key:subKey,parent_module_key:parentKey,label:subLabel,granted_by:CURRENT_USER});
+    await renderModules();
+  }catch(err){connectionBanner(err);}
+}
+async function revokeModule(key){
+  try{await api('POST','/api/v1/rbac/module-grants/'+key+'/revoke?actor_id='+CURRENT_USER);await renderModules();}
+  catch(err){connectionBanner(err);}
+}
+async function renderModules(){
+  var grants;
+  try{grants=await api('GET','/api/v1/rbac/module-grants');}
+  catch(err){connectionBanner(err);return;}
+
+  var topLevel=grants.filter(function(g){return !g.parent_module_key;});
+  document.getElementById('module-tree').innerHTML=topLevel.map(function(m){
+    var subs=SUB_MODULE_CATALOG[m.module_key]||[];
+    var subRows=subs.map(function(sub){
+      var existing=grants.find(function(g){return g.module_key===sub.key;});
+      var enabled=existing&&existing.enabled;
+      var action=enabled
+        ?'<button class="btn btn-s btn-o" onclick="revokeModule(\''+sub.key+'\')">Revoke</button>'
+        :'<button class="btn btn-s btn-g" '+(m.enabled?'':'disabled title="parent module disabled"')+' onclick="grantSubModule(\''+m.module_key+'\',\''+sub.key+'\',\''+sub.label+'\')">Grant</button>';
+      return '<div class="tr" style="grid-template-columns:1.5fr 100px 90px;padding-left:24px"><span class="tm fm" style="font-size:12px">↳ '+sub.label+'</span><span class="p '+(enabled?'pg':'pd')+'">'+(enabled?'Enabled':'Disabled')+'</span>'+action+'</div>';
+    }).join('');
+    var parentAction=m.enabled?'<button class="btn btn-s btn-o" onclick="revokeModule(\''+m.module_key+'\')">Revoke (cascades to sub-sections)</button>':'<span class="tm" style="font-size:12px">use form above to re-grant</span>';
+    return '<div class="tw"><div class="tr" style="grid-template-columns:1.5fr 100px 220px;background:var(--surface2)"><span class="tc" style="font-weight:600">'+(m.label||m.module_key)+'</span><span class="p '+(m.enabled?'pg':'pd')+'">'+(m.enabled?'Enabled':'Disabled')+'</span>'+parentAction+'</div>'+subRows+'</div>';
+  }).join('')||'<div style="padding:14px;font-size:13px;color:var(--dim)">No modules provisioned.</div>';
+
+  document.getElementById('dk-modules').textContent=grants.filter(function(m){return m.enabled;}).length;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-005 Audit log
+// ══════════════════════════════════════════════════════════════
+async function renderAudit(){
+  var filter=document.getElementById('audit-filter')?document.getElementById('audit-filter').value:'all';
+  var entries;
+  try{entries=await api('GET','/api/v1/rbac/audit-log'+(filter!=='all'?'?actor_type='+filter:''));}
+  catch(err){connectionBanner(err);return;}
+
+  document.getElementById('audit-rows').innerHTML=entries.map(function(e){
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:0.5px solid var(--border)">'
+      +'<span class="at" style="flex-shrink:0;background:'+(e.actor_type==='ai'?'var(--gold-dim)':'var(--blue-dim)')+';color:'+(e.actor_type==='ai'?'var(--gold)':'var(--blue)')+'">'+e.actor_type+'</span>'
+      +'<span style="font-size:12px;color:var(--text);flex:1">'+e.actor_id+' — <b>'+e.action+'</b> on '+e.resource+(e.detail?' <span class="tm">('+e.detail+')</span>':'')+'</span>'
+      +'</div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">No activity yet.</div>';
+
+  var allEntries=filter==='all'?entries:await api('GET','/api/v1/rbac/audit-log').catch(function(){return entries;});
+  document.getElementById('dash-feed').innerHTML=allEntries.slice(0,6).map(function(e){
+    return '<div style="display:flex;gap:8px;padding:5px 0;font-size:12px"><span class="at" style="flex-shrink:0">'+e.actor_type+'</span><span class="tm">'+e.action+' — '+e.resource+'</span></div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">No activity yet.</div>';
+}
+
+async function renderDash(){
+  var tenants;
+  try{tenants=await api('GET','/api/v1/rbac/tenants');}catch(err){connectionBanner(err);return;}
+  document.getElementById('dk-tenants').textContent=tenants.length;
+  var subsidiaries=Array.from(new Set(tenants.map(function(t){return t.subsidiary;})));
+  document.getElementById('dash-subsidiaries').innerHTML=subsidiaries.map(function(s){
+    var count=tenants.filter(function(t){return t.subsidiary===s;}).length;
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--border)"><span class="tc" style="font-size:13px">'+s.replace('_',' ')+'</span><span class="tm">'+count+' tenant(s)</span></div>';
+  }).join('');
+  try{
+    var overrides=await api('GET','/api/v1/rbac/permission-overrides');
+    document.getElementById('dk-overrides').textContent=overrides.filter(function(o){return !o.revoked&&o.risk_flagged;}).length;
+  }catch(e){}
+  try{
+    var policies=await api('GET','/api/v1/rbac/abac-policies');
+    document.getElementById('dk-abac').textContent=policies.filter(function(p){return p.status==='applied';}).length;
+  }catch(e){}
+  try{
+    var grants=await api('GET','/api/v1/rbac/module-grants');
+    document.getElementById('dk-modules').textContent=grants.filter(function(m){return m.enabled;}).length;
+  }catch(e){}
+  await renderAudit();
+}
+
+async function populateSelects(){
+  var users,roles;
+  try{
+    users=await api('GET','/api/v1/rbac/users');
+    roles=await api('GET','/api/v1/rbac/roles');
+  }catch(e){return;}
+  var userOpts=users.map(function(u){return '<option value="'+u.id+'">'+u.display_name+'</option>';}).join('');
+  var roleOpts=roles.map(function(r){return '<option value="'+r.id+'">'+r.name+'</option>';}).join('');
+  ['af-user','of-user'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=userOpts;});
+  var afRole=document.getElementById('af-role');if(afRole)afRole.innerHTML=roleOpts;
+  await populatePolicySelects();
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI Agent Control — calls ai-orchestration-svc directly. The pause/
+// resume/disable switch every agent must have, per that service's
+// own docstring; nothing here is re-implemented, only displayed.
+// ══════════════════════════════════════════════════════════════
+async function registerAgent(){
+  var key=document.getElementById('agf-key').value.trim();
+  if(!key)return;
+  try{
+    await aiApi('POST','/api/v1/ai/agents',{
+      key:key, display_name:document.getElementById('agf-name').value.trim()||key,
+      human_approval_threshold:parseInt(document.getElementById('agf-threshold').value)||50,
+    });
+    toggleForm('agent-form');await renderAgents();
+  }catch(err){connectionBanner(err);}
+}
+async function setAgentStatus(id,status){
+  try{await aiApi('POST','/api/v1/ai/agents/'+id+'/status',{status:status});await renderAgents();}
+  catch(err){connectionBanner(err);}
+}
+async function renderAgents(){
+  var agents;
+  try{agents=await aiApi('GET','/api/v1/ai/agents');}
+  catch(err){connectionBanner(err);document.getElementById('agent-cards').innerHTML='<div style="font-size:13px;color:var(--red)">Could not load agents — see banner above.</div>';return;}
+
+  document.getElementById('agent-cards').innerHTML=agents.map(function(a){
+    var statusPill={active:'pg',paused:'pa2',disabled:'pr'}[a.status]||'pd';
+    var actions=['active','paused','disabled'].filter(function(s){return s!==a.status;}).map(function(s){
+      return '<button class="btn btn-s btn-o" onclick="setAgentStatus(\''+a.id+'\',\''+s+'\')">'+s.charAt(0).toUpperCase()+s.slice(1)+'</button>';
+    }).join('');
+    return '<div class="card"><div class="ch"><div><span class="ct">'+a.display_name+'</span> <span class="fm tm" style="font-size:11px">'+a.key+'</span></div><span class="p '+statusPill+'">'+a.status+'</span></div>'
+      +'<div style="display:flex;gap:16px;font-size:12px;color:var(--mid);margin-bottom:8px">'
+      +'<span>Model: <span class="tc">'+a.model+'</span></span>'
+      +'<span>Approval threshold: <span class="tc">'+a.human_approval_threshold+'</span></span>'
+      +'<span>Decisions made: <span class="tc">'+a.decisions_made+'</span></span>'
+      +'<span>Pending review: <span class="tc">'+a.recommendations_pending+'</span></span>'
+      +'</div><div style="display:flex;gap:6px">'+actions+'</div></div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">No agents registered yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI Goal State
+// ══════════════════════════════════════════════════════════════
+async function createGoal(){
+  var agentKey=document.getElementById('gf-agent').value.trim();
+  var goalKey=document.getElementById('gf-key').value.trim();
+  if(!agentKey||!goalKey)return;
+  try{
+    await aiApi('POST','/api/v1/ai/goals',{agent_key:agentKey,goal_key:goalKey,target_value:parseFloat(document.getElementById('gf-target').value)||0,unit:document.getElementById('gf-unit').value.trim()});
+    toggleForm('goal-form');await renderGoals();
+  }catch(err){connectionBanner(err);}
+}
+async function updateGoalPrompt(id,currentValue){
+  var next=prompt('New target value (recalibrates on the agent\'s next reasoning pass):', currentValue);
+  if(next===null)return;
+  try{await aiApi('PUT','/api/v1/ai/goals/'+id,{target_value:parseFloat(next)});await renderGoals();}
+  catch(err){connectionBanner(err);}
+}
+async function renderGoals(){
+  var goals;
+  try{goals=await aiApi('GET','/api/v1/ai/goals');}
+  catch(err){connectionBanner(err);return;}
+  document.getElementById('goal-rows').innerHTML=goals.map(function(g){
+    return '<div class="tr" style="grid-template-columns:1.3fr 1.3fr 100px 70px 100px;cursor:pointer" onclick="updateGoalPrompt(\''+g.id+'\','+g.target_value+')">'
+      +'<span class="tc fm" style="font-size:12px">'+g.agent_key+'</span><span class="tm" style="font-size:12px">'+g.goal_key+'</span>'
+      +'<span class="tg" style="font-weight:600">'+g.target_value+'</span><span class="tm">'+g.unit+'</span><span class="tm" style="font-size:11px">'+g.updated_by+'</span></div>';
+  }).join('')||'<div style="padding:14px;font-size:13px;color:var(--dim)">No goals set yet. Click a row to edit its target.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-006 Platform Settings
+// ══════════════════════════════════════════════════════════════
+async function upsertSetting(){
+  var key=document.getElementById('sf-key').value.trim();
+  if(!key)return;
+  var value;
+  try{value=JSON.parse(document.getElementById('sf-value').value||'{}');}
+  catch(e){showBanner('global-error','Invalid JSON in value field: '+e.message,true);return;}
+  try{
+    await api('POST','/api/v1/rbac/settings',{category:document.getElementById('sf-category').value,key:key,value:value,updated_by:CURRENT_USER});
+    toggleForm('setting-form');await renderSettings();
+  }catch(err){connectionBanner(err);}
+}
+async function deleteSetting(id){
+  try{await api('DELETE','/api/v1/rbac/settings/'+id+'?actor_id='+CURRENT_USER);await renderSettings();}
+  catch(err){connectionBanner(err);}
+}
+async function renderSettings(){
+  var settings;
+  try{settings=await api('GET','/api/v1/rbac/settings');}
+  catch(err){connectionBanner(err);return;}
+  ['payment_gateway','branding','feature_flag','general'].forEach(function(cat){
+    var items=settings.filter(function(s){return s.category===cat;});
+    var el=document.getElementById('settings-'+cat);
+    if(!el)return;
+    el.innerHTML=items.map(function(s){
+      return '<div class="card" style="padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center"><span class="tc fm" style="font-size:12px">'+s.key+'</span><button class="btn btn-s btn-d" onclick="deleteSetting(\''+s.id+'\')">Delete</button></div><div class="fm tm" style="font-size:11px;margin-top:4px">'+JSON.stringify(s.value)+'</div></div>';
+    }).join('')||'<div style="font-size:12px;color:var(--dim)">None configured.</div>';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-006 Page Management — extended with SEO/slug/template
+// ══════════════════════════════════════════════════════════════
+async function upsertPage(){
+  var key=document.getElementById('pgf-key').value.trim();
+  if(!key)return;
+  try{
+    await api('POST','/api/v1/rbac/page-content',{
+      page_key:key, title:document.getElementById('pgf-title').value.trim()||key,
+      body:document.getElementById('pgf-body').value, slug:document.getElementById('pgf-slug').value.trim(),
+      seo_title:document.getElementById('pgf-seo-title').value.trim(), seo_description:document.getElementById('pgf-seo-desc').value.trim(),
+      template:document.getElementById('pgf-template').value, updated_by:CURRENT_USER,
+    });
+    toggleForm('page-form');await renderPages();await populateBuilderPageSelect();
+  }catch(err){connectionBanner(err);}
+}
+async function publishPage(id){
+  try{await api('POST','/api/v1/rbac/page-content/'+id+'/publish?actor_id='+CURRENT_USER);await renderPages();}
+  catch(err){connectionBanner(err);}
+}
+async function unpublishPage(id){
+  try{await api('POST','/api/v1/rbac/page-content/'+id+'/unpublish?actor_id='+CURRENT_USER);await renderPages();}
+  catch(err){connectionBanner(err);}
+}
+async function deletePage(id){
+  try{await api('DELETE','/api/v1/rbac/page-content/'+id+'?actor_id='+CURRENT_USER);await renderPages();await populateBuilderPageSelect();}
+  catch(err){connectionBanner(err);}
+}
+async function renderPages(){
+  var pages;
+  try{pages=await api('GET','/api/v1/rbac/page-content');}
+  catch(err){connectionBanner(err);return;}
+  document.getElementById('page-cards').innerHTML=pages.map(function(p){
+    var action=p.status==='draft'
+      ?'<button class="btn btn-s btn-g" onclick="publishPage(\''+p.id+'\')">Publish</button>'
+      :'<button class="btn btn-s btn-o" onclick="unpublishPage(\''+p.id+'\')">Unpublish</button>';
+    return '<div class="card"><div class="ch"><div><span class="ct">'+p.title+'</span> <span class="fm tm" style="font-size:11px">/'+p.slug+'</span></div><span class="p '+(p.status==='published'?'pg':'pd')+'">'+p.status+'</span></div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:4px">SEO: '+(p.seo_title||'<i>none set</i>')+' · Template: '+p.template+'</div>'
+      +'<div style="font-size:12px;color:var(--mid);margin-bottom:8px">'+(p.body?p.body.slice(0,100)+(p.body.length>100?'…':''):'<i>no body text — managed via Website Builder sections</i>')+'</div>'
+      +'<div style="display:flex;gap:6px">'+action+'<button class="btn btn-s btn-d" onclick="deletePage(\''+p.id+'\')">Delete</button></div></div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim)">No pages yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-006 Colors & Theme
+// ══════════════════════════════════════════════════════════════
+var COLOR_KEYS=['primary','secondary','accent','background','surface','text','text_muted','success','warning','error','info','border'];
+async function createTheme(){
+  var name=document.getElementById('thf-name').value.trim();
+  if(!name)return;
+  try{
+    await api('POST','/api/v1/rbac/themes',{name:name,seed_defaults:document.getElementById('thf-seed').checked,created_by:CURRENT_USER});
+    toggleForm('theme-form');await renderThemes();
+  }catch(err){connectionBanner(err);}
+}
+async function activateTheme(id){
+  try{await api('POST','/api/v1/rbac/themes/'+id+'/activate?actor_id='+CURRENT_USER);await renderThemes();}
+  catch(err){connectionBanner(err);}
+}
+async function deleteTheme(id){
+  try{await api('DELETE','/api/v1/rbac/themes/'+id+'?actor_id='+CURRENT_USER);await renderThemes();}
+  catch(err){connectionBanner(err);}
+}
+async function setColor(themeId,colorKey,hexValue){
+  try{await api('POST','/api/v1/rbac/themes/'+themeId+'/colors',{color_key:colorKey,hex_value:hexValue,updated_by:CURRENT_USER});}
+  catch(err){connectionBanner(err);}
+}
+async function renderThemes(){
+  var themes;
+  try{themes=await api('GET','/api/v1/rbac/themes');}
+  catch(err){connectionBanner(err);return;}
+
+  var cardsHtml=[];
+  for(var i=0;i<themes.length;i++){
+    var t=themes[i];
+    var colors=[];
+    try{colors=await api('GET','/api/v1/rbac/themes/'+t.id+'/colors');}catch(e){}
+    var colorByKey={};colors.forEach(function(c){colorByKey[c.color_key]=c.hex_value;});
+    var swatches=COLOR_KEYS.map(function(key){
+      var hex=colorByKey[key]||'#888888';
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:70px">'
+        +'<input type="color" value="'+(hex.length===7?hex:'#888888')+'" onchange="setColor(\''+t.id+'\',\''+key+'\',this.value)" style="width:44px;height:32px;border-radius:6px;border:0.5px solid var(--border);cursor:pointer;background:none">'
+        +'<span class="tm" style="font-size:10px;text-align:center">'+key.replace('_',' ')+'</span></div>';
+    }).join('');
+    var actions=t.is_active?'<span class="p pg">Active</span>':'<button class="btn btn-s btn-g" onclick="activateTheme(\''+t.id+'\')">Activate</button>';
+    cardsHtml.push('<div class="card"><div class="ch"><span class="ct">'+t.name+'</span><div style="display:flex;gap:6px">'+actions+'<button class="btn btn-s btn-d" onclick="deleteTheme(\''+t.id+'\')" '+(t.is_active?'disabled title="cannot delete the active theme"':'')+'>Delete</button></div></div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:10px">'+swatches+'</div></div>');
+  }
+  document.getElementById('theme-cards').innerHTML=cardsHtml.join('')||'<div style="font-size:13px;color:var(--dim)">No themes yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-006 Website Builder — page > section > subsection tree,
+// with independent visibility and parallax at every level.
+// ══════════════════════════════════════════════════════════════
+async function populateBuilderPageSelect(){
+  var pages;
+  try{pages=await api('GET','/api/v1/rbac/page-content');}catch(e){return;}
+  var sel=document.getElementById('wb-page-select');
+  if(!sel)return;
+  var current=sel.value;
+  sel.innerHTML=pages.map(function(p){return '<option value="'+p.id+'">'+p.title+' (/'+p.slug+')</option>';}).join('');
+  if(current&&pages.some(function(p){return p.id===current;}))sel.value=current;
+}
+async function createSection(){
+  var pageId=document.getElementById('wb-page-select').value;
+  var key=document.getElementById('secf-key').value.trim();
+  if(!pageId||!key)return;
+  try{
+    await api('POST','/api/v1/rbac/sections',{page_id:pageId,section_key:key,section_type:document.getElementById('secf-type').value,title:document.getElementById('secf-title').value.trim(),updated_by:CURRENT_USER});
+    toggleForm('section-form');await renderBuilder();
+  }catch(err){connectionBanner(err);}
+}
+async function toggleSectionVisible(id,current){
+  try{await api('PATCH','/api/v1/rbac/sections/'+id,{visible:!current,updated_by:CURRENT_USER});await renderBuilder();}
+  catch(err){connectionBanner(err);}
+}
+async function toggleParallax(id,current){
+  try{await api('PATCH','/api/v1/rbac/sections/'+id,{parallax_enabled:!current,updated_by:CURRENT_USER});await renderBuilder();}
+  catch(err){connectionBanner(err);}
+}
+async function setParallaxSpeed(id,speed){
+  try{await api('PATCH','/api/v1/rbac/sections/'+id,{parallax_speed:parseFloat(speed),updated_by:CURRENT_USER});}
+  catch(err){connectionBanner(err);}
+}
+async function setParallaxImage(id,url){
+  try{await api('PATCH','/api/v1/rbac/sections/'+id,{parallax_image_url:url,updated_by:CURRENT_USER});}
+  catch(err){connectionBanner(err);}
+}
+async function deleteSection(id){
+  try{await api('DELETE','/api/v1/rbac/sections/'+id+'?actor_id='+CURRENT_USER);await renderBuilder();}
+  catch(err){connectionBanner(err);}
+}
+async function addSubsection(sectionId){
+  var keyInput=document.getElementById('subkey-'+sectionId);
+  var contentInput=document.getElementById('subcontent-'+sectionId);
+  var key=keyInput.value.trim();
+  if(!key)return;
+  try{
+    await api('POST','/api/v1/rbac/sections/subsections',{section_id:sectionId,subsection_key:key,block_type:'text',content:contentInput.value,updated_by:CURRENT_USER});
+    await renderBuilder();
+  }catch(err){connectionBanner(err);}
+}
+async function toggleSubsectionVisible(id,current){
+  try{await api('PATCH','/api/v1/rbac/sections/subsections/'+id,{visible:!current,updated_by:CURRENT_USER});await renderBuilder();}
+  catch(err){connectionBanner(err);}
+}
+async function updateSubsectionContent(id,content){
+  try{await api('PATCH','/api/v1/rbac/sections/subsections/'+id,{content:content,updated_by:CURRENT_USER});}
+  catch(err){connectionBanner(err);}
+}
+async function deleteSubsection(id,sectionId){
+  try{await api('DELETE','/api/v1/rbac/sections/subsections/'+id+'?actor_id='+CURRENT_USER);await renderBuilder();}
+  catch(err){connectionBanner(err);}
+}
+async function renderBuilder(){
+  await populateBuilderPageSelect();
+  var pageId=document.getElementById('wb-page-select').value;
+  if(!pageId){document.getElementById('builder-tree').innerHTML='<div style="font-size:13px;color:var(--dim)">No pages yet — create one under Page Management first.</div>';return;}
+
+  var sections;
+  try{sections=await api('GET','/api/v1/rbac/sections?page_id='+pageId);}
+  catch(err){connectionBanner(err);return;}
+
+  var treeHtml=[];
+  for(var i=0;i<sections.length;i++){
+    var s=sections[i];
+    var subs=[];
+    try{subs=await api('GET','/api/v1/rbac/sections/subsections?section_id='+s.id);}catch(e){}
+    var subsHtml=subs.map(function(sub){
+      return '<div style="padding:10px 12px;border-top:0.5px dashed var(--border);padding-left:28px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="tc" style="font-size:12px">↳ '+sub.subsection_key+' <span class="tm" style="font-size:10px">('+sub.block_type+')</span></span>'
+        +'<div style="display:flex;gap:6px"><button class="btn btn-s '+(sub.visible?'btn-o':'btn-g')+'" onclick="toggleSubsectionVisible(\''+sub.id+'\','+sub.visible+')">'+(sub.visible?'Hide':'Show')+'</button><button class="btn btn-s btn-d" onclick="deleteSubsection(\''+sub.id+'\')">Delete</button></div></div>'
+        +'<textarea class="fi" style="font-size:12px" rows="2" onblur="updateSubsectionContent(\''+sub.id+'\',this.value)">'+sub.content+'</textarea>'
+        +'</div>';
+    }).join('');
+    var addSubForm='<div style="padding:10px 12px 12px;border-top:0.5px dashed var(--border);padding-left:28px;display:flex;gap:6px">'
+      +'<input class="fi" id="subkey-'+s.id+'" placeholder="subsection key" style="max-width:160px">'
+      +'<input class="fi" id="subcontent-'+s.id+'" placeholder="content">'
+      +'<button class="btn btn-s btn-o" onclick="addSubsection(\''+s.id+'\')">Add</button></div>';
+
+    var parallaxControls=s.parallax_enabled?(
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;padding:8px;background:var(--surface2);border-radius:7px">'
+      +'<span class="tm" style="font-size:11px">Speed</span><input type="range" min="0" max="1" step="0.1" value="'+s.parallax_speed+'" style="max-width:100px" onchange="setParallaxSpeed(\''+s.id+'\',this.value)">'
+      +'<input class="fi" placeholder="background image URL" value="'+s.parallax_image_url+'" style="flex:1;font-size:11px" onblur="setParallaxImage(\''+s.id+'\',this.value)"></div>'
+    ):'';
+
+    treeHtml.push('<div class="tw">'
+      +'<div class="tr" style="grid-template-columns:1.5fr 100px 90px 90px 90px;background:var(--surface2)">'
+      +'<span class="tc" style="font-weight:600">'+(s.title||s.section_key)+' <span class="tm fm" style="font-size:10px">['+s.section_type+']</span></span>'
+      +'<span class="p '+(s.visible?'pg':'pd')+'">'+(s.visible?'Visible':'Hidden')+'</span>'
+      +'<button class="btn btn-s '+(s.visible?'btn-o':'btn-g')+'" onclick="toggleSectionVisible(\''+s.id+'\','+s.visible+')">'+(s.visible?'Hide':'Show')+'</button>'
+      +'<button class="btn btn-s '+(s.parallax_enabled?'btn-g':'btn-o')+'" onclick="toggleParallax(\''+s.id+'\','+s.parallax_enabled+')">Parallax '+(s.parallax_enabled?'On':'Off')+'</button>'
+      +'<button class="btn btn-s btn-d" onclick="deleteSection(\''+s.id+'\')">Delete</button>'
+      +'</div>'
+      +(parallaxControls?'<div style="padding:0 12px">'+parallaxControls+'</div>':'')
+      +subsHtml+addSubForm+'</div>');
+  }
+  document.getElementById('builder-tree').innerHTML=treeHtml.join('')||'<div style="font-size:13px;color:var(--dim)">No sections on this page yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// SAP-006 Media Library
+// ══════════════════════════════════════════════════════════════
+async function uploadMedia(){
+  var filename=document.getElementById('mdf-filename').value.trim();
+  var url=document.getElementById('mdf-url').value.trim();
+  if(!filename||!url)return;
+  try{
+    await api('POST','/api/v1/rbac/media',{filename:filename,url:url,alt_text:document.getElementById('mdf-alt').value.trim(),category:document.getElementById('mdf-category').value,uploaded_by:CURRENT_USER});
+    toggleForm('media-form');await renderMedia();
+  }catch(err){connectionBanner(err);}
+}
+async function deleteMedia(id){
+  try{await api('DELETE','/api/v1/rbac/media/'+id+'?actor_id='+CURRENT_USER);await renderMedia();}
+  catch(err){connectionBanner(err);}
+}
+async function renderMedia(){
+  var filter=document.getElementById('media-filter')?document.getElementById('media-filter').value:'';
+  var assets;
+  try{assets=await api('GET','/api/v1/rbac/media'+(filter?'?category='+filter:''));}
+  catch(err){connectionBanner(err);return;}
+  document.getElementById('media-grid').innerHTML=assets.map(function(a){
+    return '<div class="card" style="padding:10px"><div style="height:100px;background:var(--surface2);border-radius:7px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden"><img src="'+a.url+'" style="max-width:100%;max-height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<i class=&quot;ti ti-photo&quot; style=&quot;font-size:28px;color:var(--dim)&quot;></i>\'"></div>'
+      +'<div class="tc" style="font-size:12px;margin-bottom:2px">'+a.filename+'</div><div class="tm" style="font-size:11px;margin-bottom:8px">'+a.category+'</div>'
+      +'<button class="btn btn-s btn-d" style="width:100%" onclick="deleteMedia(\''+a.id+'\')">Delete</button></div>';
+  }).join('')||'<div style="font-size:13px;color:var(--dim);grid-column:1/-1">No media yet.</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI Assist Content Settings — reuses PlatformSetting with a new
+// category; genuinely the same shape of thing as a payment gateway
+// config, so no new table needed.
+// ══════════════════════════════════════════════════════════════
+async function saveAIContentSettings(){
+  var value={
+    brand_voice:document.getElementById('aic-voice').value.trim(),
+    default_model:document.getElementById('aic-model').value,
+    auto_generate:document.getElementById('aic-autogen').value==='true',
+    review_required:document.getElementById('aic-review-required').checked,
+  };
+  try{
+    await api('POST','/api/v1/rbac/settings',{category:'ai_content_assist',key:'config',value:value,updated_by:CURRENT_USER});
+    showBanner('ai-content-status','Saved.',false);
+  }catch(err){connectionBanner(err);}
+}
+async function loadAIContentSettings(){
+  var settings;
+  try{settings=await api('GET','/api/v1/rbac/settings?category=ai_content_assist');}catch(e){return;}
+  var config=settings.find(function(s){return s.key==='config';});
+  if(!config)return;
+  document.getElementById('aic-voice').value=config.value.brand_voice||'';
+  document.getElementById('aic-model').value=config.value.default_model||'claude-sonnet-5';
+  document.getElementById('aic-autogen').value=String(config.value.auto_generate||false);
+  document.getElementById('aic-review-required').checked=config.value.review_required!==false;
+}
+
+async function rerenderAll(){
+  var urlEl=document.getElementById('dash-api-url');if(urlEl)urlEl.textContent=RBAC_API_BASE;
+  await renderTenants();
+  await renderUsers();
+  await renderRoles();
+  await renderOverrides();
+  await renderPolicies();
+  await renderModules();
+  await renderAgents();
+  await renderGoals();
+  await renderThemes();
+  await renderPages();
+  await renderBuilder();
+  await renderMedia();
+  await loadAIContentSettings();
+  await renderSettings();
+  await renderAudit();
+  await renderDash();
+  await populateSelects();
+}
+rerenderAll();
+
+</script>
+</div>
+</div>
+</body>
+</html>
