@@ -42,3 +42,23 @@ def test_ip_asset_svc_route_resolves():
     route = resolve_route("/api/v1/ip/assets")
     assert route is not None
     assert route.target_base_url == "http://ip-asset-svc:8028"
+
+
+def test_admin_layer_services_are_routed():
+    """The Layer 2 services built after the original route table — each
+    must be reachable through the gateway, not only by direct port."""
+    expected = {
+        "/api/v1/sales/orders": "http://sales-service:8009",
+        "/api/v1/insurance-risk/policies": "http://insurance-risk-svc:8029",
+        "/api/v1/security-compliance/grants": "http://security-compliance-svc:8031",
+        "/api/v1/executive/dashboard/summary": "http://executive-svc:8032",
+        "/api/v1/management/cost-centers": "http://management-svc:8033",
+        "/api/v1/real-estate/properties": "http://real-estate-svc:8034",
+        "/api/v1/capital-finance/funding-sources": "http://capital-finance-svc:8035",
+        "/api/v1/originations/credit-decisions": "http://originations-svc:8036",
+    }
+    for path, target in expected.items():
+        route = resolve_route(path)
+        assert route is not None, path
+        assert route.target_base_url == target, path
+        assert is_public_path(route, path) is False, path

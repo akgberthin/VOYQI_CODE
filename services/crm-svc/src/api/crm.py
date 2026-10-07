@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import crm_engine
 
@@ -76,9 +77,15 @@ def _serialize_deal(deal) -> dict:
 
 
 @router.post("/leads", status_code=201)
-async def capture_lead(payload: CaptureLeadIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def capture_lead(payload: CaptureLeadIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     lead = await crm_engine.capture_lead(db, tenant_id=tenant_id, **payload.model_dump())
     await db.commit()
+    # Routes the new lead to the Revenue Agent (identity resolution and
+    # scoring) in ai-orchestration-svc.
+    background_tasks.add_task(
+        publish_event, "crm.leads", "lead.captured", tenant_id,
+        {"lead_id": str(lead.id), "name": f"{lead.first_name} {lead.last_name}", "email": lead.email, "phone": payload.phone, "source": lead.source},
+    )
     return _serialize_lead(lead)
 
 

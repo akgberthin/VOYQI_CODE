@@ -67,6 +67,10 @@ metadata:
   namespace: voyqi
 data:
   KAFKA_BOOTSTRAP_SERVERS: "voyqi-prod-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  # ai-orchestration-svc reads settings with the AI_ORCH_ prefix
+  # (src/core/config.py); unprefixed keys above are not read by the app.
+  AI_ORCH_KAFKA_BOOTSTRAP_SERVERS: "voyqi-prod-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  AI_ORCH_TIER_POLICY_PATH: "/etc/voyqi/tier-policy.yaml"
   LANGGRAPH_CHECKPOINTER: "redis"
   LANGGRAPH_CHECKPOINT_NAMESPACE: "voyqi-ai-nucleus"
   DECISION_LOG_DB: "ai_orchestration_service" # single shared Postgres database — see terraform/modules/cloudsql
@@ -121,6 +125,8 @@ spec:
           ports:
             - containerPort: 8020
           env:
+            - name: AI_ORCH_CONSUMER_ROLE
+              value: "realtime" # starts the realtime Kafka consumer loop (src/core/kafka_consumer.py)
             - name: ORCHESTRATION_TIER
               value: "realtime"
             - name: TIER_POLICY_PATH
@@ -254,9 +260,16 @@ spec:
       containers:
         - name: ai-orchestration-batch
           image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-service:latest
+          # The image's default CMD serves on 8020; the batch group is
+          # registered on 8014, so override the port here.
+          command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8014"]
           ports:
             - containerPort: 8014
           env:
+            - name: AI_ORCH_CONSUMER_ROLE
+              value: "batch" # starts the batch Kafka consumer loop (src/core/kafka_consumer.py)
+            - name: AI_ORCH_PORT
+              value: "8014"
             - name: ORCHESTRATION_TIER
               value: "batch"
             - name: TIER_POLICY_PATH

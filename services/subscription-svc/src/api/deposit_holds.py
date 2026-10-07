@@ -96,9 +96,12 @@ async def request_capture(hold_id: uuid.UUID, body: CaptureRequest, background_t
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    # Compliance review already ran synchronously in request_capture;
+    # the flag stops the Kafka consumer from reviewing it twice (it
+    # still reviews it if the synchronous call failed).
     background_tasks.add_task(
         publish_event, "subscription.deposit", "deposit.capture_requested", tenant_id,
-        {"hold_id": str(hold_id), "amount_usd": body.amount_usd, "reason": body.reason},
+        {"hold_id": str(hold_id), "amount_usd": body.amount_usd, "reason": body.reason, "ai_evaluated_synchronously": evaluation is not None},
     )
     return hold
 

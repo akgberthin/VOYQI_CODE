@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import audit_engine, rbac_engine
 
@@ -79,11 +80,15 @@ class RoleAssignmentOut(BaseModel):
 
 
 @router.post("/role-assignments", response_model=RoleAssignmentOut, status_code=201)
-async def create_role_assignment(body: RoleAssignmentCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def create_role_assignment(body: RoleAssignmentCreate, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """Fully autonomous-eligible — assigning an already-defined role
     is a routine grant, not new access-control policy authorship."""
     assignment = await rbac_engine.create_role_assignment(db, tenant_id, body.user_id, body.role_id, body.assigned_by)
     await audit_engine.record(db, tenant_id, "human" if not body.assigned_by.startswith("ai:") else "ai", body.assigned_by, "role_assignment.created", str(body.user_id), f"role_id={body.role_id}")
+    background_tasks.add_task(
+        publish_event, "rbac.access", "role.assigned", tenant_id,
+        {"assignment_id": str(assignment.id), "user_id": str(body.user_id), "role_id": str(body.role_id), "assigned_by": body.assigned_by, "ai_initiated": body.assigned_by.startswith("ai:")},
+    )
     return assignment
 
 
@@ -110,9 +115,18 @@ class PermissionOverrideOut(BaseModel):
 
 
 @router.post("/permission-overrides", response_model=PermissionOverrideOut, status_code=201)
-async def create_permission_override(body: PermissionOverrideCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def create_permission_override(body: PermissionOverrideCreate, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     override = await rbac_engine.create_permission_override(db, tenant_id, body.user_id, body.permission_key, body.effect, body.granted_by, body.reason)
     await audit_engine.record(db, tenant_id, "human", body.granted_by, "permission_override.granted", str(body.user_id), f"permission_key={body.permission_key} effect={body.effect}")
+    background_tasks.add_task(
+        publish_event, "rbac.access", "permission.granted", tenant_id,
+        {
+            "override_id": str(override.id), "user_id": str(body.user_id), "permission_key": body.permission_key,
+            "effect": body.effect, "granted_by": body.granted_by, "reason": body.reason,
+            "is_sensitive": rbac_engine.is_sensitive_permission(body.permission_key),
+            "ai_initiated": body.granted_by.startswith(("ai:", "ai-orchestration")),
+        },
+    )
     return override
 
 
@@ -148,13 +162,17 @@ class RevokeRequest(BaseModel):
 
 
 @router.post("/permission-overrides/{override_id}/revoke", response_model=PermissionOverrideOut)
-async def revoke_permission_override(override_id: uuid.UUID, body: RevokeRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def revoke_permission_override(override_id: uuid.UUID, body: RevokeRequest, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         override = await rbac_engine.revoke_permission_override(db, tenant_id, override_id, body.revoked_by, body.reason)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     actor_type = "ai" if body.revoked_by.startswith("ai-orchestration-svc") else "human"
     await audit_engine.record(db, tenant_id, actor_type, body.revoked_by, "permission_override.revoked", str(override_id), body.reason)
+    background_tasks.add_task(
+        publish_event, "rbac.access", "permission.revoked", tenant_id,
+        {"override_id": str(override_id), "user_id": str(override.user_id), "permission_key": override.permission_key, "revoked_by": body.revoked_by, "reason": body.reason},
+    )
     return override
 
 

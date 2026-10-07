@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import audit_engine, content_engine
 
@@ -57,11 +58,15 @@ async def get_page(page_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), 
 
 
 @router.post("/{page_id}/publish", response_model=PageOut)
-async def publish_page(page_id: uuid.UUID, actor_id: str = "super-admin", tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def publish_page(page_id: uuid.UUID, background_tasks: BackgroundTasks, actor_id: str = "super-admin", tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     page = await content_engine.publish_page(db, tenant_id, page_id)
     if page is None:
         raise HTTPException(status_code=404, detail="Page not found")
     await audit_engine.record(db, tenant_id, "human", actor_id, "page_content.published", page.page_key)
+    background_tasks.add_task(
+        publish_event, "rbac.content", "content.published", tenant_id,
+        {"page_id": str(page.id), "page_key": page.page_key, "template": page.template, "published_by": actor_id},
+    )
     return page
 
 

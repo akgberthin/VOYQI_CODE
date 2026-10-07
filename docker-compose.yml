@@ -24,6 +24,9 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Without this the image writes to /tmp/kafka-logs inside the
+      # container and the volume below is never used.
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka_data:/var/lib/kafka/data
 
@@ -63,6 +66,9 @@ services:
     environment:
       AI_ORCH_DATABASE_URL: postgresql+asyncpg://ai_orch_svc:${AI_ORCH_DB_PASSWORD:-devpassword}@ai-orchestration-db:5432/ai_orchestration
       AI_ORCH_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # One container locally, so it runs both the realtime and batch
+      # consumer tiers. Kubernetes runs each tier as its own Deployment.
+      AI_ORCH_CONSUMER_ROLE: all
       AI_ORCH_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_ORCH_ANTHROPIC_MODEL: claude-sonnet-5
       AI_ORCH_RBAC_SVC_BASE_URL: http://rbac-svc:8011

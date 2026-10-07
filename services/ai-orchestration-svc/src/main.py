@@ -26,6 +26,9 @@ from src.core.database import AsyncSessionLocal, init_models
 
 logger = logging.getLogger("ai-orchestration-svc.main")
 
+CONSUMER_RETRY_INITIAL_SECONDS = 2
+CONSUMER_RETRY_MAX_SECONDS = 30
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,22 +36,33 @@ async def lifespan(app: FastAPI):
 
     settings = get_settings()
     consumer_task: asyncio.Task | None = None
-    if settings.consumer_role in ("realtime", "batch"):
+    if settings.consumer_role in ("realtime", "batch", "all"):
         from src.core.kafka_consumer import (
+            run_all_consumer_loops,
             run_batch_consumer_loop,
             run_realtime_consumer_loop,
         )
 
-        loop_fn = run_realtime_consumer_loop if settings.consumer_role == "realtime" else run_batch_consumer_loop
+        loop_fn = {
+            "realtime": run_realtime_consumer_loop,
+            "batch": run_batch_consumer_loop,
+            "all": run_all_consumer_loops,
+        }[settings.consumer_role]
 
         async def _guarded_consumer():
-            try:
-                await loop_fn(AsyncSessionLocal)
-            except Exception:
-                # A dead consumer should never take the REST API down
-                # with it — log loudly and let the process keep serving
-                # HTTP while ops investigates the Kafka connection.
-                logger.exception("%s consumer loop exited unexpectedly", settings.consumer_role)
+            # A dead consumer should never take the REST API down with
+            # it — log loudly and keep serving HTTP. It also must not stay
+            # dead: Kafka is routinely not ready yet when this pod starts,
+            # or restarts underneath it, so reconnect with capped backoff.
+            delay = CONSUMER_RETRY_INITIAL_SECONDS
+            while True:
+                try:
+                    await loop_fn(AsyncSessionLocal)
+                    return
+                except Exception:
+                    logger.exception("%s consumer loop exited unexpectedly; retrying in %ss", settings.consumer_role, delay)
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, CONSUMER_RETRY_MAX_SECONDS)
 
         consumer_task = asyncio.create_task(_guarded_consumer())
 

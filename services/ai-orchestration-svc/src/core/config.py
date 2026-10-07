@@ -56,8 +56,9 @@ class Settings(BaseSettings):
     # use — no Kafka connection is attempted at all. "realtime" and
     # "batch" each start exactly one of the two tiered consumer loops
     # from src/core/kafka_consumer.py as a background task alongside the
-    # REST API. Never guess this from context — it is always an explicit
-    # operator choice per deployment.
+    # REST API. "all" runs both tiers in one process (local
+    # docker-compose only). Never guess this from context — it is always
+    # an explicit operator choice per deployment.
     consumer_role: str = "none"
 
     # Header the AI uses to identify itself to execution services so

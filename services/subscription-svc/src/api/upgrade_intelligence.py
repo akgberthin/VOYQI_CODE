@@ -36,9 +36,13 @@ async def record_above_class_request(body: AboveClassRequestCreate, background_t
     _record, evaluation = await upgrade_intelligence_engine.record_above_class_request(
         db, tenant_id, body.member_profile_id, body.subscription_id, body.subscribed_class, body.requested_class
     )
+    # The agent already evaluated this synchronously above; the flag
+    # tells the Kafka consumer not to evaluate it a second time. If the
+    # synchronous call failed (evaluation is None), the consumer picks
+    # it up instead.
     background_tasks.add_task(
         publish_event, "subscription.upgrade", "subscription.above_class_request_recorded", tenant_id,
-        {"member_profile_id": str(body.member_profile_id), "subscription_id": str(body.subscription_id), "subscribed_class": body.subscribed_class.value, "requested_class": body.requested_class.value},
+        {"member_profile_id": str(body.member_profile_id), "subscription_id": str(body.subscription_id), "subscribed_class": body.subscribed_class.value, "requested_class": body.requested_class.value, "ai_evaluated_synchronously": evaluation is not None},
     )
     return {"status": "recorded", "upgrade_evaluation": evaluation}
 

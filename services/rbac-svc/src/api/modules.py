@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import audit_engine, module_engine
 
@@ -29,7 +30,7 @@ class ModuleGrantOut(BaseModel):
 
 
 @router.post("", response_model=ModuleGrantOut, status_code=201)
-async def grant_module(body: ModuleGrantCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def grant_module(body: ModuleGrantCreate, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """A sub-section (parent_module_key set) can only be granted while
     its parent module is enabled — enforced in the engine, surfaced
     here as a 409, not silently allowed."""
@@ -38,6 +39,10 @@ async def grant_module(body: ModuleGrantCreate, tenant_id: str = Depends(get_ten
     except module_engine.ParentModuleDisabledError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     await audit_engine.record(db, tenant_id, "human", body.granted_by, "module_grant.enabled", body.module_key, f"parent={body.parent_module_key}" if body.parent_module_key else "")
+    background_tasks.add_task(
+        publish_event, "rbac.access", "panel.granted", tenant_id,
+        {"module_key": body.module_key, "parent_module_key": body.parent_module_key, "granted_by": body.granted_by, "ai_initiated": body.granted_by.startswith(("ai:", "ai-orchestration"))},
+    )
     return grant
 
 

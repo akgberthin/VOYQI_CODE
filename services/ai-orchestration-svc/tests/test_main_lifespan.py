@@ -66,6 +66,47 @@ async def test_consumer_role_batch_starts_the_batch_loop_not_realtime(monkeypatc
         assert started == ["batch"]
 
 
+async def test_consumer_role_all_starts_the_combined_loop(monkeypatch):
+    """Local docker-compose runs one ai-orchestration container, so it
+    needs both tiers in one process."""
+    monkeypatch.setenv("AI_ORCH_CONSUMER_ROLE", "all")
+
+    started = []
+
+    async def _fake_all_loop(session_factory):
+        started.append("all")
+        await asyncio.sleep(3600)
+
+    monkeypatch.setattr("src.core.kafka_consumer.run_all_consumer_loops", _fake_all_loop)
+
+    async with lifespan(app):
+        await asyncio.sleep(0)
+        assert started == ["all"]
+
+
+async def test_a_failed_consumer_loop_is_retried(monkeypatch):
+    """Kafka is often not reachable yet when the pod starts — the
+    consumer must reconnect rather than stay dead for the life of the
+    process."""
+    monkeypatch.setenv("AI_ORCH_CONSUMER_ROLE", "realtime")
+    monkeypatch.setattr("src.main.CONSUMER_RETRY_INITIAL_SECONDS", 0)
+
+    attempts = []
+
+    async def _fails_twice_then_runs(session_factory):
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise ConnectionError("Kafka broker unreachable")
+        await asyncio.sleep(3600)
+
+    monkeypatch.setattr("src.core.kafka_consumer.run_realtime_consumer_loop", _fails_twice_then_runs)
+
+    async with lifespan(app):
+        for _ in range(20):
+            await asyncio.sleep(0)
+        assert len(attempts) == 3
+
+
 async def test_a_crashing_consumer_loop_never_propagates_out_of_lifespan(monkeypatch):
     """The REST API must keep serving even if the consumer loop dies —
     a dead Kafka connection is an ops problem, not a reason to take the

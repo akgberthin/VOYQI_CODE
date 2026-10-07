@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import reservation_engine
 
@@ -35,10 +36,17 @@ class ReservationOut(BaseModel):
 
 
 @router.post("", response_model=ReservationOut, status_code=201)
-async def create_reservation(body: ReservationCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def create_reservation(body: ReservationCreate, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """Fully autonomous: records the real demand signal (a
-    BookingEvent) in the same call the reservation is created in."""
-    return await reservation_engine.create_reservation(db, tenant_id, body.hub_id, body.rental_class, body.customer_name, body.start_date, body.end_date, body.daily_rate_usd)
+    BookingEvent) in the same call the reservation is created in.
+    Publishes rental.booked, which the Pricing Intelligence Agent is
+    routed on to re-evaluate the hub/class rate."""
+    reservation = await reservation_engine.create_reservation(db, tenant_id, body.hub_id, body.rental_class, body.customer_name, body.start_date, body.end_date, body.daily_rate_usd)
+    background_tasks.add_task(
+        publish_event, "rental.reservations", "rental.booked", tenant_id,
+        {"reservation_id": str(reservation.id), "hub_id": body.hub_id, "rental_class": body.rental_class, "daily_rate_usd": body.daily_rate_usd},
+    )
+    return reservation
 
 
 @router.get("", response_model=list[ReservationOut])

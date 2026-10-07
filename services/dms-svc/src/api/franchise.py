@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import franchise_engine
 
@@ -43,7 +44,16 @@ async def list_franchise_records(tenant_id: str = Depends(get_tenant_id), db: As
 
 
 @router.post("/evaluate-remediation", response_model=list[FranchiseOut])
-async def evaluate_remediation(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def evaluate_remediation(background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """Fully autonomous: opens a remediation task the instant a
     rooftop's status is non-compliant — no one has to spot it first."""
-    return await franchise_engine.evaluate_and_remediate(db, tenant_id)
+    opened = await franchise_engine.evaluate_and_remediate(db, tenant_id)
+    # One event per rooftop newly crossing into non-compliance — the
+    # engine's remediation_opened guard keeps re-evaluations from
+    # re-firing it.
+    for record in opened:
+        background_tasks.add_task(
+            publish_event, "dms.franchise", "franchise.facility_non_compliant", tenant_id,
+            {"franchise_record_id": str(record.id), "rooftop_id": str(record.rooftop_id), "score": record.score, "notes": record.notes},
+        )
+    return opened

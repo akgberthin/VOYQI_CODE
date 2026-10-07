@@ -46,6 +46,14 @@ ROUTE_TABLE: list[RouteConfig] = [
     RouteConfig(prefix="/api/v1/hrm", target_base_url="http://hrm-svc:8023"),
     RouteConfig(prefix="/api/v1/payment", target_base_url="http://payment-svc:8026"),
     RouteConfig(prefix="/api/v1/ip", target_base_url="http://ip-asset-svc:8028"),
+    RouteConfig(prefix="/api/v1/sales", target_base_url="http://sales-service:8009"),
+    RouteConfig(prefix="/api/v1/insurance-risk", target_base_url="http://insurance-risk-svc:8029"),
+    RouteConfig(prefix="/api/v1/security-compliance", target_base_url="http://security-compliance-svc:8031"),
+    RouteConfig(prefix="/api/v1/executive", target_base_url="http://executive-svc:8032"),
+    RouteConfig(prefix="/api/v1/management", target_base_url="http://management-svc:8033"),
+    RouteConfig(prefix="/api/v1/real-estate", target_base_url="http://real-estate-svc:8034"),
+    RouteConfig(prefix="/api/v1/capital-finance", target_base_url="http://capital-finance-svc:8035"),
+    RouteConfig(prefix="/api/v1/originations", target_base_url="http://originations-svc:8036"),
 ]
 
 

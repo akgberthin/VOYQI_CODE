@@ -24,6 +24,12 @@ from src.models import (
     RoleAssignment,
 )
 
+SENSITIVE_PERMISSION_PREFIXES = ("rbac.", "abac.", "billing.refund", "compliance.")
+
+
+def is_sensitive_permission(permission_key: str) -> bool:
+    return permission_key.startswith(SENSITIVE_PERMISSION_PREFIXES)
+
 
 async def create_role(db: AsyncSession, tenant_id: str, key: str, name: str, permission_keys: list[str], is_system_role: bool = False, wildcard_permissions: list[str] | None = None) -> Role:
     role = Role(tenant_id=tenant_id, key=key, name=name, permission_keys=permission_keys, is_system_role=is_system_role, wildcard_permissions=wildcard_permissions or [])
@@ -98,7 +104,6 @@ async def get_user_rbac_context(db: AsyncSession, tenant_id: str, user_id: uuid.
     """The read-only context the Compliance/Audit Agent builds before
     deciding anything — roles held plus active overrides, each
     override tagged with whether it touches a sensitive permission."""
-    SENSITIVE_PERMISSION_PREFIXES = ("rbac.", "abac.", "billing.refund", "compliance.")
     assignments = await get_user_role_assignments(db, tenant_id, user_id)
     role_ids = [a.role_id for a in assignments]
     roles = []
@@ -114,7 +119,7 @@ async def get_user_rbac_context(db: AsyncSession, tenant_id: str, user_id: uuid.
             {
                 "id": str(o.id), "permission_key": o.permission_key, "effect": o.effect.value,
                 "granted_by": o.granted_by, "reason": o.reason,
-                "is_sensitive": o.permission_key.startswith(SENSITIVE_PERMISSION_PREFIXES),
+                "is_sensitive": is_sensitive_permission(o.permission_key),
             }
             for o in overrides
         ],

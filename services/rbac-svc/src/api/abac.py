@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import abac_engine, audit_engine
 
@@ -63,7 +64,7 @@ class ApplyRequest(BaseModel):
 
 
 @router.post("/{policy_id}/apply", response_model=PolicyOut)
-async def apply_policy(policy_id: uuid.UUID, body: ApplyRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def apply_policy(policy_id: uuid.UUID, body: ApplyRequest, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """The hard Tier-3 gate — structurally refuses without a real
     accountable_role and without a prior simulation. No threshold, no
     bypass, no AI code path anywhere in this call."""
@@ -76,6 +77,14 @@ async def apply_policy(policy_id: uuid.UUID, body: ApplyRequest, tenant_id: str 
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     await audit_engine.record(db, tenant_id, "human", body.applied_by, "abac_policy.applied", str(policy_id), f"accountable_role={body.accountable_role}")
+    background_tasks.add_task(
+        publish_event, "rbac.access", "abac_policy.activated", tenant_id,
+        {
+            "policy_id": str(policy_id), "source_role_key": policy.source_role_key, "target_bundle_key": policy.target_bundle_key,
+            "accountable_role": body.accountable_role, "applied_by": body.applied_by,
+            "had_conflicts_forced": bool(policy.conflicts_detected),
+        },
+    )
     return policy
 
 

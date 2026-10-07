@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import lending_engine
 
@@ -75,16 +76,22 @@ class BureauPullRequest(BaseModel):
 
 
 @router.post("/credit-applications/{app_id}/pull-bureau", response_model=CreditApplicationOut)
-async def pull_bureau(app_id: uuid.UUID, body: BureauPullRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def pull_bureau(app_id: uuid.UUID, body: BureauPullRequest, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """OFAC is a structural block, checked here before any routing
     logic runs at all: an ofac_match=True never reaches
     auto_route_to_lenders — there is no override path, anywhere in
     this call graph. A clean pull chains straight into fully
     autonomous routing, decisioning, and winner selection."""
     try:
-        return await lending_engine.pull_bureau(db, tenant_id, app_id, body.bureau, body.fico, body.ofac_match)
+        app = await lending_engine.pull_bureau(db, tenant_id, app_id, body.bureau, body.fico, body.ofac_match)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if body.ofac_match:
+        background_tasks.add_task(
+            publish_event, "dms.lending", "credit.ofac_match_detected", tenant_id,
+            {"credit_application_id": str(app_id), "bureau": body.bureau},
+        )
+    return app
 
 
 class SubmissionOut(BaseModel):
