@@ -10,6 +10,7 @@ from src.api import (
     calendar,
     campaigns,
     content,
+    lead_captures,
     library,
     media_generation,
     notes,
@@ -39,6 +40,7 @@ app.add_middleware(
 )
 
 app.include_router(campaigns.router)
+app.include_router(lead_captures.router)
 app.include_router(content.router)
 app.include_router(library.router)
 app.include_router(notes.router)

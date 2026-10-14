@@ -77,3 +77,27 @@ async def test_reject_draft(client):
     }, headers=TENANT_HEADERS)).json()
     rejected = (await client.post(f"/api/v1/marketing/content/{draft['id']}/reject", json={"reviewed_by": "editor-1"}, headers=TENANT_HEADERS)).json()
     assert rejected["status"] == "rejected"
+
+
+async def test_human_override_of_held_draft_publishes_for_compliance(client, monkeypatch):
+    """content_draft.approved_with_violations routes to the
+    Compliance/Audit Agent, which scores on violation_count."""
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        events.append((event_type, payload))
+
+    monkeypatch.setattr("src.api.content.publish_event", _spy)
+    campaign = await _create_campaign(client)
+    held = (await client.post("/api/v1/marketing/content", json={
+        "campaign_id": campaign["id"], "channel": "email", "subject_line": "Guaranteed savings", "body_text": "This is a guaranteed deal, risk-free for you.",
+    }, headers=TENANT_HEADERS)).json()
+
+    await client.post(f"/api/v1/marketing/content/{held['id']}/approve", json={"reviewed_by": "mkt-lead"}, headers=TENANT_HEADERS)
+    await client.post(f"/api/v1/marketing/content/{held['id']}/approve", json={"reviewed_by": "mkt-lead"}, headers=TENANT_HEADERS)
+
+    [(event_type, payload)] = events
+    assert event_type == "content_draft.approved_with_violations"
+    assert payload["draft_id"] == held["id"]
+    assert payload["violation_count"] == 2
+    assert payload["reviewed_by"] == "mkt-lead"

@@ -26,8 +26,8 @@ def upgrade() -> None:
         sa.Column("source_deal_id", sa.String(64), nullable=True),
         sa.Column("total_amount_usd", sa.Float(), nullable=False),
         sa.Column("status", order_status_enum, nullable=False, server_default="draft"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_sales_orders_tenant_id", "sales_orders", ["tenant_id"])
     op.create_index("ix_sales_orders_order_number", "sales_orders", ["order_number"])
@@ -40,7 +40,7 @@ def upgrade() -> None:
         sa.Column("from_status", order_status_enum, nullable=False),
         sa.Column("to_status", order_status_enum, nullable=False),
         sa.Column("note", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_order_status_events_tenant_id", "order_status_events", ["tenant_id"])
     op.create_index("ix_order_status_events_order_id", "order_status_events", ["order_id"])

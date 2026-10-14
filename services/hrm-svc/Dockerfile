@@ -12,4 +12,5 @@ COPY alembic.ini .
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8023
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8023"]
+# Schema is owned by Alembic: migrate, then serve.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn src.main:app --host 0.0.0.0 --port 8023"]

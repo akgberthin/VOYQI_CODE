@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.Column("insured_name", sa.String(128), nullable=False),
         sa.Column("coverage_amount_usd", sa.Float(), nullable=False),
         sa.Column("status", policy_status_enum, nullable=False, server_default="active"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_risk_policies_tenant_id", "risk_policies", ["tenant_id"])
     op.create_index("ix_risk_policies_policy_number", "risk_policies", ["policy_number"])
@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column("risk_band", risk_band_enum, nullable=False),
         sa.Column("drivers", sa.JSON(), nullable=False),
         sa.Column("reasoning", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_risk_assessments_tenant_id", "risk_assessments", ["tenant_id"])
     op.create_index("ix_risk_assessments_policy_id", "risk_assessments", ["policy_id"])

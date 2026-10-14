@@ -92,6 +92,26 @@ async def create_role_assignment(body: RoleAssignmentCreate, background_tasks: B
     return assignment
 
 
+class RoleAssignmentRevoke(BaseModel):
+    revoked_by: str
+    reason: str = ""
+
+
+@router.post("/role-assignments/{assignment_id}/revoke", response_model=RoleAssignmentOut)
+async def revoke_role_assignment(assignment_id: uuid.UUID, body: RoleAssignmentRevoke, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    try:
+        assignment = await rbac_engine.revoke_role_assignment(db, tenant_id, assignment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    actor_type = "ai" if body.revoked_by.startswith(("ai:", "ai-orchestration")) else "human"
+    await audit_engine.record(db, tenant_id, actor_type, body.revoked_by, "role_assignment.revoked", str(assignment.user_id), f"role_id={assignment.role_id} {body.reason}".strip())
+    background_tasks.add_task(
+        publish_event, "rbac.access", "role.revoked", tenant_id,
+        {"assignment_id": str(assignment_id), "user_id": str(assignment.user_id), "role_id": str(assignment.role_id), "revoked_by": body.revoked_by, "reason": body.reason},
+    )
+    return assignment
+
+
 class PermissionOverrideCreate(BaseModel):
     user_id: uuid.UUID
     permission_key: str

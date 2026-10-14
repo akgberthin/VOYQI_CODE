@@ -33,16 +33,24 @@ ROUTE_TABLE: list[RouteConfig] = [
     RouteConfig(prefix="/api/v1/fleet", target_base_url="http://fleet-svc:8004"),
     RouteConfig(prefix="/api/v1/rental", target_base_url="http://rental-svc:8005"),
     RouteConfig(prefix="/api/v1/hub", target_base_url="http://hub-svc:8006"),
-    RouteConfig(prefix="/api/v1/marketing", target_base_url="http://marketing-svc:8007"),
+    # Landing-page form submissions come from anonymous visitors.
+    RouteConfig(
+        prefix="/api/v1/marketing",
+        target_base_url="http://marketing-svc:8007",
+        public_paths=frozenset({"/api/v1/marketing/public/lead-captures"}),
+    ),
     RouteConfig(prefix="/api/v1/dms", target_base_url="http://dms-svc:8008"),
     RouteConfig(prefix="/api/v1/pricing", target_base_url="http://pricing-svc:8010"),
     RouteConfig(prefix="/api/v1/rbac", target_base_url="http://rbac-svc:8011"),
-    RouteConfig(prefix="/api/v1/identity", target_base_url="http://identity-svc:8014"),
-    RouteConfig(prefix="/api/v1/platform-config", target_base_url="http://platform-config-svc:8015"),
-    RouteConfig(prefix="/api/v1/cms", target_base_url="http://cms-svc:8016"),
+    # Privileged-access sessions (break-glass, impersonation) live in
+    # security-compliance-svc; page content and platform settings are
+    # served by rbac-svc under /api/v1/rbac/... — no separate identity,
+    # cms or platform-config service exists.
+    RouteConfig(prefix="/api/v1/identity", target_base_url="http://security-compliance-svc:8031"),
     RouteConfig(prefix="/api/v1/ai", target_base_url="http://ai-orchestration-svc:8020"),
     RouteConfig(prefix="/api/v1/crm", target_base_url="http://crm-svc:8021"),
-    RouteConfig(prefix="/api/v1/org", target_base_url="http://org-svc:8022"),
+    # ORG-001..003 origination pipeline lives in originations-svc.
+    RouteConfig(prefix="/api/v1/org", target_base_url="http://originations-svc:8036"),
     RouteConfig(prefix="/api/v1/hrm", target_base_url="http://hrm-svc:8023"),
     RouteConfig(prefix="/api/v1/payment", target_base_url="http://payment-svc:8026"),
     RouteConfig(prefix="/api/v1/ip", target_base_url="http://ip-asset-svc:8028"),

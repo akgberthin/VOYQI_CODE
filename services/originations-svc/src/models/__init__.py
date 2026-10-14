@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import GUID, Base
@@ -89,4 +89,103 @@ class CreditDecision(Base):
     decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     decision_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------------------------------------------------------------------------
+# ORG-001..003 — the unified origination pipeline for subscription
+# enrollments and rental-to-subscription conversions (retail finance has
+# its own credit decisioning in dms-svc). Served under /api/v1/org, the
+# paths ai-orchestration-svc's org_tools calls.
+# ---------------------------------------------------------------------------
+
+
+class OriginationType(str, enum.Enum):
+    SUBSCRIPTION_ENROLLMENT = "subscription_enrollment"
+    RENTAL_CONVERSION = "rental_conversion"
+
+
+class OriginationCaseStatus(str, enum.Enum):
+    OPEN = "open"
+    PREQUALIFIED = "prequalified"
+    NEEDS_REVIEW = "needs_review"
+    INCOMPLETE = "incomplete"
+    IN_DECISIONING = "in_decisioning"
+    APPROVED = "approved"
+    DECLINED = "declined"
+
+
+class OrgDecisionStatus(str, enum.Enum):
+    AWAITING_SCORE = "awaiting_score"
+    SCORED = "scored"
+    APPROVED = "approved"
+    DECLINED = "declined"
+
+
+class RecommendedOutcome(str, enum.Enum):
+    APPROVE = "approve"
+    DECLINE = "decline"
+    MANUAL_REVIEW = "manual_review"
+
+
+class OriginationCase(Base):
+    __tablename__ = "origination_cases"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    origination_type: Mapped[OriginationType] = mapped_column(Enum(OriginationType), nullable=False, index=True)
+    full_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Linked CRM lead / subscription / reservation reference — the
+    # Revenue Agent looks up the lead score through it.
+    external_ref_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    amount_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[OriginationCaseStatus] = mapped_column(
+        Enum(OriginationCaseStatus), nullable=False, default=OriginationCaseStatus.OPEN
+    )
+    prequal_verdict: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    prequal_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prequal_next_step: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OriginationDecision(Base):
+    """The agent applies a risk score (tier 1); the fixed thresholds in
+    config turn it into a recommended outcome; only a human with a named
+    accountable_role finalizes approve/decline (tier 3, credit.decision)."""
+
+    __tablename__ = "origination_decisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    case_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("origination_cases.id"), nullable=False, index=True)
+    status: Mapped[OrgDecisionStatus] = mapped_column(
+        Enum(OrgDecisionStatus), nullable=False, default=OrgDecisionStatus.AWAITING_SCORE
+    )
+    risk_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    score_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recommended_outcome: Mapped[RecommendedOutcome | None] = mapped_column(Enum(RecommendedOutcome), nullable=True)
+    accountable_role: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decision_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OrgFundingSource(Base):
+    """A lender/program in the funding panel the Revenue Agent matches
+    approved cases against (ORG-003). Distinct from capital-finance-svc's
+    FundingSource, which is the holding company's own debt/equity."""
+
+    __tablename__ = "org_funding_sources"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    applicable_origination_type: Mapped[OriginationType] = mapped_column(Enum(OriginationType), nullable=False, index=True)
+    min_risk_score: Mapped[float] = mapped_column(Float, nullable=False)
+    max_amount_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    reserve_participation_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

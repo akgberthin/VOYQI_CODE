@@ -1,11 +1,13 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
+from src.models import ContentStatus
 from src.services import content_engine
 
 router = APIRouter(prefix="/api/v1/marketing/content", tags=["content"])
@@ -59,12 +61,20 @@ class ReviewRequest(BaseModel):
 
 
 @router.post("/{draft_id}/approve", response_model=ContentDraftOut)
-async def human_approve_held_draft(draft_id: uuid.UUID, body: ReviewRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def human_approve_held_draft(draft_id: uuid.UUID, body: ReviewRequest, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """The one human action this service actually needs: clearing a
-    draft the guardrail held — not a default review step."""
+    draft the guardrail held — not a default review step. Overriding
+    the guardrail is published for the Compliance/Audit Agent."""
+    existing = await content_engine.get_content_draft(db, tenant_id, draft_id)
+    was_held = existing is not None and existing.status == ContentStatus.HELD_FOR_REVIEW
     draft = await content_engine.human_approve_held_draft(db, tenant_id, draft_id, body.reviewed_by)
     if draft is None:
         raise HTTPException(status_code=404, detail="Content draft not found")
+    if was_held and draft.status == ContentStatus.APPROVED:
+        background_tasks.add_task(
+            publish_event, "marketing.content", "content_draft.approved_with_violations", tenant_id,
+            {"draft_id": str(draft.id), "violation_count": len(draft.guardrail_findings or []), "findings": list(draft.guardrail_findings or []), "reviewed_by": body.reviewed_by},
+        )
     return draft
 
 

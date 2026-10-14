@@ -1,13 +1,11 @@
-# Trimmed for local setup: only the services that actually have code.
-# The original 14-service compose file referenced identity-svc,
-# platform-config-svc, cms-svc, crm-svc and org-svc with no source
-# anywhere in the provided zips — they're left out rather than faked.
-# ai-orchestration-svc's env vars still point at their URLs so wiring
-# them back in later is a one-line uncomment, not a rewrite.
+# VOYQI Mobility OS — local environment.
+# One Postgres per service (database-per-service), one shared Kafka.
+# Every service waits for its own database and Kafka to be healthy before
+# starting, and restarts on crash. Ports follow docs/PORT_REGISTRY.md
+# where they don't collide; see README for the local port map.
 #
-# executive-svc was newly built from the 26-service vision
-# (docs/SERVICE_INVENTORY.md) — Portfolio Intelligence, tier-1
-# reporting/rollups only, no AI agent, no frontend.
+#   cp .env.example .env && docker compose up -d --build
+#   Gateway: http://localhost:8000/health
 
 services:
   kafka:
@@ -29,6 +27,12 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 20s
 
   rbac-db:
     image: postgres:16
@@ -38,17 +42,25 @@ services:
       POSTGRES_PASSWORD: ${RBAC_DB_PASSWORD:-devpassword}
     volumes:
       - rbac_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   rbac-svc:
     build: ./services/rbac-svc
+    restart: unless-stopped
     ports:
       - "8011:8011"
     environment:
       RBAC_DATABASE_URL: postgresql+asyncpg://rbac_svc:${RBAC_DB_PASSWORD:-devpassword}@rbac-db:5432/rbac
       RBAC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - rbac-db
-      - kafka
+      rbac-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   ai-orchestration-db:
     image: postgres:16
@@ -58,9 +70,15 @@ services:
       POSTGRES_PASSWORD: ${AI_ORCH_DB_PASSWORD:-devpassword}
     volumes:
       - ai_orchestration_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   ai-orchestration-svc:
     build: ./services/ai-orchestration-svc
+    restart: unless-stopped
     ports:
       - "8020:8020"
     environment:
@@ -79,22 +97,32 @@ services:
       AI_ORCH_DMS_SVC_BASE_URL: http://dms-svc:8008
       AI_ORCH_HUB_SVC_BASE_URL: http://hub-svc:8006
       AI_ORCH_HRM_SVC_BASE_URL: http://hrm-svc:8023
-      # Not started in this handoff — left commented so wiring them back in
-      # later is a one-line uncomment, not a rewrite:
-      # AI_ORCH_IDENTITY_SVC_BASE_URL: http://identity-svc:8014
-      # AI_ORCH_CRM_SVC_BASE_URL: http://crm-svc:8021
-      # AI_ORCH_ORG_SVC_BASE_URL: http://org-svc:8022
+      # Break-glass/impersonation sessions live in security-compliance-svc;
+      # the ORG origination pipeline lives in originations-svc.
+      AI_ORCH_IDENTITY_SVC_BASE_URL: http://security-compliance-svc:8031
+      AI_ORCH_CRM_SVC_BASE_URL: http://crm-svc:8021
+      AI_ORCH_ORG_SVC_BASE_URL: http://originations-svc:8036
     depends_on:
-      - ai-orchestration-db
-      - kafka
-      - rbac-svc
-      - marketing-svc
-      - fleet-svc
-      - subscription-svc
-      - rental-svc
-      - dms-svc
-      - hub-svc
-      - hrm-svc
+      ai-orchestration-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rbac-svc:
+        condition: service_started
+      marketing-svc:
+        condition: service_started
+      fleet-svc:
+        condition: service_started
+      subscription-svc:
+        condition: service_started
+      rental-svc:
+        condition: service_started
+      dms-svc:
+        condition: service_started
+      hub-svc:
+        condition: service_started
+      hrm-svc:
+        condition: service_started
 
   marketing-db:
     image: postgres:16
@@ -104,17 +132,25 @@ services:
       POSTGRES_PASSWORD: ${MARKETING_DB_PASSWORD:-devpassword}
     volumes:
       - marketing_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   marketing-svc:
     build: ./services/marketing-svc
+    restart: unless-stopped
     ports:
       - "8007:8007"
     environment:
       MARKETING_DATABASE_URL: postgresql+asyncpg://marketing_svc:${MARKETING_DB_PASSWORD:-devpassword}@marketing-db:5432/marketing
       MARKETING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - marketing-db
-      - kafka
+      marketing-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   fleet-db:
     image: postgres:16
@@ -124,9 +160,15 @@ services:
       POSTGRES_PASSWORD: ${FLEET_DB_PASSWORD:-devpassword}
     volumes:
       - fleet_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   fleet-svc:
     build: ./services/fleet-svc
+    restart: unless-stopped
     ports:
       - "8004:8004"
     environment:
@@ -134,8 +176,10 @@ services:
       FLEET_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       FLEET_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
     depends_on:
-      - fleet-db
-      - kafka
+      fleet-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   subscription-db:
     image: postgres:16
@@ -145,9 +189,15 @@ services:
       POSTGRES_PASSWORD: ${SUBSCRIPTION_DB_PASSWORD:-devpassword}
     volumes:
       - subscription_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   subscription-svc:
     build: ./services/subscription-svc
+    restart: unless-stopped
     ports:
       - "8003:8003"
     environment:
@@ -156,9 +206,12 @@ services:
       SUBSCRIPTION_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
       SUBSCRIPTION_FLEET_SVC_BASE_URL: http://fleet-svc:8004
     depends_on:
-      - subscription-db
-      - kafka
-      - fleet-svc
+      subscription-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      fleet-svc:
+        condition: service_started
 
   rental-db:
     image: postgres:16
@@ -168,9 +221,15 @@ services:
       POSTGRES_PASSWORD: ${RENTAL_DB_PASSWORD:-devpassword}
     volumes:
       - rental_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   rental-svc:
     build: ./services/rental-svc
+    restart: unless-stopped
     ports:
       - "8005:8005"
     environment:
@@ -179,9 +238,12 @@ services:
       RENTAL_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
       RENTAL_FLEET_SVC_BASE_URL: http://fleet-svc:8004
     depends_on:
-      - rental-db
-      - kafka
-      - fleet-svc
+      rental-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      fleet-svc:
+        condition: service_started
 
   dms-db:
     image: postgres:16
@@ -191,9 +253,15 @@ services:
       POSTGRES_PASSWORD: ${DMS_DB_PASSWORD:-devpassword}
     volumes:
       - dms_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   dms-svc:
     build: ./services/dms-svc
+    restart: unless-stopped
     ports:
       - "8008:8008"
     environment:
@@ -201,8 +269,10 @@ services:
       DMS_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       DMS_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
     depends_on:
-      - dms-db
-      - kafka
+      dms-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   hub-db:
     image: postgres:16
@@ -212,9 +282,15 @@ services:
       POSTGRES_PASSWORD: ${HUB_DB_PASSWORD:-devpassword}
     volumes:
       - hub_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   hub-svc:
     build: ./services/hub-svc
+    restart: unless-stopped
     ports:
       - "8006:8006"
     environment:
@@ -222,8 +298,10 @@ services:
       HUB_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       HUB_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
     depends_on:
-      - hub-db
-      - kafka
+      hub-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   hrm-db:
     image: postgres:16
@@ -233,9 +311,15 @@ services:
       POSTGRES_PASSWORD: ${HRM_DB_PASSWORD:-devpassword}
     volumes:
       - hrm_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   hrm-svc:
     build: ./services/hrm-svc
+    restart: unless-stopped
     ports:
       - "8023:8023"
     environment:
@@ -243,8 +327,10 @@ services:
       HRM_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       HRM_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
     depends_on:
-      - hrm-db
-      - kafka
+      hrm-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   executive-db:
     image: postgres:16
@@ -254,9 +340,15 @@ services:
       POSTGRES_PASSWORD: ${EXECUTIVE_DB_PASSWORD:-devpassword}
     volumes:
       - executive_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   executive-svc:
     build: ./services/executive-svc
+    restart: unless-stopped
     ports:
       # 8025 collides with the client-delivered user-svc's default port —
       # moved here rather than edit code that isn't ours.
@@ -265,8 +357,10 @@ services:
       EXEC_DATABASE_URL: postgresql+asyncpg://executive_svc:${EXECUTIVE_DB_PASSWORD:-devpassword}@executive-db:5432/executive
       EXEC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - executive-db
-      - kafka
+      executive-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   # --- Newly delivered by the client (2026-09-29), tested and wired in ---
 
@@ -278,9 +372,15 @@ services:
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-devpassword}
     volumes:
       - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   auth-svc:
     build: ./services/auth-svc
+    restart: unless-stopped
     ports:
       - "8024:8024"
     environment:
@@ -290,17 +390,21 @@ services:
       # must match exactly for the gateway to verify tokens statelessly.
       AUTH_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
     depends_on:
-      - auth-db
-      - kafka
+      auth-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   api-gateway-svc:
     build: ./services/api-gateway-svc
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       GATEWAY_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
     depends_on:
-      - auth-svc
+      auth-svc:
+        condition: service_started
 
   user-db:
     image: postgres:16
@@ -310,9 +414,15 @@ services:
       POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-devpassword}
     volumes:
       - user_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   user-svc:
     build: ./services/user-svc
+    restart: unless-stopped
     ports:
       - "8025:8025"
     environment:
@@ -320,9 +430,12 @@ services:
       USER_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       USER_AUTH_SVC_BASE_URL: http://auth-svc:8024
     depends_on:
-      - user-db
-      - kafka
-      - auth-svc
+      user-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth-svc:
+        condition: service_started
 
   pricing-db:
     image: postgres:16
@@ -332,17 +445,25 @@ services:
       POSTGRES_PASSWORD: ${PRICING_DB_PASSWORD:-devpassword}
     volumes:
       - pricing_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   pricing-svc:
     build: ./services/pricing-svc
+    restart: unless-stopped
     ports:
       - "8010:8010"
     environment:
       PRICING_DATABASE_URL: postgresql+asyncpg://pricing_svc:${PRICING_DB_PASSWORD:-devpassword}@pricing-db:5432/pricing
       PRICING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - pricing-db
-      - kafka
+      pricing-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   notification-db:
     image: postgres:16
@@ -352,9 +473,15 @@ services:
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-devpassword}
     volumes:
       - notification_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   notification-svc:
     build: ./services/notification-svc
+    restart: unless-stopped
     ports:
       - "8027:8027"
     environment:
@@ -364,8 +491,10 @@ services:
       # service falls back to its console provider (logs instead of
       # sending) rather than faking delivery.
     depends_on:
-      - notification-db
-      - kafka
+      notification-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   payment-db:
     image: postgres:16
@@ -375,9 +504,15 @@ services:
       POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-devpassword}
     volumes:
       - payment_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   payment-svc:
     build: ./services/payment-svc
+    restart: unless-stopped
     ports:
       - "8026:8026"
     environment:
@@ -387,9 +522,12 @@ services:
       # No Stripe credentials in this environment — falls back to the
       # sandbox provider, clearly marked on every Charge record.
     depends_on:
-      - payment-db
-      - kafka
-      - notification-svc
+      payment-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      notification-svc:
+        condition: service_started
 
   crm-db:
     image: postgres:16
@@ -399,17 +537,25 @@ services:
       POSTGRES_PASSWORD: ${CRM_DB_PASSWORD:-devpassword}
     volumes:
       - crm_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   crm-svc:
     build: ./services/crm-svc
+    restart: unless-stopped
     ports:
       - "8021:8021"
     environment:
       CRM_DATABASE_URL: postgresql+asyncpg://crm_svc:${CRM_DB_PASSWORD:-devpassword}@crm-db:5432/crm
       CRM_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - crm-db
-      - kafka
+      crm-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   # --- Built 2026-09-29, second Portfolio Intelligence service (Layer 2) ---
 
@@ -421,9 +567,15 @@ services:
       POSTGRES_PASSWORD: ${MANAGEMENT_DB_PASSWORD:-devpassword}
     volumes:
       - management_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   management-svc:
     build: ./services/management-svc
+    restart: unless-stopped
     ports:
       # docs/PORT_REGISTRY.md assigns 8026, but the client-delivered
       # payment-svc already claims that port — moved here to a free
@@ -433,8 +585,10 @@ services:
       MGMT_DATABASE_URL: postgresql+asyncpg://management_svc:${MANAGEMENT_DB_PASSWORD:-devpassword}@management-db:5432/management
       MGMT_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - management-db
-      - kafka
+      management-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   real-estate-db:
     image: postgres:16
@@ -444,9 +598,15 @@ services:
       POSTGRES_PASSWORD: ${REAL_ESTATE_DB_PASSWORD:-devpassword}
     volumes:
       - real_estate_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   real-estate-svc:
     build: ./services/real-estate-svc
+    restart: unless-stopped
     ports:
       # docs/PORT_REGISTRY.md assigns 8027, but the client-delivered
       # notification-svc already claims that port — moved here to a
@@ -456,8 +616,10 @@ services:
       REALESTATE_DATABASE_URL: postgresql+asyncpg://real_estate_svc:${REAL_ESTATE_DB_PASSWORD:-devpassword}@real-estate-db:5432/real_estate
       REALESTATE_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - real-estate-db
-      - kafka
+      real-estate-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   capital-finance-db:
     image: postgres:16
@@ -467,9 +629,15 @@ services:
       POSTGRES_PASSWORD: ${CAPITAL_FINANCE_DB_PASSWORD:-devpassword}
     volumes:
       - capital_finance_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   capital-finance-svc:
     build: ./services/capital-finance-svc
+    restart: unless-stopped
     ports:
       # Moved off docs/PORT_REGISTRY.md's original 8028 — the client-
       # delivered ip-asset-svc claims that port, and more importantly
@@ -480,7 +648,8 @@ services:
       CAPFIN_DATABASE_URL: postgresql+asyncpg://capital_finance_svc:${CAPITAL_FINANCE_DB_PASSWORD:-devpassword}@capital-finance-db:5432/capital_finance
       CAPFIN_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - capital-finance-db
+      capital-finance-db:
+        condition: service_healthy
 
   ip-asset-db:
     image: postgres:16
@@ -490,30 +659,41 @@ services:
       POSTGRES_PASSWORD: ${IP_ASSET_DB_PASSWORD:-devpassword}
     volumes:
       - ip_asset_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   ip-asset-svc:
     build: ./services/ip-asset-svc
+    restart: unless-stopped
     ports:
       - "8028:8028"
     environment:
       IP_DATABASE_URL: postgresql+asyncpg://ip_asset_svc:${IP_ASSET_DB_PASSWORD:-devpassword}@ip-asset-db:5432/ip_asset
       IP_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - ip-asset-db
-      - kafka
+      ip-asset-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   # --- Built 2026-09-30: the 4 remaining missing services ---
 
   sales-service:
     build: ./services/sales-service
+    restart: unless-stopped
     ports:
       - "8009:8009"
     environment:
       SALES_DATABASE_URL: postgresql+asyncpg://sales_svc:${SALES_DB_PASSWORD:-devpassword}@sales-db:5432/sales
       SALES_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - sales-db
-      - kafka
+      sales-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   sales-db:
     image: postgres:16
@@ -523,17 +703,25 @@ services:
       POSTGRES_PASSWORD: ${SALES_DB_PASSWORD:-devpassword}
     volumes:
       - sales_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   insurance-risk-svc:
     build: ./services/insurance-risk-svc
+    restart: unless-stopped
     ports:
       - "8029:8029"
     environment:
       RISK_DATABASE_URL: postgresql+asyncpg://risk_svc:${RISK_DB_PASSWORD:-devpassword}@insurance-risk-db:5432/insurance_risk
       RISK_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - insurance-risk-db
-      - kafka
+      insurance-risk-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   insurance-risk-db:
     image: postgres:16
@@ -543,17 +731,25 @@ services:
       POSTGRES_PASSWORD: ${RISK_DB_PASSWORD:-devpassword}
     volumes:
       - insurance_risk_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   security-compliance-svc:
     build: ./services/security-compliance-svc
+    restart: unless-stopped
     ports:
       - "8031:8031"
     environment:
       SECCOMP_DATABASE_URL: postgresql+asyncpg://seccomp_svc:${SECCOMP_DB_PASSWORD:-devpassword}@security-compliance-db:5432/security_compliance
       SECCOMP_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - security-compliance-db
-      - kafka
+      security-compliance-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   security-compliance-db:
     image: postgres:16
@@ -563,9 +759,15 @@ services:
       POSTGRES_PASSWORD: ${SECCOMP_DB_PASSWORD:-devpassword}
     volumes:
       - security_compliance_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   originations-svc:
     build: ./services/originations-svc
+    restart: unless-stopped
     ports:
       # docs/PORT_REGISTRY.md's original 8024 collides with the
       # client-delivered auth-svc — moved here rather than edit code
@@ -575,8 +777,10 @@ services:
       ORIG_DATABASE_URL: postgresql+asyncpg://orig_svc:${ORIG_DB_PASSWORD:-devpassword}@originations-db:5432/originations
       ORIG_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - originations-db
-      - kafka
+      originations-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   originations-db:
     image: postgres:16
@@ -586,6 +790,11 @@ services:
       POSTGRES_PASSWORD: ${ORIG_DB_PASSWORD:-devpassword}
     volumes:
       - originations_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   kafka_data:

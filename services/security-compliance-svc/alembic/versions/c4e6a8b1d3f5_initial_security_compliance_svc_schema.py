@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(128), nullable=False),
         sa.Column("description", sa.String(512), nullable=False),
         sa.Column("status", policy_status_enum, nullable=False, server_default="active"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_compliance_policies_tenant_id", "compliance_policies", ["tenant_id"])
     op.create_index("ix_compliance_policies_key", "compliance_policies", ["key"])
@@ -45,7 +45,7 @@ def upgrade() -> None:
         sa.Column("accountable_role", sa.String(128), nullable=True),
         sa.Column("decided_by", sa.String(64), nullable=True),
         sa.Column("decided_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_policy_grant_requests_tenant_id", "policy_grant_requests", ["tenant_id"])
     op.create_index("ix_policy_grant_requests_policy_id", "policy_grant_requests", ["policy_id"])

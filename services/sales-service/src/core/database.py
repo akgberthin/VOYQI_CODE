@@ -45,5 +45,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_models() -> None:
+    """SQLite only (tests, quick local runs). On Postgres the schema is
+    owned by Alembic — the container runs `alembic upgrade head` before
+    starting — so create_all can never mask a missing migration."""
+    if engine.url.get_backend_name() != "sqlite":
+        return
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

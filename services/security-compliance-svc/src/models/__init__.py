@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import GUID, Base
@@ -78,3 +78,57 @@ class PolicyGrantRequest(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AccessSessionStatus(str, enum.Enum):
+    ACTIVE = "active"
+    ENDED = "ended"
+
+
+class BreakGlassSession(Base):
+    """Emergency elevated access. Activating one is never blocked — it
+    exists for emergencies — but every activation is published as
+    access.break_glass_activated, and the Compliance/Audit Agent can
+    recommend ending it early; a human approving that recommendation
+    is what ends it."""
+
+    __tablename__ = "break_glass_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    activated_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str] = mapped_column(String(512), nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    off_hours: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[AccessSessionStatus] = mapped_column(
+        Enum(AccessSessionStatus), nullable=False, default=AccessSessionStatus.ACTIVE
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    end_reason: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+
+class ImpersonationSession(Base):
+    """An admin acting as another user (support/debugging). Same
+    lifecycle as break-glass; risk rises when there's no session
+    recording reference attached."""
+
+    __tablename__ = "impersonation_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    admin_user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    target_user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    reason: Mapped[str] = mapped_column(String(512), nullable=False)
+    session_recording_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    off_hours: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[AccessSessionStatus] = mapped_column(
+        Enum(AccessSessionStatus), nullable=False, default=AccessSessionStatus.ACTIVE
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    end_reason: Mapped[str | None] = mapped_column(String(512), nullable=True)

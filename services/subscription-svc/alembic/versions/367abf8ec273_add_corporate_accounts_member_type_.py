@@ -52,6 +52,9 @@ def upgrade() -> None:
     # (copy-and-move) and works identically on PostgreSQL too, so
     # this is the portable way to add a column-plus-constraint pair
     # regardless of which dialect actually runs the migration.
+    # add_column does not create a PostgreSQL enum type the way
+    # create_table does — create it first or a fresh database fails here.
+    sa.Enum('PERSONAL', 'CORPORATE', name='membertype').create(op.get_bind(), checkfirst=True)
     with op.batch_alter_table('member_profiles', schema=None) as batch_op:
         batch_op.add_column(sa.Column('member_type', sa.Enum('PERSONAL', 'CORPORATE', name='membertype'), nullable=False, server_default='PERSONAL'))
         batch_op.add_column(sa.Column('organization_id', src.core.database.GUID(), nullable=True))
@@ -65,6 +68,7 @@ def downgrade() -> None:
         batch_op.drop_constraint('fk_member_profiles_organization_id_corporate_accounts', type_='foreignkey')
         batch_op.drop_column('organization_id')
         batch_op.drop_column('member_type')
+    sa.Enum(name='membertype').drop(op.get_bind(), checkfirst=True)
     op.drop_index(op.f('ix_employee_utilization_flags_tenant_id'), table_name='employee_utilization_flags')
     op.drop_table('employee_utilization_flags')
     op.drop_index(op.f('ix_corporate_accounts_tenant_id'), table_name='corporate_accounts')

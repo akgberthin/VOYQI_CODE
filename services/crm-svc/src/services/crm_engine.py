@@ -8,7 +8,7 @@ silently rewritten by a routine stage update.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import (
@@ -46,9 +46,34 @@ class InvalidStageTransitionError(Exception):
     pass
 
 
-async def capture_lead(db: AsyncSession, *, tenant_id: str, first_name: str, last_name: str, email: str, phone: str | None = None, source: str = "unknown") -> Lead:
-    lead = Lead(tenant_id=tenant_id, first_name=first_name, last_name=last_name, email=email.lower().strip(), phone=phone, source=source)
+async def capture_lead(db: AsyncSession, *, tenant_id: str, first_name: str, last_name: str, email: str, phone: str | None = None, source: str = "unknown", external_ref_id: str | None = None) -> Lead:
+    lead = Lead(
+        tenant_id=tenant_id, first_name=first_name, last_name=last_name, email=email.lower().strip(), phone=phone, source=source,
+        external_ref_id=external_ref_id or None,
+    )
     db.add(lead)
+    await db.flush()
+    return lead
+
+
+async def find_duplicate_leads(db: AsyncSession, *, tenant_id: str, email: str = "", phone: str = "") -> list[Lead]:
+    """Exact email or phone matches only — the agent applies judgment on top."""
+    conditions = []
+    if email.strip():
+        conditions.append(Lead.email == email.lower().strip())
+    if phone.strip():
+        conditions.append(Lead.phone == phone.strip())
+    if not conditions:
+        return []
+    result = await db.execute(select(Lead).where(Lead.tenant_id == tenant_id, or_(*conditions)))
+    return list(result.scalars().all())
+
+
+async def score_lead(db: AsyncSession, *, tenant_id: str, lead_id: uuid.UUID, score: float, reasoning: str, routed_to_team: str) -> Lead:
+    lead = await get_lead(db, tenant_id=tenant_id, lead_id=lead_id)
+    lead.score = score
+    lead.score_reasoning = reasoning
+    lead.routed_to_team = routed_to_team
     await db.flush()
     return lead
 

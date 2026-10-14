@@ -70,6 +70,18 @@ async def create_role_assignment(db: AsyncSession, tenant_id: str, user_id: uuid
     return assignment
 
 
+async def revoke_role_assignment(db: AsyncSession, tenant_id: str, assignment_id: uuid.UUID) -> RoleAssignment:
+    """Removes the assignment outright — the audit log and the published
+    role.revoked event are the record that it existed."""
+    result = await db.execute(select(RoleAssignment).where(RoleAssignment.id == assignment_id, RoleAssignment.tenant_id == tenant_id))
+    assignment = result.scalar_one_or_none()
+    if assignment is None:
+        raise ValueError(f"role assignment {assignment_id} not found")
+    await db.delete(assignment)
+    await db.commit()
+    return assignment
+
+
 async def get_user_role_assignments(db: AsyncSession, tenant_id: str, user_id: uuid.UUID) -> list[RoleAssignment]:
     result = await db.execute(select(RoleAssignment).where(RoleAssignment.tenant_id == tenant_id, RoleAssignment.user_id == user_id))
     return list(result.scalars().all())

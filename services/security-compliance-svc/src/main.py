@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api import grants, policies
+from src.api import grants, identity, policies
 from src.core.database import init_models
 
 
@@ -24,6 +24,7 @@ app.add_middleware(
 
 app.include_router(policies.router)
 app.include_router(grants.router)
+app.include_router(identity.router)
 
 
 @app.get("/health")

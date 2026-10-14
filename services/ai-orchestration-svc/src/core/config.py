@@ -33,12 +33,12 @@ class Settings(BaseSettings):
     subscription_svc_base_url: str = "http://subscription-svc:8003"
     crm_svc_base_url: str = "http://crm-svc:8021"
     rbac_svc_base_url: str = "http://rbac-svc:8011"
-    identity_svc_base_url: str = "http://identity-svc:8014"
+    identity_svc_base_url: str = "http://security-compliance-svc:8031"
     marketing_svc_base_url: str = "http://marketing-svc:8007"
     rental_svc_base_url: str = "http://rental-svc:8005"
     dms_svc_base_url: str = "http://dms-svc:8008"
     hub_svc_base_url: str = "http://hub-svc:8006"
-    org_svc_base_url: str = "http://org-svc:8022"
+    org_svc_base_url: str = "http://originations-svc:8036"
     hrm_svc_base_url: str = "http://hrm-svc:8023"
 
     # Revenue Agent — CRM-001 identity resolution. Mirrors crm-svc's own

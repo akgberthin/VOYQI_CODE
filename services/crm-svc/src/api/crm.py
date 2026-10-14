@@ -1,12 +1,11 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import crm_engine
 
@@ -14,11 +13,42 @@ router = APIRouter()
 
 
 class CaptureLeadIn(BaseModel):
-    first_name: str
-    last_name: str
-    email: EmailStr
+    """A rep entering a lead gives first/last name; the Revenue Agent
+    creating one from a landing-page capture (CRM-002) gives full_name
+    and may have only a phone."""
+
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None
+    email: EmailStr | None = None
     phone: str | None = None
     source: str = "unknown"
+    external_ref_id: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _blank_email_is_none(cls, data):
+        if isinstance(data, dict) and data.get("email") == "":
+            data = {**data, "email": None}
+        return data
+
+    @model_validator(mode="after")
+    def _split_full_name(self):
+        if not self.first_name and self.full_name:
+            first, _, rest = self.full_name.strip().partition(" ")
+            self.first_name, self.last_name = first, self.last_name or rest
+        if not self.first_name:
+            raise ValueError("first_name or full_name is required")
+        if not self.email and not self.phone:
+            raise ValueError("email or phone is required")
+        self.last_name = self.last_name or ""
+        return self
+
+
+class LeadScoreIn(BaseModel):
+    score: float = Field(ge=0.0, le=1.0)
+    reasoning: str
+    routed_to_team: str
 
 
 class QualifyLeadIn(BaseModel):
@@ -66,7 +96,11 @@ class LogActivityIn(BaseModel):
 
 
 def _serialize_lead(lead) -> dict:
-    return {"id": lead.id, "first_name": lead.first_name, "last_name": lead.last_name, "email": lead.email, "status": lead.status, "source": lead.source}
+    return {
+        "id": lead.id, "first_name": lead.first_name, "last_name": lead.last_name, "email": lead.email, "phone": lead.phone,
+        "status": lead.status, "source": lead.source, "external_ref_id": lead.external_ref_id,
+        "score": lead.score, "score_reasoning": lead.score_reasoning, "routed_to_team": lead.routed_to_team,
+    }
 
 
 def _serialize_deal(deal) -> dict:
@@ -77,15 +111,32 @@ def _serialize_deal(deal) -> dict:
 
 
 @router.post("/leads", status_code=201)
-async def capture_lead(payload: CaptureLeadIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    lead = await crm_engine.capture_lead(db, tenant_id=tenant_id, **payload.model_dump())
-    await db.commit()
-    # Routes the new lead to the Revenue Agent (identity resolution and
-    # scoring) in ai-orchestration-svc.
-    background_tasks.add_task(
-        publish_event, "crm.leads", "lead.captured", tenant_id,
-        {"lead_id": str(lead.id), "name": f"{lead.first_name} {lead.last_name}", "email": lead.email, "phone": payload.phone, "source": lead.source},
+async def capture_lead(payload: CaptureLeadIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    # No lead.captured here: that event comes from marketing-svc's
+    # landing-page capture, and the Revenue Agent handles it by calling
+    # *this* endpoint — publishing it again here would loop.
+    lead = await crm_engine.capture_lead(
+        db, tenant_id=tenant_id, first_name=payload.first_name, last_name=payload.last_name, email=payload.email or "",
+        phone=payload.phone, source=payload.source, external_ref_id=payload.external_ref_id,
     )
+    await db.commit()
+    return _serialize_lead(lead)
+
+
+@router.get("/leads/duplicates/check")
+async def check_duplicate_leads(email: str = "", phone: str = "", tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    leads = await crm_engine.find_duplicate_leads(db, tenant_id=tenant_id, email=email, phone=phone)
+    return [_serialize_lead(lead) for lead in leads]
+
+
+@router.post("/leads/{lead_id}/score")
+async def score_lead(lead_id: uuid.UUID, payload: LeadScoreIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """The Revenue Agent's CRM-002 write-back (lead.score_and_route, tier 1)."""
+    try:
+        lead = await crm_engine.score_lead(db, tenant_id=tenant_id, lead_id=lead_id, **payload.model_dump())
+    except crm_engine.LeadNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    await db.commit()
     return _serialize_lead(lead)
 
 

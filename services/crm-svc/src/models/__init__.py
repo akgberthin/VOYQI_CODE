@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import GUID, Base
@@ -56,6 +56,12 @@ class Lead(Base):
     disqualify_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True, index=True)
 
+    # CRM-002 — written by the Revenue Agent, never by the capture itself.
+    external_ref_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    score_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    routed_to_team: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -104,3 +110,138 @@ class Activity(Base):
 
     deal: Mapped["Deal"] = relationship(back_populates="activities")
     lead: Mapped["Lead"] = relationship(back_populates="activities")
+
+
+# ---------------------------------------------------------------------------
+# Enterprise CRM intelligence — the records ai-orchestration-svc's Revenue
+# Agent (CRM-001 identity resolution, CRM-007 profile dedup) and Concierge
+# Agent (CRM-003 inbox) read and write. The agents only ever *propose*
+# (match candidates, duplicate candidates, draft replies); merging
+# identities and sending a reply are human actions.
+# ---------------------------------------------------------------------------
+
+
+class CandidateStatus(str, enum.Enum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+
+
+class ConversationStatus(str, enum.Enum):
+    OPEN = "open"
+    ESCALATED = "escalated"
+    CLOSED = "closed"
+
+
+class MessageDirection(str, enum.Enum):
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+
+
+class DraftReplyStatus(str, enum.Enum):
+    PENDING = "pending"
+    SENT = "sent"
+    DISCARDED = "discarded"
+
+
+class PersonProfile(Base):
+    """One resolved real-world person across every intake channel."""
+
+    __tablename__ = "person_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    full_name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    merged_into_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class SourceRecord(Base):
+    """A raw identity record from one channel (web form, rental booking,
+    dealership walk-in...) awaiting resolution to a PersonProfile."""
+
+    __tablename__ = "source_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    source_system: Mapped[str] = mapped_column(String(64))
+    full_name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    resolved_profile_id: Mapped[uuid.UUID | None] = mapped_column(GUID, ForeignKey("person_profiles.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class MatchCandidate(Base):
+    __tablename__ = "match_candidates"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    source_record_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("source_records.id"), index=True)
+    # None = the agent found no good existing match; confirming then
+    # creates a new profile for the record.
+    candidate_person_profile_id: Mapped[uuid.UUID | None] = mapped_column(GUID, ForeignKey("person_profiles.id"), nullable=True)
+    match_score: Mapped[float] = mapped_column(Float)
+    match_reasoning: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default=CandidateStatus.PENDING.value, index=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProfileDuplicateCandidate(Base):
+    __tablename__ = "profile_duplicate_candidates"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    profile_a_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("person_profiles.id"))
+    profile_b_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("person_profiles.id"))
+    match_score: Mapped[float] = mapped_column(Float)
+    match_reasoning: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default=CandidateStatus.PENDING.value, index=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    person_profile_id: Mapped[uuid.UUID | None] = mapped_column(GUID, ForeignKey("person_profiles.id"), nullable=True)
+    channel: Mapped[str] = mapped_column(String(32), default="email")
+    subject: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(20), default=ConversationStatus.OPEN.value, index=True)
+    priority: Mapped[str] = mapped_column(String(20), default="normal")
+    routed_to_team: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("conversations.id"), index=True)
+    direction: Mapped[str] = mapped_column(String(10))
+    body: Mapped[str] = mapped_column(Text)
+    sender: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    sentiment: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    intent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class DraftReply(Base):
+    __tablename__ = "draft_replies"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(100), index=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("conversations.id"), index=True)
+    in_reply_to_message_id: Mapped[uuid.UUID | None] = mapped_column(GUID, ForeignKey("messages.id"), nullable=True)
+    draft_body: Mapped[str] = mapped_column(Text)
+    reasoning: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default=DraftReplyStatus.PENDING.value, index=True)
+    approved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    sent_message_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

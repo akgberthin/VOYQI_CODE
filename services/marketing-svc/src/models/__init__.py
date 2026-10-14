@@ -340,3 +340,23 @@ class MediaGenerationRequest(Base):
     error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+# ══════════════════════════════════════════════════════════════════
+# Landing-page lead capture — the raw, channel-side record. Publishing
+# lead.captured hands it to the Revenue Agent, which creates the
+# unified crm-svc Lead and scores it (CRM-002).
+# ══════════════════════════════════════════════════════════════════
+
+class LeadCapture(Base):
+    __tablename__ = "lead_captures"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(GUID, ForeignKey("campaigns.id"), nullable=True)
+    landing_page: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    consent_marketing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

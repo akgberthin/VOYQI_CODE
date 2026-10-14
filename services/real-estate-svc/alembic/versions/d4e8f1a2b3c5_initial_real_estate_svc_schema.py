@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(128), nullable=False),
         sa.Column("property_type", property_type_enum, nullable=False),
         sa.Column("status", property_status_enum, nullable=False, server_default="active"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_properties_tenant_id", "properties", ["tenant_id"])
     op.create_index("ix_properties_key", "properties", ["key"])
@@ -44,7 +44,7 @@ def upgrade() -> None:
         sa.Column("period_end", sa.DateTime(timezone=True), nullable=False),
         sa.Column("metrics", sa.JSON(), nullable=False),
         sa.Column("source_service", sa.String(64), nullable=False),
-        sa.Column("ingested_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("ingested_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_property_rollup_snapshots_tenant_id", "property_rollup_snapshots", ["tenant_id"])
     op.create_index("ix_property_rollup_snapshots_property_key", "property_rollup_snapshots", ["property_key"])
@@ -59,7 +59,7 @@ def upgrade() -> None:
         sa.Column("comparison", comparison_enum, nullable=False),
         sa.Column("threshold_value", sa.Float(), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_property_kpi_thresholds_tenant_id", "property_kpi_thresholds", ["tenant_id"])
 
@@ -74,7 +74,7 @@ def upgrade() -> None:
         sa.Column("threshold_value", sa.Float(), nullable=False),
         sa.Column("comparison", comparison_enum, nullable=False),
         sa.Column("status", alert_status_enum, nullable=False, server_default="open"),
-        sa.Column("triggered_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("triggered_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_property_kpi_alerts_tenant_id", "property_kpi_alerts", ["tenant_id"])

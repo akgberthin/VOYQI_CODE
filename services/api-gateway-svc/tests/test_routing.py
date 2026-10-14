@@ -62,3 +62,21 @@ def test_admin_layer_services_are_routed():
         assert route is not None, path
         assert route.target_base_url == target, path
         assert is_public_path(route, path) is False, path
+
+
+def test_identity_and_org_route_to_the_services_that_own_them():
+    assert resolve_route("/api/v1/identity/break-glass").target_base_url == "http://security-compliance-svc:8031"
+    assert resolve_route("/api/v1/org/cases").target_base_url == "http://originations-svc:8036"
+
+
+def test_no_route_points_at_a_service_that_does_not_exist():
+    from src.services.routing import ROUTE_TABLE
+
+    hosts = {r.target_base_url.split("//")[1].split(":")[0] for r in ROUTE_TABLE}
+    assert not hosts & {"identity-svc", "org-svc", "cms-svc", "platform-config-svc"}
+
+
+def test_landing_page_capture_is_public_but_listing_captures_is_not():
+    route = resolve_route("/api/v1/marketing/public/lead-captures")
+    assert is_public_path(route, "/api/v1/marketing/public/lead-captures") is True
+    assert is_public_path(route, "/api/v1/marketing/lead-captures") is False

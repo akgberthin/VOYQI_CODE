@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     hot_score_threshold: float = 70.0
     warm_score_threshold: float = 40.0
 
+    # ORG-002: the fixed bar the Revenue Agent's 0.0-1.0 risk score is
+    # held to (higher = lower risk). The agent scores; this threshold —
+    # not the agent — produces the recommended outcome, so every case is
+    # held to the same bar. The final approve/decline is still a tier-3
+    # human decision.
+    org_approve_risk_score: float = 0.7
+    org_decline_risk_score: float = 0.4
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -107,3 +107,21 @@ async def test_blocked_abac_apply_publishes_nothing(client, published):
     )
     assert resp.status_code == 409
     assert published == []
+
+
+async def test_role_revoke_publishes_role_revoked_and_removes_assignment(client, published):
+    user, role = await _user_and_role(client)
+    assignment = (
+        await client.post("/api/v1/rbac/role-assignments", json={"user_id": user["id"], "role_id": role["id"], "assigned_by": "admin-1"}, headers=H)
+    ).json()
+    resp = await client.post(f"/api/v1/rbac/role-assignments/{assignment['id']}/revoke", json={"revoked_by": "admin-2", "reason": "left team"}, headers=H)
+    assert resp.status_code == 200
+
+    revoked = published[-1]
+    assert revoked["event_type"] == "role.revoked"
+    assert revoked["payload"]["assignment_id"] == assignment["id"]
+    context = (await client.get(f"/api/v1/rbac/users/{user['id']}/context", headers=H)).json()
+    assert context["roles"] == []
+
+    again = await client.post(f"/api/v1/rbac/role-assignments/{assignment['id']}/revoke", json={"revoked_by": "admin-2"}, headers=H)
+    assert again.status_code == 404
