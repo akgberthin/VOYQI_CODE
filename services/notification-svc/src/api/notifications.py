@@ -1,11 +1,14 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
+
+DELIVERY_EVENT = {"sent": "notification.sent", "failed": "notification.failed", "skipped_opted_out": "notification.skipped_opted_out"}
 from src.core.security import get_tenant_id
 from src.models import Notification, NotificationTemplate
 from src.services import notification_engine, template_seed
@@ -30,7 +33,7 @@ class PreferenceIn(BaseModel):
 
 
 @router.post("/send", status_code=201)
-async def send(payload: SendIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def send(payload: SendIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         notification = await notification_engine.send_notification(
             db, tenant_id=tenant_id, channel=payload.channel, template_key=payload.template,
@@ -43,6 +46,16 @@ async def send(payload: SendIn, tenant_id: str = Depends(get_tenant_id), db: Asy
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     await db.commit()
+    # Recipient address is deliberately left out of the event — consumers
+    # get the delivery outcome, not the contact detail.
+    background_tasks.add_task(
+        publish_event, "notification.delivery", DELIVERY_EVENT.get(notification.status, "notification.queued"), tenant_id,
+        {
+            "notification_id": str(notification.id), "channel": payload.channel, "template": payload.template,
+            "category": payload.category, "user_id": str(payload.user_id) if payload.user_id else None,
+            "status": notification.status, "error_message": notification.error_message,
+        },
+    )
     return {
         "id": notification.id, "status": notification.status, "delivery_mode": notification.delivery_mode,
         "error_message": notification.error_message,

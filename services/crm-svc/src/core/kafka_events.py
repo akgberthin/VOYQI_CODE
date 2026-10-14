@@ -47,7 +47,7 @@ async def publish_event(topic: str, event_type: str, tenant_id: str, payload: di
     }
     try:
         producer = await get_producer()
-        await producer.send_and_wait(topic, json.dumps(envelope).encode("utf-8"))
+        await producer.send_and_wait(topic, json.dumps(envelope, default=str).encode("utf-8"))
     except Exception:
         # Kafka unavailable (local/dev/test) — log and continue. Never
         # blocks the request; the write to Postgres is the source of

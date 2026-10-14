@@ -74,3 +74,21 @@ async def test_redeem_promo_via_api_and_limit_enforced(client):
 async def test_set_price_rejects_non_positive_via_api(client):
     resp = await client.post("/api/v1/pricing/rate-cards", json={"mobility_class": "urban", "price_cents": -100, "changed_by": "admin"}, headers=TENANT_HEADERS)
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_pricing_events(client, monkeypatch):
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        events.append(event_type)
+
+    monkeypatch.setattr("src.api.pricing.publish_event", _spy)
+    await client.post("/api/v1/pricing/rate-cards", json={"mobility_class": "urban", "price_cents": 44900, "changed_by": "admin"}, headers=TENANT_HEADERS)
+    await client.post("/api/v1/pricing/promo-codes", json={"code": "EVT10", "discount_type": "percentage", "discount_value": 10, "max_redemptions_per_user": 1}, headers=TENANT_HEADERS)
+    body = {"code": "EVT10", "user_id": str(uuid.uuid4()), "mobility_class": "urban"}
+    await client.post("/api/v1/pricing/promo-codes/redeem", json=body, headers=TENANT_HEADERS)
+    rejected = await client.post("/api/v1/pricing/promo-codes/redeem", json=body, headers=TENANT_HEADERS)
+
+    assert rejected.status_code == 422
+    assert events == ["pricing.price_set", "pricing.promo_created", "pricing.promo_redeemed"]

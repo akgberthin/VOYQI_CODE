@@ -21,29 +21,36 @@ def test_unknown_agent_falls_back_to_default_tier():
 
 
 def test_threshold_met_keeps_configured_tier():
-    tier = get_tier("concierge", "journey.premium_reroute", {"cost_delta_usd": 200})
-    assert tier == 2  # already tier 2 regardless; threshold met, no escalation
+    assert get_tier("concierge", "journey.premium_reroute", {"cost_delta_usd": 200}) == 2
 
 
-def test_threshold_not_met_escalates_one_tier():
-    """A threshold that isn't met must never silently pass — it
-    escalates to the next tier up rather than guessing."""
-    tier = get_tier("revenue", "term_conversion.offer_high_value", {"annual_value_usd": 500})
-    assert tier == 3  # configured 2, threshold not met -> escalate to 3
+def test_threshold_clearly_not_met_lowers_one_tier():
+    """A $40 reroute is below the bar that warranted the approval gate."""
+    assert get_tier("concierge", "journey.premium_reroute", {"cost_delta_usd": 40}) == 1
 
 
-def test_threshold_missing_context_field_escalates():
-    tier = get_tier("revenue", "term_conversion.offer_high_value", {})
-    assert tier == 3
+def test_ambiguous_threshold_keeps_configured_tier():
+    """Missing or non-numeric context is never read as "not met" — it
+    must not drop the action below its configured tier."""
+    assert get_tier("revenue", "term_conversion.offer_high_value", {}) == 2
+    assert get_tier("revenue", "term_conversion.offer_high_value", {"annual_value_usd": "lots"}) == 2
 
 
-def test_tier_3_is_never_escalated_past_3():
-    tier = get_tier(
-        "sales-originations-intelligence",
-        "credit.decision",
-        {"this_field_is_irrelevant": True},
-    )
-    assert tier == 3
+def test_threshold_never_raises_an_action_into_tier_3():
+    """Tier 3 is a regulatory category, not a bigger number: no value of
+    a threshold field can put an ordinary action there."""
+    for value in (0, 500, 10_000, 10**9):
+        assert get_tier("revenue", "term_conversion.offer_high_value", {"annual_value_usd": value}) in (1, 2)
+
+
+def test_unevaluable_policy_threshold_keeps_configured_tier():
+    """The client policy carries a prose threshold ("within AI-005
+    guardrails") — it can't be evaluated, so the tier stays as set."""
+    assert get_tier("pricing-intelligence", "pricing.demand_multiplier_apply", {}) == 1
+
+
+def test_tier_3_is_never_lowered_or_raised():
+    assert get_tier("sales-originations-intelligence", "credit.decision", {"this_field_is_irrelevant": True}) == 3
 
 
 def test_approval_required_helper():

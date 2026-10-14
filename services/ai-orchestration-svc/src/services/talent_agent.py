@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core import action_gate
 from src.core.anthropic_client import AnthropicAgentClient
 from src.models import Agent, AgentStatus, DecisionLog
 from src.services import hrm_tools
@@ -47,6 +48,19 @@ AGENT_KEY_WORKFORCE_ANALYTICS = "workforce_analytics_agent"  # HRM-005
 AGENT_KEY_ACADEMY = "academy_agent"                        # HRM-006
 AGENT_KEY_CASE_MANAGEMENT = "case_management_agent"        # HRM-007
 AGENT_KEY_COMMUNICATION = "communication_agent"            # HRM-008
+
+# Every HRM agent's actions live under one tier-policy namespace. Drafts,
+# scores and proposals are tier 1; anything that reaches a person or
+# changes their record is tier 2 until AI-004 data justifies promotion
+# (docs/AUTONOMY_TIERING_ENGINEER_INSTRUCTIONS.md §3, §5).
+TALENT_POLICY_AGENT = "talent-workforce-intelligence"
+
+
+async def _hrm_gate(db: AsyncSession, tenant_id: str, agent_key: str, action_type: str, executor: str, args: dict, reasoning: str, trigger: str) -> action_gate.GateResult:
+    return await action_gate.gate(
+        db, tenant_id=tenant_id, agent_key=agent_key, policy_agent=TALENT_POLICY_AGENT, action_type=action_type,
+        executor=executor, args=args, reasoning=reasoning, triggering_event_type=trigger, domain="hrm",
+    )
 
 ALL_AGENT_KEYS = [
     AGENT_KEY_ONBOARDING, AGENT_KEY_BENEFITS, AGENT_KEY_RECRUITING, AGENT_KEY_PERFORMANCE,
@@ -335,9 +349,15 @@ async def evaluate_benefits_recommendation(
 
         recommendation_id = created.get("id")
         if not is_risk and recommendation_id:
-            hrm_tools.accept_benefits_recommendation(tenant_id, recommendation_id)
-            tools_called.append({"tool": "accept_benefits_recommendation", "input": {"recommendation_id": recommendation_id}})
-            action_taken = "benefits_recommendation_auto_accepted"
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_BENEFITS, "benefits.recommendation_apply", "hrm.accept_benefits_recommendation",
+                {"recommendation_id": recommendation_id}, reasoning, "hrm.benefits_recommendation_requested",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "accept_benefits_recommendation", "input": {"recommendation_id": recommendation_id}})
+                action_taken = "benefits_recommendation_auto_accepted"
+            else:
+                action_taken = "benefits_recommendation_queued_for_approval"
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_BENEFITS, trigger_event_type="hrm.benefits_recommendation_requested",
@@ -557,9 +577,13 @@ async def evaluate_candidate_nurture(
         tools_called.append({"tool": "create_nurture_draft", "input": {"candidate_id": candidate_id}})
         draft_created = True
         if created.get("id"):
-            sent = hrm_tools.send_nurture_draft(tenant_id, created["id"])
-            tools_called.append({"tool": "send_nurture_draft", "input": {"draft_id": created["id"]}})
-            draft_sent = bool(sent)
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_RECRUITING, "candidate.nurture_send", "hrm.send_nurture_draft",
+                {"draft_id": created["id"]}, reasoning, "hrm.application_rejected",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "send_nurture_draft", "input": {"draft_id": created["id"]}})
+                draft_sent = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_RECRUITING, trigger_event_type="hrm.application_rejected",
@@ -714,9 +738,13 @@ async def evaluate_feedback_draft(
         tools_called.append({"tool": "create_feedback_draft", "input": {"review_id": review_id}})
         draft_created = True
         if created.get("id"):
-            finalized = hrm_tools.finalize_feedback_draft(tenant_id, created["id"])
-            tools_called.append({"tool": "finalize_feedback_draft", "input": {"draft_id": created["id"]}})
-            draft_finalized = bool(finalized)
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_PERFORMANCE, "feedback.finalize", "hrm.finalize_feedback_draft",
+                {"draft_id": created["id"]}, reasoning, "hrm.feedback_draft_requested",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "finalize_feedback_draft", "input": {"draft_id": created["id"]}})
+                draft_finalized = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_PERFORMANCE, trigger_event_type="hrm.feedback_draft_requested",
@@ -809,9 +837,13 @@ async def evaluate_nine_box_placement(
         tools_called.append({"tool": "create_nine_box_placement", "input": {"employee_id": employee_id, "review_cycle_id": review_cycle_id}})
         placement_created = True
         if created.get("id"):
-            confirmed = hrm_tools.confirm_nine_box_placement(tenant_id, created["id"])
-            tools_called.append({"tool": "confirm_nine_box_placement", "input": {"placement_id": created["id"]}})
-            placement_confirmed = bool(confirmed)
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_PERFORMANCE, "nine_box.placement_confirm", "hrm.confirm_nine_box_placement",
+                {"placement_id": created["id"]}, reasoning, "hrm.nine_box_evaluation_requested",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "confirm_nine_box_placement", "input": {"placement_id": created["id"]}})
+                placement_confirmed = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_PERFORMANCE, trigger_event_type="hrm.nine_box_evaluation_requested",
@@ -1073,9 +1105,13 @@ async def evaluate_course_recommendation(
 
     enrollment_completed = False
     if recommended_course_id and created.get("id"):
-        accepted = hrm_tools.accept_course_recommendation(tenant_id, created["id"])
-        tools_called.append({"tool": "accept_course_recommendation", "input": {"recommendation_id": created["id"]}})
-        enrollment_completed = bool(accepted)
+        gated = await _hrm_gate(
+            db, tenant_id, AGENT_KEY_ACADEMY, "course.recommendation_assign", "hrm.accept_course_recommendation",
+            {"recommendation_id": created["id"]}, reasoning, "hrm.course_recommendation_requested",
+        )
+        if gated.executed:
+            tools_called.append({"tool": "accept_course_recommendation", "input": {"recommendation_id": created["id"]}})
+            enrollment_completed = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_ACADEMY, trigger_event_type="hrm.course_recommendation_requested",
@@ -1215,9 +1251,13 @@ async def evaluate_policy_question(
         tools_called.append({"tool": "create_case_draft_reply", "input": {"case_id": case_id, "cites_policy_id": cites_policy_id}})
         draft_created = True
         if created.get("id"):
-            sent = hrm_tools.send_case_reply(tenant_id, created["id"])
-            tools_called.append({"tool": "send_case_reply", "input": {"draft_id": created["id"]}})
-            reply_sent = bool(sent)
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_CASE_MANAGEMENT, "case.reply_send", "hrm.send_case_reply",
+                {"draft_id": created["id"]}, reasoning, "hrm.policy_question_asked",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "send_case_reply", "input": {"draft_id": created["id"]}})
+                reply_sent = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_CASE_MANAGEMENT, trigger_event_type="hrm.policy_question_asked",
@@ -1333,14 +1373,16 @@ async def evaluate_note_update(
     note_written = False
     if entry_text:
         if should_append and most_recent:
-            hrm_tools.append_employee_note(tenant_id, most_recent["id"], entry_text, author="talent-agent")
-            tools_called.append({"tool": "append_employee_note", "input": {"note_id": most_recent["id"]}})
-            action_taken = "note_appended"
+            executor, args, tool, verb = "hrm.append_employee_note", {"note_id": most_recent["id"], "additional_text": entry_text}, "append_employee_note", "note_appended"
         else:
-            hrm_tools.add_employee_note(tenant_id, employee_id, entry_text, author="talent-agent")
-            tools_called.append({"tool": "add_employee_note", "input": {"employee_id": employee_id}})
-            action_taken = "note_added"
-        note_written = True
+            executor, args, tool, verb = "hrm.add_employee_note", {"employee_id": employee_id, "body": entry_text}, "add_employee_note", "note_added"
+        gated = await _hrm_gate(db, tenant_id, AGENT_KEY_COMMUNICATION, "employee_note.write", executor, args, reasoning, "hrm.note_update_requested")
+        if gated.executed:
+            tools_called.append({"tool": tool, "input": {k: v for k, v in args.items() if k not in ("additional_text", "body")}})
+            action_taken = verb
+            note_written = True
+        else:
+            action_taken = "note_queued_for_approval"
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_COMMUNICATION, trigger_event_type="hrm.note_update_requested",
@@ -1459,9 +1501,13 @@ async def evaluate_email_draft(
         tools_called.append({"tool": "create_email_draft", "input": {"recipient_scope": recipient_scope}})
         email_created = True
         if created.get("id"):
-            sent = hrm_tools.send_email(tenant_id, created["id"])
-            tools_called.append({"tool": "send_email", "input": {"email_id": created["id"]}})
-            email_sent = bool(sent)
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_COMMUNICATION, "email.send", "hrm.send_email",
+                {"email_id": created["id"]}, reasoning, "hrm.email_draft_requested",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "send_email", "input": {"email_id": created["id"]}})
+                email_sent = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_COMMUNICATION, trigger_event_type="hrm.email_draft_requested",
@@ -1590,9 +1636,13 @@ async def evaluate_course_draft(
         tools_called.append({"tool": "create_course_draft", "input": {"title": title, "category": category}})
         draft_created = True
         if created.get("id"):
-            published = hrm_tools.publish_course_draft(tenant_id, created["id"])
-            tools_called.append({"tool": "publish_course_draft", "input": {"draft_id": created["id"]}})
-            draft_published = bool(published)
+            gated = await _hrm_gate(
+                db, tenant_id, AGENT_KEY_ACADEMY, "course.publish", "hrm.publish_course_draft",
+                {"draft_id": created["id"]}, reasoning, "hrm.course_draft_requested",
+            )
+            if gated.executed:
+                tools_called.append({"tool": "publish_course_draft", "input": {"draft_id": created["id"]}})
+                draft_published = bool(gated.result)
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY_ACADEMY, trigger_event_type="hrm.course_draft_requested",

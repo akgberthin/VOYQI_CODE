@@ -89,3 +89,22 @@ async def test_cannot_opt_out_of_security_category_via_api(client):
         headers=TENANT_HEADERS,
     )
     assert resp.status_code == 400
+
+
+async def test_send_publishes_delivery_outcome_without_recipient(client, monkeypatch):
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        events.append((event_type, payload))
+
+    monkeypatch.setattr("src.api.notifications.publish_event", _spy)
+    await client.post("/api/v1/notifications/templates/seed-defaults", headers=TENANT_HEADERS)
+    resp = await client.post(
+        "/api/v1/notifications/send", json={"channel": "email", "template": "welcome_member", "recipient": "secret@voyqi.com", "variables": {"member_name": "Ada", "plan_class": "Urban"}}, headers=TENANT_HEADERS
+    )
+    assert resp.status_code == 201
+
+    [(event_type, payload)] = events
+    assert event_type == "notification." + resp.json()["status"]
+    assert payload["notification_id"] == str(resp.json()["id"])
+    assert "secret@voyqi.com" not in repr(payload)

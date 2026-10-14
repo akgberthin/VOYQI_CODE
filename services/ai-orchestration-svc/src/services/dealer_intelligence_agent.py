@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.tiering import get_tier
+from src.core import action_gate
 from src.models import Agent, AgentStatus, AIRecommendation, DecisionLog, RecommendationStatus
 from src.services import dms_tools
 
@@ -56,14 +57,18 @@ class DealerOrchestrationResult:
     skipped_reason: str | None = None
 
 
+DEALER_OPS_POLICY_AGENT = "dealer-operations"
+
+
 async def _run(
     db: AsyncSession, tenant_id: str, trigger_event_type: str, trigger_context: dict,
-    action_taken: str, reasoning: str, call,
+    action_taken: str, reasoning: str, *, policy_action: str, executor: str, args: dict,
+    policy_agent: str = DEALER_OPS_POLICY_AGENT,
 ) -> DealerOrchestrationResult:
-    """Shared orchestration shell: check agent status, call the given
-    zero-arg dms-svc function, write the DecisionLog, increment the
-    agent's decision counter. Every wrapper function below is a thin
-    application of this shell to one specific dms-svc capability."""
+    """Shared orchestration shell: check agent status, run the dms-svc
+    capability through the autonomy gate (tier 1 executes now; tier 2/3
+    queues an AIRecommendation that executes on approval), write the
+    DecisionLog, increment the agent's decision counter."""
     status = await _agent_status(db, tenant_id)
     if status != AgentStatus.ACTIVE:
         log = DecisionLog(
@@ -76,12 +81,20 @@ async def _run(
         await db.refresh(log)
         return DealerOrchestrationResult(decision_log=log, output=None, skipped_reason=status.value)
 
-    output = call()
+    gated = await action_gate.gate(
+        db, tenant_id=tenant_id, agent_key=AGENT_KEY, policy_agent=policy_agent, action_type=policy_action,
+        executor=executor, args=args, reasoning=reasoning, triggering_event_type=trigger_event_type, domain="dms",
+        context=trigger_context,
+    )
+    output = gated.result
 
     log = DecisionLog(
         tenant_id=tenant_id, agent_key=AGENT_KEY, trigger_event_type=trigger_event_type,
-        trigger_context=trigger_context, reasoning=reasoning, tools_called=[{"tool": action_taken, "input": trigger_context}],
-        action_taken=action_taken, outcome="success",
+        trigger_context=trigger_context, reasoning=reasoning, tools_called=[{"tool": action_taken, "input": trigger_context}] if gated.executed else [],
+        action_taken=action_taken if gated.executed else f"{policy_action}_queued_for_approval",
+        outcome="success" if gated.executed else "deferred",
+        recommendation_id=gated.recommendation.id if gated.recommendation else None,
+        tier=gated.tier, approval_required=not gated.executed,
     )
     db.add(log)
 
@@ -103,7 +116,7 @@ async def evaluate_license_renewals(db: AsyncSession, tenant_id: str) -> DealerO
         db, tenant_id, "rooftop.renewal_sweep_requested", {},
         "license_renewals_filed",
         "[deterministic] Swept every rooftop for licenses within the renewal window and filed autonomously — a plain date comparison, not a judgment call.",
-        lambda: dms_tools.evaluate_license_renewals(tenant_id),
+        policy_action="rooftop.license_renewal_file", executor="dms.evaluate_license_renewals", args={},
     )
 
 
@@ -116,7 +129,7 @@ async def evaluate_aging_sweep(db: AsyncSession, tenant_id: str) -> DealerOrches
         db, tenant_id, "inventory.aging_sweep_requested", {},
         "aging_markdowns_applied",
         "[deterministic] Swept in-stock inventory for units past the aging threshold and applied markdowns autonomously, anchored on book value where available.",
-        lambda: dms_tools.evaluate_aging_sweep(tenant_id),
+        policy_action="inventory.aging_markdown_apply", executor="dms.evaluate_aging_sweep", args={},
     )
 
 
@@ -128,7 +141,8 @@ async def evaluate_deal_desk(db: AsyncSession, tenant_id: str, deal_id: str) -> 
         db, tenant_id, "deal.desk_requested", {"deal_id": deal_id},
         "deal_desked_and_approved",
         "[deterministic] Computed the desk price and checked it against the minimum gross floor; a price missing the floor is auto-countered upward and approved in the same pass — never queued for a manager.",
-        lambda: dms_tools.desk_and_approve_deal(tenant_id, deal_id),
+        policy_agent=CREDIT_DECISION_POLICY_AGENT, policy_action="deal.structure_recommend",
+        executor="dms.desk_and_approve_deal", args={"deal_id": deal_id},
     )
 
 
@@ -155,7 +169,8 @@ async def evaluate_lending(db: AsyncSession, tenant_id: str, app_id: str, bureau
             "credit_application_blocked",
             "[security] OFAC sanctions match — application permanently blocked before any lender routing was "
             "attempted. No override exists, here or anywhere downstream.",
-            lambda: dms_tools.pull_bureau_and_route(tenant_id, app_id, bureau, fico, ofac_match),
+            policy_action="credit.ofac_block_apply", executor="dms.pull_bureau_and_route",
+            args={"app_id": app_id, "bureau": bureau, "fico": fico, "ofac_match": ofac_match},
         )
 
     status = await _agent_status(db, tenant_id)
@@ -217,7 +232,8 @@ async def evaluate_service_dispatch(db: AsyncSession, tenant_id: str, rooftop_id
         db, tenant_id, "service.repair_order_opened", {"rooftop_id": rooftop_id, "vin": vin, "description": description, "warranty": warranty},
         "repair_order_dispatched",
         "[deterministic] Assigned a tech and estimated job duration from description keywords; a multi-day estimate auto-chains into a loaner assignment.",
-        lambda: dms_tools.dispatch_repair_order(tenant_id, rooftop_id, vin, customer_name, description, warranty),
+        policy_action="service.repair_order_dispatch", executor="dms.dispatch_repair_order",
+        args={"rooftop_id": rooftop_id, "vin": vin, "customer_name": customer_name, "description": description, "warranty": warranty},
     )
 
 
@@ -229,7 +245,7 @@ async def evaluate_parts_reorder(db: AsyncSession, tenant_id: str) -> DealerOrch
         db, tenant_id, "parts.reorder_sweep_requested", {},
         "vendor_orders_placed",
         "[deterministic] Swept parts stock for anything at or below its reorder point and placed vendor orders autonomously.",
-        lambda: dms_tools.evaluate_parts_reorder(tenant_id),
+        policy_action="parts.vendor_order_place", executor="dms.evaluate_parts_reorder", args={},
     )
 
 
@@ -241,7 +257,7 @@ async def evaluate_loaner_overdue(db: AsyncSession, tenant_id: str) -> DealerOrc
         db, tenant_id, "loaner.overdue_sweep_requested", {},
         "extended_loaners_flagged",
         "[deterministic] Swept active loaners for anything past the extended-duration threshold and flagged for billing handoff autonomously.",
-        lambda: dms_tools.evaluate_loaner_overdue(tenant_id),
+        policy_action="loaner.overdue_flag", executor="dms.evaluate_loaner_overdue", args={},
     )
 
 
@@ -253,7 +269,7 @@ async def evaluate_franchise_remediation(db: AsyncSession, tenant_id: str) -> De
         db, tenant_id, "franchise.remediation_sweep_requested", {},
         "remediation_tasks_opened",
         "[deterministic] Swept franchise compliance records for anything non-compliant and opened remediation tasks autonomously.",
-        lambda: dms_tools.evaluate_franchise_remediation(tenant_id),
+        policy_action="franchise.remediation_task_open", executor="dms.evaluate_franchise_remediation", args={},
     )
 
 
@@ -271,5 +287,5 @@ async def evaluate_dealer_performance(db: AsyncSession, tenant_id: str) -> Deale
         "[deterministic] Scored every rooftop on gross, turn, absorption, and franchise compliance against group "
         "averages and fixed thresholds; any rooftop verdicted 'intervene' had an accelerated inventory markdown "
         "sweep applied autonomously — a cross-module action, not just a dashboard label.",
-        lambda: dms_tools.evaluate_dealer_performance(tenant_id),
+        policy_action="performance.intervention_markdown_apply", executor="dms.evaluate_dealer_performance", args={},
     )

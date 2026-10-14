@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core import action_gate
 from src.core.database import get_db
 from src.core.security import get_current_actor, get_tenant_id
 from src.models import AIRecommendation, DecisionLog, RecommendationStatus
@@ -93,7 +94,11 @@ async def approve_recommendation(
             detail="accountable_role is required to approve a tier-3 recommendation",
         )
 
-    if rec.domain == "dms" and rec.action_type == "credit_decision_pending_human_review":
+    if (rec.proposed_action or {}).get("executor"):
+        # Queued by core/action_gate.gate() because the tier policy put
+        # this action at tier 2/3 — the action itself runs only now.
+        action_gate.execute_approved(tenant_id, rec.proposed_action)
+    elif rec.domain == "dms" and rec.action_type == "credit_decision_pending_human_review":
         # The credit decision itself runs only now, on approval — see
         # dealer_intelligence_agent.evaluate_lending, which creates this
         # recommendation instead of auto-executing.

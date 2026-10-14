@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import ip_engine
 
@@ -77,9 +78,10 @@ def _serialize_statement(s) -> dict:
 
 
 @router.post("/assets", status_code=201)
-async def register_asset(payload: RegisterAssetIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def register_asset(payload: RegisterAssetIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     asset = await ip_engine.register_asset(db, tenant_id=tenant_id, **payload.model_dump())
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.assets", "ip.asset_registered", tenant_id, _serialize_asset(asset))
     return _serialize_asset(asset)
 
 
@@ -93,7 +95,7 @@ async def get_asset(asset_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id)
 
 
 @router.post("/assets/{asset_id}/status")
-async def update_asset_status(asset_id: uuid.UUID, payload: UpdateStatusIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def update_asset_status(asset_id: uuid.UUID, payload: UpdateStatusIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         asset = await ip_engine.update_asset_status(db, tenant_id=tenant_id, asset_id=asset_id, **payload.model_dump())
     except ASSET_ERRORS as exc:
@@ -101,6 +103,7 @@ async def update_asset_status(asset_id: uuid.UUID, payload: UpdateStatusIn, tena
     except STATUS_ERRORS as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.assets", "ip.asset_status_changed", tenant_id, _serialize_asset(asset))
     return _serialize_asset(asset)
 
 
@@ -111,7 +114,7 @@ async def list_assets_by_owning_entity(owning_entity: str, tenant_id: str = Depe
 
 
 @router.post("/licenses", status_code=201)
-async def create_license(payload: CreateLicenseIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def create_license(payload: CreateLicenseIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         license_agreement = await ip_engine.create_license(db, tenant_id=tenant_id, **payload.model_dump())
     except ip_engine.AssetNotFoundError as exc:
@@ -121,6 +124,7 @@ async def create_license(payload: CreateLicenseIn, tenant_id: str = Depends(get_
     except ip_engine.ExclusiveLicenseConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.licenses", "ip.license_created", tenant_id, _serialize_license(license_agreement))
     return _serialize_license(license_agreement)
 
 
@@ -134,7 +138,7 @@ async def get_license(license_id: uuid.UUID, tenant_id: str = Depends(get_tenant
 
 
 @router.post("/licenses/{license_id}/terminate")
-async def terminate_license(license_id: uuid.UUID, payload: TerminateLicenseIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def terminate_license(license_id: uuid.UUID, payload: TerminateLicenseIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         license_agreement = await ip_engine.terminate_license(db, tenant_id=tenant_id, license_id=license_id, **payload.model_dump())
     except ip_engine.LicenseNotFoundError as exc:
@@ -142,6 +146,7 @@ async def terminate_license(license_id: uuid.UUID, payload: TerminateLicenseIn, 
     except ip_engine.InvalidAssetStatusTransitionError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.licenses", "ip.license_terminated", tenant_id, _serialize_license(license_agreement))
     return _serialize_license(license_agreement)
 
 
@@ -152,7 +157,7 @@ async def list_active_licenses(asset_id: uuid.UUID, tenant_id: str = Depends(get
 
 
 @router.post("/royalty-statements", status_code=201)
-async def create_royalty_statement(payload: CreateStatementIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def create_royalty_statement(payload: CreateStatementIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         statement = await ip_engine.create_royalty_statement(db, tenant_id=tenant_id, **payload.model_dump())
     except ip_engine.LicenseNotFoundError as exc:
@@ -160,11 +165,12 @@ async def create_royalty_statement(payload: CreateStatementIn, tenant_id: str = 
     except ip_engine.MissingRevenueReportError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.royalties", "ip.royalty_statement_created", tenant_id, _serialize_statement(statement))
     return _serialize_statement(statement)
 
 
 @router.post("/royalty-statements/{statement_id}/finalize")
-async def finalize_statement(statement_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def finalize_statement(statement_id: uuid.UUID, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         statement = await ip_engine.finalize_statement(db, tenant_id=tenant_id, statement_id=statement_id)
     except ip_engine.StatementNotFoundError as exc:
@@ -172,11 +178,12 @@ async def finalize_statement(statement_id: uuid.UUID, tenant_id: str = Depends(g
     except ip_engine.StatementAlreadyProcessedError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.royalties", "ip.royalty_statement_finalized", tenant_id, _serialize_statement(statement))
     return _serialize_statement(statement)
 
 
 @router.post("/royalty-statements/{statement_id}/pay")
-async def record_payment(statement_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def record_payment(statement_id: uuid.UUID, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         statement = await ip_engine.record_payment(db, tenant_id=tenant_id, statement_id=statement_id)
     except ip_engine.StatementNotFoundError as exc:
@@ -184,4 +191,5 @@ async def record_payment(statement_id: uuid.UUID, tenant_id: str = Depends(get_t
     except ip_engine.StatementAlreadyProcessedError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(publish_event, "ip.royalties", "ip.royalty_paid", tenant_id, _serialize_statement(statement))
     return _serialize_statement(statement)

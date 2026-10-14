@@ -101,6 +101,7 @@ async def test_profile_link_via_api(client):
     link_resp = await client.post(
         f"/api/v1/user/users/{user_id}/profile-links",
         json={"linked_service": "subscription-svc", "linked_entity_type": "MemberProfile", "linked_entity_id": str(uuid.uuid4())},
+        headers=TENANT_HEADERS,
     )
     assert link_resp.status_code == 201
     assert link_resp.json()["linked_service"] == "subscription-svc"
@@ -118,3 +119,41 @@ async def test_add_address_via_api(client):
     )
     assert addr_resp.status_code == 201
     assert addr_resp.json()["is_primary"] is True
+
+
+@pytest.mark.asyncio
+async def test_another_tenant_cannot_modify_a_users_links_addresses_or_preferences(client):
+    """Sub-resource writes are scoped to the caller's tenant — a user id
+    from another tenant is a 404, not a silent cross-tenant write."""
+    user_id = (await client.post("/api/v1/user/users", json={"user_type": "member", "first_name": "Ada", "last_name": "L", "email": "ada9@voyqi.com"}, headers=TENANT_HEADERS)).json()["id"]
+    other = {"X-Tenant-Id": "some-other-tenant"}
+
+    link = await client.post(
+        f"/api/v1/user/users/{user_id}/profile-links",
+        json={"linked_service": "x", "linked_entity_type": "y", "linked_entity_id": str(uuid.uuid4())}, headers=other,
+    )
+    pref = await client.put(f"/api/v1/user/users/{user_id}/preferences", json={"key": "lang", "value": "en"}, headers=other)
+    assert link.status_code == 404
+    assert pref.status_code == 404
+    assert (await client.put(f"/api/v1/user/users/{user_id}/preferences", json={"key": "lang", "value": "en"})).status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_unknown_user_type_rejected(client):
+    resp = await client.post("/api/v1/user/users", json={"user_type": "staff", "first_name": "A", "last_name": "B", "email": "x@voyqi.com"}, headers=TENANT_HEADERS)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_user_lifecycle_publishes_events(client, monkeypatch):
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        events.append((event_type, payload["user_id"]))
+
+    monkeypatch.setattr("src.api.users.publish_event", _spy)
+    user_id = (await client.post("/api/v1/user/users", json={"user_type": "member", "first_name": "Ada", "last_name": "L", "email": "ada10@voyqi.com"}, headers=TENANT_HEADERS)).json()["id"]
+    await client.patch(f"/api/v1/user/users/{user_id}", json={"first_name": "Augusta"}, headers=TENANT_HEADERS)
+    await client.post(f"/api/v1/user/users/{user_id}/status", json={"status": "suspended", "reason": "chargeback"}, headers=TENANT_HEADERS)
+
+    assert events == [("user.created", user_id), ("user.updated", user_id), ("user.status_changed", user_id)]

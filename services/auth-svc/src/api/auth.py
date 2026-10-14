@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -6,8 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import get_settings
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_current_user, get_tenant_id
 from src.services import auth_engine
+
+# Auth events are security signals. Several are emitted on paths that end
+# in an HTTPException, where FastAPI never runs BackgroundTasks — so they
+# are scheduled as their own tasks (references kept so they aren't
+# garbage-collected mid-flight). Never include passwords or tokens.
+_pending_events: set[asyncio.Task] = set()
+
+
+def _emit(event_type: str, tenant_id: str, payload: dict) -> None:
+    task = asyncio.create_task(publish_event("auth.security", event_type, tenant_id, payload))
+    _pending_events.add(task)
+    task.add_done_callback(_pending_events.discard)
 
 router = APIRouter()
 settings = get_settings()
@@ -72,6 +86,7 @@ async def register(payload: RegisterIn, tenant_id: str = Depends(get_tenant_id),
         raise HTTPException(status_code=422, detail="Password must be at least 10 characters")
     cred = await auth_engine.register_user(db, tenant_id=tenant_id, user_id=payload.user_id, email=payload.email, password=payload.password)
     await db.commit()
+    _emit("auth.credential_registered", tenant_id, {"user_credential_id": str(cred.id), "user_id": str(payload.user_id)})
     return {"user_credential_id": cred.id, "email": cred.email}
 
 
@@ -80,6 +95,14 @@ async def login(payload: LoginIn, request: Request, response: Response, tenant_i
     ip_address, user_agent = _client_meta(request)
     outcome = await auth_engine.login(db, tenant_id=tenant_id, email=payload.email, password=payload.password, ip_address=ip_address, user_agent=user_agent)
     await db.commit()
+    login_event = {
+        "success": "auth.login_succeeded", "mfa_required": "auth.login_mfa_challenged",
+        "locked": "auth.account_locked",
+    }.get(outcome.status, "auth.login_failed")
+    _emit(login_event, tenant_id, {
+        "email": payload.email, "user_credential_id": str(outcome.user_credential_id) if outcome.user_credential_id else None,
+        "ip_address": ip_address, "failure_reason": outcome.failure_reason,
+    })
 
     if outcome.status == "success":
         _set_auth_cookies(response, outcome.tokens)
@@ -121,6 +144,7 @@ async def mfa_confirm(payload: MfaConfirmIn, user: dict = Depends(get_current_us
     await db.commit()
     if not confirmed:
         raise HTTPException(status_code=400, detail="Invalid authentication code")
+    _emit("auth.mfa_enabled", user["tenant_id"], {"user_credential_id": user["sub"], "user_id": user["user_id"]})
     return {"mfa_enabled": True}
 
 
@@ -134,6 +158,7 @@ async def refresh(request: Request, response: Response, tenant_id: str = Depends
         new_tokens = await auth_engine.refresh_tokens(db, tenant_id=tenant_id, raw_refresh_token=raw_refresh, ip_address=ip_address, user_agent=user_agent)
     except auth_engine.ReuseDetectedError:
         await db.commit()
+        _emit("auth.refresh_token_reuse_detected", tenant_id, {"ip_address": ip_address})
         _clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Session revoked — possible token theft detected, please log in again")
     except ValueError:
@@ -179,4 +204,5 @@ async def password_reset_confirm(payload: PasswordResetIn, tenant_id: str = Depe
     await db.commit()
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    _emit("auth.password_reset_completed", tenant_id, {})
     return {"status": "success"}

@@ -66,10 +66,17 @@ agents:
 
   relationship-intelligence:
     actions:
-      reply.routine_intent: { tier: 1 }
+      reply.routine_intent: { tier: 1, whitelist: [hours, location, status_check, faq] }
       lead.route: { tier: 1 }
       reply.negotiation_or_commitment: { tier: 2 }
       reply.pricing_quote: { tier: 2 }
+      # Concierge Agent (CRM-003): tags, drafts and escalates — a draft is
+      # not sent until a human approves it in crm-svc.
+      inbox.assess_draft_escalate: { tier: 1 }
+      # Revenue Agent (CRM-001/007): proposes candidates only; merging
+      # identities is a human action in crm-svc.
+      identity.match_candidate_propose: { tier: 1 }
+      identity.duplicate_candidate_propose: { tier: 1 }
 
   fleet-intelligence:
     actions:
@@ -86,12 +93,22 @@ agents:
       remarketing.disposition_execute: { tier: 1 }
       financing.covenant_early_warning: { tier: 1 }
       telematics.tamper_event_flag: { tier: 3 }
+      safety.score_assess: { tier: 1 }
+      intake.readiness_assess: { tier: 1 }
+      telemetry.anomaly_assess: { tier: 1 }
+      valuation.anomaly_flag: { tier: 1 }
+      fuel.anomaly_flag: { tier: 1 }
+      battery.degradation_forecast: { tier: 1 }
+      fleet.optimization_assess: { tier: 1 }
 
   pricing-intelligence:
     actions:
       pricing.adjust_within_band: { tier: 1 }
-      pricing.demand_multiplier_apply: { tier: 1 }
+      pricing.demand_multiplier_apply: { tier: 1, threshold: "within AI-005 guardrails" }
       pricing.breach_guardrail: { tier: 2 }
+      trade.valuation_apply: { tier: 1 }
+      retail.price_apply: { tier: 1 }
+      auction.max_bid_recommend: { tier: 1 }
 
   revenue:
     actions:
@@ -104,6 +121,8 @@ agents:
       winback.offer_standard: { tier: 1 }
       winback.offer_high_value: { tier: 2, threshold: "offer_value_usd > 500" }
       cancellation.intervention_standard: { tier: 1 }
+      churn.retention_bonus_award: { tier: 1 }
+      winback.evaluate: { tier: 1 }
 
   sales-originations-intelligence:
     actions:
@@ -111,6 +130,11 @@ agents:
       lender.match_recommend: { tier: 1 }
       deal.structure_recommend: { tier: 2 }
       credit.decision: { tier: 3 }
+      # ORG-001/002: pre-qualification and risk scoring are scoring, not
+      # deciding — the approve/decline is credit.decision (tier 3) in
+      # originations-svc.
+      case.prequalify: { tier: 1 }
+      case.risk_score: { tier: 1 }
 
   talent-workforce-intelligence:
     actions:
@@ -118,13 +142,56 @@ agents:
       notice.draft_generate: { tier: 1 }
       candidate.screen_score: { tier: 1 }
       hire_reject_discipline.decision: { tier: 3 }
+      onboarding.checklist_generate: { tier: 1 }
+      attrition.risk_score: { tier: 1 }
+      feedback.draft_generate: { tier: 1 }
+      email.draft_generate: { tier: 1 }
+      case.reply_draft: { tier: 1 }
+      nine_box.placement_propose: { tier: 1 }
+      benefits.recommendation_generate: { tier: 1 }
+      course.recommendation_generate: { tier: 1 }
+      # Executing actions. The HRM v4 build (delivered after the tiering
+      # instructions) is explicitly full-automation, so these stay tier 1
+      # to match it. §5 of the tiering instructions recommends tier 2 for
+      # a module without production history — to adopt that, change any
+      # of these to { tier: 2 }; every call site is already gated.
+      candidate.nurture_send: { tier: 1 }
+      feedback.finalize: { tier: 1 }
+      nine_box.placement_confirm: { tier: 1 }
+      benefits.recommendation_apply: { tier: 1 }
+      course.recommendation_assign: { tier: 1 }
+      course.publish: { tier: 1 }
+      email.send: { tier: 1 }
+      case.reply_send: { tier: 1 }
+      employee_note.write: { tier: 1 }
 
   compliance-risk-intelligence:
     actions:
       audit.flag_anomaly: { tier: 1 }
       policy.simulate: { tier: 1 }
       abac.policy_grant_apply: { tier: 3 }
+      access.kill_switch_audit: { tier: 1 }
 
   portfolio-intelligence:
     actions:
       rollup.generate_report: { tier: 1 }
+
+  # DMS dealership operations orchestrated by dealer_intelligence_agent —
+  # the DMS build runs these sweeps autonomously. Deal structuring is
+  # NOT here: it is sales-originations-intelligence
+  # deal.structure_recommend (tier 2), and credit is credit.decision
+  # (tier 3).
+  dealer-operations:
+    actions:
+      rooftop.license_renewal_file: { tier: 1 }
+      inventory.aging_markdown_apply: { tier: 1 }
+      service.repair_order_dispatch: { tier: 1 }
+      loaner.overdue_flag: { tier: 1 }
+      franchise.remediation_task_open: { tier: 1 }
+      credit.ofac_block_apply: { tier: 1 }
+      parts.vendor_order_place: { tier: 1 }
+      performance.intervention_markdown_apply: { tier: 1 }
+
+  marketing-content:
+    actions:
+      content.draft_generate: { tier: 1 }

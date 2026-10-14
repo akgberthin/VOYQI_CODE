@@ -1,6 +1,7 @@
 from sqlalchemy import select
 
 from src.models import AIRecommendation, Agent, AgentStatus, RecommendationStatus
+from src.core import action_gate
 from src.services import dealer_intelligence_agent, dms_tools
 
 TENANT = "voyqi-holdings"
@@ -21,11 +22,31 @@ async def test_evaluate_aging_sweep_calls_dms_and_logs(db_session, monkeypatch):
     assert result.decision_log.action_taken == "aging_markdowns_applied"
 
 
-async def test_evaluate_deal_desk_calls_dms_and_logs(db_session, monkeypatch):
-    monkeypatch.setattr(dms_tools, "desk_and_approve_deal", lambda tenant_id, deal_id: {"id": deal_id, "status": "approved", "price_usd": 18042.0})
+async def _assert_queued_then_executes_on_approval(db_session, result, calls, executor):
+    """Tier 2: nothing runs against dms-svc until a human approves the
+    queued recommendation; approving it runs exactly that action."""
+    assert calls == []
+    assert result.output is None
+    assert result.decision_log.outcome == "deferred"
+    assert (result.decision_log.tier, result.decision_log.approval_required) == (2, True)
+    rec = (await db_session.execute(select(AIRecommendation).where(AIRecommendation.id == result.decision_log.recommendation_id))).scalar_one()
+    assert rec.status == RecommendationStatus.PENDING
+    assert rec.tier == 2 and rec.requires_accountable_role is False
+    assert rec.proposed_action["executor"] == executor
+
+    action_gate.execute_approved(TENANT, rec.proposed_action)
+    assert len(calls) == 1
+
+
+async def test_deal_desk_is_tier_2_and_waits_for_approval(db_session, monkeypatch):
+    """deal.structure_recommend is tier 2 in tier-policy.yaml — the desk
+    no longer approves a deal on its own."""
+    calls = []
+    monkeypatch.setattr(dms_tools, "desk_and_approve_deal", lambda tenant_id, deal_id: calls.append(deal_id) or {"id": deal_id, "status": "approved"})
     result = await dealer_intelligence_agent.evaluate_deal_desk(db_session, TENANT, "deal-1")
-    assert result.output["status"] == "approved"
     assert result.decision_log.trigger_context == {"deal_id": "deal-1"}
+    await _assert_queued_then_executes_on_approval(db_session, result, calls, "dms.desk_and_approve_deal")
+    assert calls == ["deal-1"]
 
 
 async def test_evaluate_lending_clean_bureau_defers_to_tier_3_approval(db_session, monkeypatch):
@@ -100,6 +121,14 @@ async def test_evaluate_dealer_performance_calls_dms_and_logs(db_session, monkey
     result = await dealer_intelligence_agent.evaluate_dealer_performance(db_session, TENANT)
     assert result.output[0]["verdict"] == "intervene"
     assert result.decision_log.action_taken == "performance_evaluated_and_intervened"
+
+
+async def test_tier_1_dealer_operations_execute_immediately_and_are_tagged(db_session, monkeypatch):
+    monkeypatch.setattr(dms_tools, "evaluate_loaner_overdue", lambda tenant_id: [{"id": "loaner-1"}])
+    result = await dealer_intelligence_agent.evaluate_loaner_overdue(db_session, TENANT)
+    assert result.output == [{"id": "loaner-1"}]
+    assert (result.decision_log.tier, result.decision_log.approval_required) == (1, False)
+    assert result.decision_log.recommendation_id is None
 
 
 async def test_paused_agent_skips_every_capability(db_session, monkeypatch):

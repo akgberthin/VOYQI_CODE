@@ -158,3 +158,31 @@ async def test_password_reset_request_does_not_reveal_unknown_email(client):
         known_resp = await client.post("/api/v1/auth/password-reset/request", json={"email": "nobody@voyqi.com"}, headers=TENANT_HEADERS)
     assert known_resp.status_code == 200
     assert known_resp.json()["status"] == "if_account_exists_email_sent"
+
+
+@pytest.mark.asyncio
+async def test_auth_security_events_never_carry_secrets(client, monkeypatch):
+    """Failure paths raise HTTPException (no BackgroundTasks), so events
+    are scheduled as tasks — this checks they still go out, and that no
+    password or token ever appears in a payload."""
+    import asyncio
+
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        events.append((event_type, payload))
+
+    monkeypatch.setattr("src.api.auth.publish_event", _spy)
+    await _register_and_get_payload(client)
+    ok = await client.post("/api/v1/auth/login", json={"email": "member@voyqi.com", "password": "correct-horse-battery-staple"}, headers=TENANT_HEADERS)
+    bad = await client.post("/api/v1/auth/login", json={"email": "member@voyqi.com", "password": "wrong-password-123"}, headers=TENANT_HEADERS)
+    assert (ok.status_code, bad.status_code) == (200, 401)
+    for _ in range(5):
+        await asyncio.sleep(0)
+
+    assert [e for e, _p in events] == ["auth.credential_registered", "auth.login_succeeded", "auth.login_failed"]
+    flat = repr(events)
+    assert "correct-horse-battery-staple" not in flat
+    assert "wrong-password-123" not in flat
+    token = ok.cookies.get("access_token")
+    assert not token or token not in flat

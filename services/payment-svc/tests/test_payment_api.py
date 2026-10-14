@@ -147,3 +147,22 @@ async def test_webhook_idempotent_via_api(client):
     second = await client.post("/api/v1/payment/webhooks", json=payload, headers=TENANT_HEADERS)
     assert first.json()["status"] == "processed"
     assert second.json()["status"] == "already_processed"
+
+
+@pytest.mark.asyncio
+async def test_payment_events_published_once_per_real_state_change(client, monkeypatch):
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        events.append(event_type)
+
+    monkeypatch.setattr("src.api.payments.publish_event", _spy)
+    method = await _add_method(client)
+    key = {**TENANT_HEADERS, "Idempotency-Key": str(uuid.uuid4())}
+    body = {"user_id": str(uuid.uuid4()), "payment_method_id": method["id"], "amount_cents": 5000}
+
+    charge = (await client.post("/api/v1/payment/charges", json=body, headers=key)).json()
+    await client.post("/api/v1/payment/charges", json=body, headers=key)  # idempotent retry
+    await client.post(f"/api/v1/payment/charges/{charge['id']}/refund", json={"amount_cents": 1000, "reason": "goodwill"}, headers=TENANT_HEADERS)
+
+    assert events == ["payment.method_added", "payment.processed", "payment.refunded"]

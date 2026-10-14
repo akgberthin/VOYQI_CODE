@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core import action_gate
 from src.core.anthropic_client import AnthropicAgentClient
 from src.models import Agent, AgentStatus, DecisionLog
 from src.services import subscription_tools
@@ -155,10 +156,18 @@ async def evaluate_churn_risk(
 
     action_taken = "churn_score_computed"
     if risk_score >= CHURN_INTERVENTION_THRESHOLD:
-        subscription_tools.award_retention_gu_bonus(tenant_id, member_profile_id, RETENTION_SAVE_GU_BONUS)
-        tools_called.append({"tool": "award_retention_gu_bonus", "input": {"member_profile_id": member_profile_id, "amount": RETENTION_SAVE_GU_BONUS}})
-        reasoning += f" Risk score at or above the {CHURN_INTERVENTION_THRESHOLD} intervention threshold — {RETENTION_SAVE_GU_BONUS} GU retention-save bonus awarded autonomously."
-        action_taken = "churn_score_computed_and_retention_bonus_awarded"
+        gated = await action_gate.gate(
+            db, tenant_id=tenant_id, agent_key=AGENT_KEY, policy_agent="retention", action_type="churn.retention_bonus_award",
+            executor="subscription.award_retention_gu_bonus", args={"member_profile_id": member_profile_id, "amount": RETENTION_SAVE_GU_BONUS},
+            reasoning=reasoning, triggering_event_type="churn_risk.evaluation_requested", domain="subscription",
+        )
+        if gated.executed:
+            tools_called.append({"tool": "award_retention_gu_bonus", "input": {"member_profile_id": member_profile_id, "amount": RETENTION_SAVE_GU_BONUS}})
+            reasoning += f" Risk score at or above the {CHURN_INTERVENTION_THRESHOLD} intervention threshold — {RETENTION_SAVE_GU_BONUS} GU retention-save bonus awarded autonomously."
+            action_taken = "churn_score_computed_and_retention_bonus_awarded"
+        else:
+            reasoning += f" Risk score at or above the {CHURN_INTERVENTION_THRESHOLD} intervention threshold — {RETENTION_SAVE_GU_BONUS} GU retention-save bonus queued for approval (tier {gated.tier})."
+            action_taken = "churn_score_computed_and_retention_bonus_queued"
 
     log = await _log_and_count(
         db, tenant_id, "churn_risk.evaluation_requested", {"member_profile_id": member_profile_id, **context},

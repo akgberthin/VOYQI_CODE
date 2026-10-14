@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.services import pricing_engine
 
@@ -46,12 +47,16 @@ PROMO_ERRORS = (
 
 
 @router.post("/rate-cards", status_code=201)
-async def set_price(payload: SetPriceIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def set_price(payload: SetPriceIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         card = await pricing_engine.set_price(db, tenant_id=tenant_id, **payload.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(
+        publish_event, "pricing.rate_cards", "pricing.price_set", tenant_id,
+        {"rate_card_id": str(card.id), "mobility_class": card.mobility_class, "market": card.market, "price_cents": card.price_cents, "effective_from": str(card.effective_from)},
+    )
     return {"id": card.id, "mobility_class": card.mobility_class, "market": card.market, "price_cents": card.price_cents, "effective_from": card.effective_from}
 
 
@@ -80,14 +85,18 @@ async def calculate_price(mobility_class: str, market: str = "national", promo_c
 
 
 @router.post("/promo-codes", status_code=201)
-async def create_promo_code(payload: CreatePromoIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def create_promo_code(payload: CreatePromoIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     promo = await pricing_engine.create_promo_code(db, tenant_id=tenant_id, **payload.model_dump())
     await db.commit()
+    background_tasks.add_task(
+        publish_event, "pricing.promotions", "pricing.promo_created", tenant_id,
+        {"promo_code_id": str(promo.id), "code": promo.code, "discount_type": promo.discount_type, "discount_value": promo.discount_value},
+    )
     return {"id": promo.id, "code": promo.code, "discount_type": promo.discount_type, "discount_value": promo.discount_value}
 
 
 @router.post("/promo-codes/redeem", status_code=201)
-async def redeem_promo(payload: RedeemPromoIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def redeem_promo(payload: RedeemPromoIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
         redemption = await pricing_engine.redeem_promo(db, tenant_id=tenant_id, **payload.model_dump())
     except pricing_engine.RateCardNotFoundError as exc:
@@ -95,4 +104,8 @@ async def redeem_promo(payload: RedeemPromoIn, tenant_id: str = Depends(get_tena
     except PROMO_ERRORS as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     await db.commit()
+    background_tasks.add_task(
+        publish_event, "pricing.promotions", "pricing.promo_redeemed", tenant_id,
+        {"redemption_id": str(redemption.id), "code": payload.code, "discount_applied_cents": redemption.discount_applied_cents},
+    )
     return {"id": redemption.id, "discount_applied_cents": redemption.discount_applied_cents}

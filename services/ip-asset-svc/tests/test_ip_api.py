@@ -115,3 +115,26 @@ async def test_list_assets_by_owning_entity_via_api(client):
     resp = await client.get("/api/v1/ip/assets", params={"owning_entity": TECH_ENTITY}, headers=TENANT_HEADERS)
     assert resp.status_code == 200
     assert len(resp.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_ip_lifecycle_events_are_json_serializable(client, monkeypatch):
+    """The serialized asset/license carries UUIDs and dates — the
+    publisher must encode them rather than silently drop the event."""
+    import json
+
+    events = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        json.dumps(payload, default=str)
+        events.append(event_type)
+
+    monkeypatch.setattr("src.api.ip_assets.publish_event", _spy)
+    asset_id = await _register_and_grant_patent(client)
+    await client.post(
+        "/api/v1/ip/licenses",
+        json={"ip_asset_id": asset_id, "licensee_entity": "VOYQI Fleet LLC", "license_type": "non_exclusive", "royalty_type": "percentage_of_revenue", "royalty_rate": 500},
+        headers=TENANT_HEADERS,
+    )
+
+    assert events == ["ip.asset_registered", "ip.asset_status_changed", "ip.license_created"]
