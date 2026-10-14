@@ -26,6 +26,13 @@ class Settings(BaseSettings):
 
     request_timeout_seconds: float = 30.0
 
+    # Role-based authorization (src/services/authorization.py). On by
+    # default; permissions are fetched from rbac-svc and cached briefly
+    # per user, so a role change takes effect within this many seconds.
+    enforce_rbac: bool = True
+    rbac_base_url: str = "http://rbac-svc:8011"
+    permission_cache_seconds: float = 30.0
+
 
 @lru_cache
 def get_settings() -> Settings:

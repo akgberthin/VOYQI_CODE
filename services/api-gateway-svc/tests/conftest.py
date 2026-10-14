@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
+import pytest
 
 
 def make_test_token(*, tenant_id="voyqi-holdings", user_id=None, user_credential_id=None, expired=False, token_type="access"):
@@ -20,3 +21,17 @@ def make_test_token(*, tenant_id="voyqi-holdings", user_id=None, user_credential
         "exp": now + (timedelta(minutes=-5) if expired else timedelta(minutes=15)),
     }
     return jwt.encode(payload, os.environ["GATEWAY_JWT_SECRET"], algorithm="HS256")
+
+
+@pytest.fixture(autouse=True)
+def _grant_all_permissions(monkeypatch):
+    """Routing/proxy tests aren't about authorization — give every caller
+    every permission. tests/test_authorization.py overrides this."""
+    from src.services import authorization
+
+    authorization.reset_cache()
+
+    async def _all(tenant_id, user_id):
+        return frozenset({"*"})
+
+    monkeypatch.setattr(authorization, "permissions_for", _all)

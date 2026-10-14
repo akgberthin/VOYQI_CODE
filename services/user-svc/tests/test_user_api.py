@@ -157,3 +157,13 @@ async def test_user_lifecycle_publishes_events(client, monkeypatch):
     await client.post(f"/api/v1/user/users/{user_id}/status", json={"status": "suspended", "reason": "chargeback"}, headers=TENANT_HEADERS)
 
     assert events == [("user.created", user_id), ("user.updated", user_id), ("user.status_changed", user_id)]
+
+
+@pytest.mark.asyncio
+async def test_same_email_cannot_be_created_twice_in_a_tenant(client):
+    body = {"user_type": "member", "first_name": "Ada", "last_name": "L", "email": "Dup@voyqi.com"}
+    assert (await client.post("/api/v1/user/users", json=body, headers=TENANT_HEADERS)).status_code == 201
+    again = await client.post("/api/v1/user/users", json={**body, "email": "dup@VOYQI.com"}, headers=TENANT_HEADERS)
+    assert again.status_code == 409
+    other_tenant = await client.post("/api/v1/user/users", json=body, headers={"X-Tenant-Id": "another-tenant"})
+    assert other_tenant.status_code == 201

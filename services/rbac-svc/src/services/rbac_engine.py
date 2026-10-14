@@ -44,8 +44,18 @@ async def list_roles(db: AsyncSession, tenant_id: str) -> list[Role]:
     return list(result.scalars().all())
 
 
-async def create_platform_user(db: AsyncSession, tenant_id: str, email: str, display_name: str, mfa_enabled: bool = False) -> PlatformUser:
+class DuplicatePlatformUserError(Exception):
+    pass
+
+
+async def create_platform_user(
+    db: AsyncSession, tenant_id: str, email: str, display_name: str, mfa_enabled: bool = False, user_id: uuid.UUID | None = None,
+) -> PlatformUser:
+    if user_id is not None and await db.get(PlatformUser, user_id) is not None:
+        raise DuplicatePlatformUserError(f"platform user {user_id} already exists")
     user = PlatformUser(tenant_id=tenant_id, email=email, display_name=display_name, mfa_enabled=mfa_enabled)
+    if user_id is not None:
+        user.id = user_id
     db.add(user)
     await db.commit()
     await db.refresh(user)

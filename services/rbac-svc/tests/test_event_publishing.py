@@ -125,3 +125,18 @@ async def test_role_revoke_publishes_role_revoked_and_removes_assignment(client,
 
     again = await client.post(f"/api/v1/rbac/role-assignments/{assignment['id']}/revoke", json={"revoked_by": "admin-2"}, headers=H)
     assert again.status_code == 404
+
+
+async def test_platform_user_can_be_created_with_the_user_svc_id(client, published):
+    """The gateway authorizes by the JWT's user_id — the platform user
+    must carry that same id for its roles to apply."""
+    user_id = "33333333-3333-3333-3333-333333333333"
+    created = await client.post("/api/v1/rbac/users", json={"id": user_id, "email": "a@x.com", "display_name": "A"}, headers=H)
+    assert created.status_code == 201 and created.json()["id"] == user_id
+    role = (await client.post("/api/v1/rbac/roles", json={"key": "fleet_mgr", "name": "Fleet", "permission_keys": ["fleet.read"], "wildcard_permissions": ["rental.*"]}, headers=H)).json()
+    await client.post("/api/v1/rbac/role-assignments", json={"user_id": user_id, "role_id": role["id"], "assigned_by": "admin"}, headers=H)
+
+    perms = (await client.get(f"/api/v1/rbac/users/{user_id}/effective-permissions", headers=H)).json()
+    assert set(perms["effective_permissions"]) == {"fleet.read", "rental.*"}
+    dup = await client.post("/api/v1/rbac/users", json={"id": user_id, "email": "b@x.com", "display_name": "B"}, headers=H)
+    assert dup.status_code == 409

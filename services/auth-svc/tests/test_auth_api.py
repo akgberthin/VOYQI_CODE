@@ -186,3 +186,16 @@ async def test_auth_security_events_never_carry_secrets(client, monkeypatch):
     assert "wrong-password-123" not in flat
     token = ok.cookies.get("access_token")
     assert not token or token not in flat
+
+
+@pytest.mark.asyncio
+async def test_duplicate_registration_is_rejected_and_login_still_works(client):
+    """A second credential for the same tenant+email would make login
+    fail permanently — registration must refuse it."""
+    await _register_and_get_payload(client)
+    again = await client.post(
+        "/api/v1/auth/register", json={"user_id": str(uuid.uuid4()), "email": "MEMBER@voyqi.com", "password": "another-long-password"}, headers=TENANT_HEADERS
+    )
+    assert again.status_code == 409
+    login = await client.post("/api/v1/auth/login", json={"email": "member@voyqi.com", "password": "correct-horse-battery-staple"}, headers=TENANT_HEADERS)
+    assert login.status_code == 200

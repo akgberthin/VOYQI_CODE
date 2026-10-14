@@ -13,6 +13,10 @@ router = APIRouter(prefix="/api/v1/rbac", tags=["rbac"])
 
 
 class UserCreate(BaseModel):
+    # The user-svc user id. The gateway authorizes requests by the
+    # user_id in the caller's JWT, so a platform user must be created
+    # with that same id to receive role permissions.
+    id: uuid.UUID | None = None
     email: str
     display_name: str
     mfa_enabled: bool = False
@@ -29,7 +33,10 @@ class UserOut(BaseModel):
 
 @router.post("/users", response_model=UserOut, status_code=201)
 async def create_user(body: UserCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    return await rbac_engine.create_platform_user(db, tenant_id, body.email, body.display_name, body.mfa_enabled)
+    try:
+        return await rbac_engine.create_platform_user(db, tenant_id, body.email, body.display_name, body.mfa_enabled, user_id=body.id)
+    except rbac_engine.DuplicatePlatformUserError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/users", response_model=list[UserOut])

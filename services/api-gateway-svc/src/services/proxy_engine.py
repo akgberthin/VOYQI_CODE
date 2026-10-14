@@ -9,6 +9,7 @@ import httpx
 
 from src.core.config import get_settings
 from src.core.tokens import TokenInvalidError, decode_access_token
+from src.services.authorization import AuthorizationError, authorize
 from src.services.rate_limiter import check_rate_limit
 from src.services.routing import is_public_path, resolve_route
 
@@ -56,6 +57,10 @@ async def handle_request(
             claims = decode_access_token(access_token_cookie)
         except TokenInvalidError as exc:
             raise GatewayError(401, str(exc)) from exc
+        try:
+            await authorize(claims, route, method, path)
+        except AuthorizationError as exc:
+            raise GatewayError(exc.status_code, exc.detail) from exc
         # Enforced from the verified token — a client cannot override these via headers.
         outgoing_headers["x-tenant-id"] = claims["tenant_id"]
         outgoing_headers["x-user-id"] = claims["user_id"]

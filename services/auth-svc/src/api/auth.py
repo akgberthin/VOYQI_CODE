@@ -84,7 +84,10 @@ class PasswordResetIn(BaseModel):
 async def register(payload: RegisterIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     if len(payload.password) < 10:
         raise HTTPException(status_code=422, detail="Password must be at least 10 characters")
-    cred = await auth_engine.register_user(db, tenant_id=tenant_id, user_id=payload.user_id, email=payload.email, password=payload.password)
+    try:
+        cred = await auth_engine.register_user(db, tenant_id=tenant_id, user_id=payload.user_id, email=payload.email, password=payload.password)
+    except auth_engine.CredentialExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     await db.commit()
     _emit("auth.credential_registered", tenant_id, {"user_credential_id": str(cred.id), "user_id": str(payload.user_id)})
     return {"user_credential_id": cred.id, "email": cred.email}

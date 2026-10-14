@@ -10,6 +10,10 @@ from src.models import User, UserAddress, UserPreference, UserProfileLink
 settings = get_settings()
 
 
+class EmailAlreadyRegisteredError(Exception):
+    pass
+
+
 class RegistrationError(Exception):
     """Raised when the compound register flow fails — the User row this
     service created has already been rolled back (compensating delete)
@@ -19,7 +23,11 @@ class RegistrationError(Exception):
 async def create_user(
     db: AsyncSession, *, tenant_id: str, user_type: str, first_name: str, last_name: str, email: str, phone: str | None = None,
 ) -> User:
-    user = User(tenant_id=tenant_id, user_type=user_type, first_name=first_name, last_name=last_name, email=email.lower().strip(), phone=phone)
+    email_norm = email.lower().strip()
+    existing = await db.execute(select(User.id).where(User.tenant_id == tenant_id, User.email == email_norm))
+    if existing.first() is not None:
+        raise EmailAlreadyRegisteredError("a user with this email already exists")
+    user = User(tenant_id=tenant_id, user_type=user_type, first_name=first_name, last_name=last_name, email=email_norm, phone=phone)
     db.add(user)
     await db.flush()
     return user
@@ -44,6 +52,10 @@ async def register_user_with_credentials(
                 headers={"X-Tenant-Id": tenant_id},
                 json={"user_id": str(user.id), "email": email, "password": password},
             )
+            if resp.status_code == 409:
+                await db.delete(user)
+                await db.flush()
+                raise EmailAlreadyRegisteredError("a user with this email already exists")
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         await db.delete(user)

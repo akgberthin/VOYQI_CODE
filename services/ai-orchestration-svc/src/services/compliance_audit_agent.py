@@ -31,6 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.anthropic_client import AnthropicAgentClient
+from src.core.tiering import get_tier
 from src.models import Agent, AIRecommendation, DecisionLog, RecommendationStatus
 from src.services import hub_tools, org_tools, rbac_tools, subscription_tools
 
@@ -312,6 +313,22 @@ class ComplianceEvaluation:
     recommendation: AIRecommendation | None
 
 
+# The human decision a review card asks for belongs to the policy action
+# it would act on. Tamper events, fair-lending outcomes and ABAC access
+# policies are tier 3 (named accountable role); every other review is a
+# tier-2 approval.
+REVIEW_POLICY_ACTIONS: dict[str, tuple[str, str]] = {
+    "vehicle.tamper_detected": ("fleet-intelligence", "telematics.tamper_event_flag"),
+    "org.decision_finalized": ("sales-originations-intelligence", "credit.decision"),
+    "abac_policy.activated": ("compliance-risk-intelligence", "abac.policy_grant_apply"),
+}
+
+
+def _review_tier(event_type: str) -> int:
+    action = REVIEW_POLICY_ACTIONS.get(event_type)
+    return max(get_tier(*action), 2) if action else 2
+
+
 async def evaluate_event(
     db: AsyncSession,
     tenant_id: str,
@@ -490,6 +507,7 @@ async def evaluate_event(
         }
         domain = domain_map.get(event_type, "rbac")
 
+        review_tier = _review_tier(event_type)
         recommendation = AIRecommendation(
             tenant_id=tenant_id,
             agent_key=AGENT_KEY,
@@ -528,6 +546,8 @@ async def evaluate_event(
             ),
             status=RecommendationStatus.PENDING,
             triggering_event_type=event_type,
+            tier=review_tier,
+            requires_accountable_role=review_tier == 3,
             triggering_event_id=(
                 payload.get("override_id")
                 or payload.get("assignment_id")

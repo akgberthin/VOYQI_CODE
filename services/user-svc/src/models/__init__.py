@@ -41,6 +41,7 @@ class User(Base):
     assumes exists."""
 
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),)
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[str] = mapped_column(String(100), index=True)

@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.core.anthropic_client import AgentTurnResult, ToolCallResult
 from src.models import Agent, RecommendationStatus
 from src.services import compliance_audit_agent, rbac_tools
@@ -940,3 +942,18 @@ async def test_deposit_capture_without_hold_id_still_scores_on_payload_amount_al
     evaluation = await compliance_audit_agent.evaluate_event(db_session, TENANT, "deposit.capture_requested", payload, client=_UnconfiguredClient())
     assert evaluation.recommendation is not None
     assert evaluation.recommendation.risk_score == 55.0
+
+
+@pytest.mark.parametrize("event_type,payload,tier", [
+    ("vehicle.tamper_detected", {"event_id": "t-1", "vehicle_id": "v-1", "detected_signal": "gps_jamming"}, 3),
+    ("access.break_glass_activated", {"session_id": "s-1", "user_id": "u-1", "off_hours": True, "duration_minutes": 90}, 2),
+])
+async def test_review_cards_carry_the_tier_of_the_decision_they_ask_for(db_session, event_type, payload, tier):
+    """A tamper event is tier 3 in the policy — its review card must
+    demand a named accountable role; ordinary reviews are tier 2."""
+    from src.services import compliance_audit_agent
+
+    result = await compliance_audit_agent.evaluate_event(db_session, "tenant-x", event_type, payload)
+    assert result.recommendation is not None
+    assert result.recommendation.tier == tier
+    assert result.recommendation.requires_accountable_role is (tier == 3)

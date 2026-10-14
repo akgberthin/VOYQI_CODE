@@ -81,7 +81,10 @@ def _serialize(user) -> dict:
 
 @router.post("/users", status_code=201)
 async def create_user(payload: CreateUserIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    user = await user_engine.create_user(db, tenant_id=tenant_id, **payload.model_dump(mode="json"))
+    try:
+        user = await user_engine.create_user(db, tenant_id=tenant_id, **payload.model_dump(mode="json"))
+    except user_engine.EmailAlreadyRegisteredError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     await db.commit()
     _publish(background_tasks, "user.created", tenant_id, user)
     return _serialize(user)
@@ -93,6 +96,9 @@ async def register_user(payload: RegisterUserIn, background_tasks: BackgroundTas
         raise HTTPException(status_code=422, detail="Password must be at least 10 characters")
     try:
         user = await user_engine.register_user_with_credentials(db, tenant_id=tenant_id, **payload.model_dump(mode="json"))
+    except user_engine.EmailAlreadyRegisteredError as exc:
+        await db.commit()  # commits the compensating delete, if any
+        raise HTTPException(status_code=409, detail=str(exc))
     except user_engine.RegistrationError as exc:
         await db.commit()  # commits the compensating delete
         raise HTTPException(status_code=502, detail=str(exc))

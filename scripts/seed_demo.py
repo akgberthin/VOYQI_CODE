@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""Seed a demo tenant: one login per platform role, the role permissions
+the gateway enforces, and sample business data across the services.
+
+All sample data is invented for demonstration — replace it with the
+client's real business data before any external demo.
+
+Users register through the gateway's public endpoint exactly like a real
+sign-up. Roles and sample data are written straight to the services on
+the internal network (the bootstrap a platform operator would do — no
+user can grant themselves a role through the gateway). Safe to re-run:
+existing roles, users and records are reused, not duplicated.
+
+    python3 scripts/seed_demo.py                 # tenant "voyqi-demo"
+    python3 scripts/seed_demo.py --tenant acme --password 'Another-Pass-123'
+"""
+import argparse
+import json
+import sys
+import urllib.error
+import urllib.request
+from datetime import date, timedelta
+
+LOCAL = {
+    "gateway": 8000, "subscription": 8003, "fleet": 8004, "rental": 8005, "hub": 8006, "marketing": 8007, "dms": 8008,
+    "pricing": 8010, "rbac": 8011, "crm": 8021, "hrm": 8023, "executive": 8032, "originations": 8036,
+}
+
+# role key -> (display name, user_type, permissions). Module names are the
+# gateway route prefixes; "<module>.*" grants read and write.
+ROLES = {
+    "super_admin": ("Super Admin", "admin", ["*"]),
+    "fleet_manager": ("Fleet Manager", "employee", ["fleet.*", "hub.*", "rental.read", "ai.*"]),
+    "dealer_gm": ("Dealer General Manager", "dealer", ["dms.*", "sales.*", "originations.*", "org.*", "crm.*", "pricing.read", "ai.*"]),
+    "hr_manager": ("HR Manager", "employee", ["hrm.*", "user.read", "notifications.write", "ai.*"]),
+    "marketing_manager": ("Marketing Manager", "employee", ["marketing.*", "crm.*", "ai.*"]),
+    "executive": ("Executive", "employee", [
+        "executive.read", "management.read", "real-estate.read", "capital-finance.read", "insurance-risk.read", "ai.read",
+    ]),
+    "compliance_officer": ("Compliance Officer", "employee", ["security-compliance.*", "identity.*", "rbac.read", "ai.*", "insurance-risk.*"]),
+    "member": ("Member", "member", ["subscription.*", "rental.*", "hub.read", "payment.write", "pricing.read"]),
+}
+
+
+class Api:
+    def __init__(self, host: str, tenant: str):
+        self.host, self.tenant = host, tenant
+
+    def call(self, service: str, method: str, path: str, body=None, ok=(200, 201), cookie: str | None = None):
+        url = f"http://{self.host}:{LOCAL[service]}{path}"
+        headers = {"Content-Type": "application/json", "X-Tenant-Id": self.tenant}
+        if cookie:
+            headers["Cookie"] = f"access_token={cookie}"
+        req = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None, method=method, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                raw = resp.read()
+                return resp.status, (json.loads(raw) if raw else None), resp.headers
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode()[:300]
+            if exc.code in ok:
+                return exc.code, None, exc.headers
+            raise RuntimeError(f"{method} {service}{path} -> {exc.code}: {detail}") from exc
+
+
+def login(api: Api, email: str, password: str) -> str:
+    _status, _body, headers = api.call("gateway", "POST", "/api/v1/auth/login", {"email": email, "password": password})
+    for cookie in headers.get_all("Set-Cookie") or []:
+        if cookie.startswith("access_token="):
+            return cookie.split(";", 1)[0].split("=", 1)[1]
+    raise RuntimeError(f"login for {email} returned no access token")
+
+
+def seed_users_and_roles(api: Api, password: str, domain: str) -> dict:
+    existing_roles = {r["key"]: r for r in api.call("rbac", "GET", "/api/v1/rbac/roles")[1]}
+    existing_platform_users = {u["id"] for u in api.call("rbac", "GET", "/api/v1/rbac/users")[1]}
+    accounts = {}
+    for key, (name, user_type, permissions) in ROLES.items():
+        role = existing_roles.get(key) or api.call("rbac", "POST", "/api/v1/rbac/roles", {
+            "key": key, "name": name, "permission_keys": [p for p in permissions if not p.endswith("*")],
+            "wildcard_permissions": [p for p in permissions if p.endswith("*")], "is_system_role": key == "super_admin",
+        })[1]
+        email = f"{key.replace('_', '.')}@{domain}"
+        first, _, last = name.partition(" ")
+        try:
+            api.call("gateway", "POST", "/api/v1/user/users/register", {
+                "user_type": user_type, "first_name": first, "last_name": last or "Demo", "email": email, "password": password,
+            })
+        except RuntimeError as exc:
+            if "409" not in str(exc) and "already" not in str(exc).lower() and "502" not in str(exc):
+                raise
+        token = login(api, email, password)
+        user_id = api.call("gateway", "GET", "/api/v1/auth/me", cookie=token)[1]["user_id"]
+        if user_id not in existing_platform_users:
+            api.call("rbac", "POST", "/api/v1/rbac/users", {"id": user_id, "email": email, "display_name": name})
+            api.call("rbac", "POST", "/api/v1/rbac/role-assignments", {"user_id": user_id, "role_id": role["id"], "assigned_by": "seed_demo"})
+        accounts[key] = {"email": email, "user_id": user_id}
+        print(f"  {key:<19} {email}", flush=True)
+    return accounts
+
+
+def seed_business_data(api: Api, accounts: dict) -> None:
+    def ensure(service, list_path, create_path, items, match_key):
+        current = api.call(service, "GET", list_path)[1] or []
+        have = {str(item.get(match_key)) for item in current}
+        created = 0
+        for item in items:
+            if str(item[match_key]) not in have:
+                api.call(service, "POST", create_path, item)
+                created += 1
+        print(f"  {service:<13} {create_path:<40} +{created} (had {len(have)})", flush=True)
+
+    ensure("subscription", "/api/v1/subscription/plans", "/api/v1/subscription/plans", [
+        {"mobility_class": c, "market": "national", "monthly_price_usd": p} for c, p in
+        [("urban", 449), ("family", 699), ("executive", 899), ("luxury", 1499), ("performance", 1799)]
+    ], "mobility_class")
+    created = 0
+    for mobility_class, price_cents in (("urban", 44900), ("executive", 89900), ("luxury", 149900)):
+        status, _body, _h = api.call("pricing", "GET", f"/api/v1/pricing/rate-cards/current?mobility_class={mobility_class}", ok=(200, 404))
+        if status == 404:
+            api.call("pricing", "POST", "/api/v1/pricing/rate-cards", {"mobility_class": mobility_class, "price_cents": price_cents, "changed_by": "seed_demo"})
+            created += 1
+    print(f"  {'pricing':<13} {'/api/v1/pricing/rate-cards':<40} +{created}", flush=True)
+    ensure("hub", "/api/v1/hub/hubs", "/api/v1/hub/hubs", [
+        {"name": "Austin Downtown", "hub_type": "city_business", "latitude": 30.2672, "longitude": -97.7431, "capacity": 60, "has_lounge": True},
+        {"name": "DFW Airport", "hub_type": "airport", "latitude": 32.8998, "longitude": -97.0403, "capacity": 120, "has_lounge": True},
+        {"name": "Houston Galleria", "hub_type": "city_business", "latitude": 29.7376, "longitude": -95.4616, "capacity": 45},
+        {"name": "Miami Brickell", "hub_type": "residential", "latitude": 25.7617, "longitude": -80.1918, "capacity": 40},
+    ], "name")
+    ensure("dms", "/api/v1/dms/rooftops", "/api/v1/dms/rooftops", [
+        {"name": "VOYQI Toyota Austin", "oem_brand": "Toyota", "license_number": "TX-D-10442", "license_expiry": str(date.today() + timedelta(days=300)), "holding_company": "VOYQI Texas Holdings"},
+        {"name": "VOYQI BMW Dallas", "oem_brand": "BMW", "license_number": "TX-D-20817", "license_expiry": str(date.today() + timedelta(days=25)), "holding_company": "VOYQI Texas Holdings"},
+    ], "name")
+    ensure("dms", "/api/v1/dms/lending/lenders", "/api/v1/dms/lending/lenders", [{"name": n} for n in ("Lone Star Credit Union", "Capital Auto Finance", "VOYQI Captive Finance")], "name")
+    ensure("originations", "/api/v1/org/funding-sources", "/api/v1/org/funding-sources", [
+        {"name": "VOYQI Captive Finance", "applicable_origination_type": "subscription_enrollment", "min_risk_score": 0.4, "max_amount_usd": 60000, "reserve_participation_pct": 2.5},
+        {"name": "Lone Star Credit Union", "applicable_origination_type": "subscription_enrollment", "min_risk_score": 0.6, "max_amount_usd": 40000, "reserve_participation_pct": 1.5},
+        {"name": "Rental Conversion Bank", "applicable_origination_type": "rental_conversion", "min_risk_score": 0.5, "max_amount_usd": 25000, "reserve_participation_pct": 1.0},
+    ], "name")
+    ensure("marketing", "/api/v1/marketing/campaigns", "/api/v1/marketing/campaigns", [
+        {"name": "Portable Mobility Launch — Texas", "channel": "email", "objective": "acquisition", "created_by": "seed_demo"},
+        {"name": "Winter Upgrade Offer", "channel": "sms", "objective": "upsell", "created_by": "seed_demo"},
+    ], "name")
+    ensure("hrm", "/api/v1/hrm/employees", "/api/v1/hrm/employees", [
+        {"full_name": n, "job_title": t, "department": d, "email": f"{n.split()[0].lower()}@voyqi.example", "annual_salary_usd": s}
+        for n, t, d, s in [
+            ("Priya Raman", "Fleet Operations Lead", "fleet", 98000), ("Marcus Hill", "Service Advisor", "dealership", 61000),
+            ("Elena Torres", "HR Business Partner", "people", 88000), ("Jordan Lee", "Member Concierge", "member_experience", 54000),
+        ]
+    ], "full_name")
+    period_end = date.today().replace(day=1) - timedelta(days=1)
+    period_start = period_end.replace(day=1)
+    rollups = api.call("executive", "GET", "/api/v1/executive/rollups")[1] or []
+    if not rollups:
+        for subsidiary, revenue in (("voyqi-mobility", 1_840_000), ("voyqi-rental", 1_120_000), ("voyqi-dealer-group", 4_350_000)):
+            api.call("executive", "POST", "/api/v1/executive/rollups", {
+                "subsidiary_key": subsidiary, "metric_domain": "revenue", "period_start": str(period_start), "period_end": str(period_end),
+                "metrics": {"revenue_usd": revenue, "gross_margin_pct": 21.5}, "source_service": "seed_demo",
+            })
+    print(f"  executive     revenue rollups for {period_start:%B %Y} ({'existing' if rollups else 'created'})", flush=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--tenant", default="voyqi-demo")
+    parser.add_argument("--host", default="localhost")
+    parser.add_argument("--password", default="Voyqi-Demo-2026!", help="password for every seeded login (min 10 chars)")
+    parser.add_argument("--email-domain", default="voyqi.example")
+    args = parser.parse_args()
+    api = Api(args.host, args.tenant)
+
+    print(f"tenant {args.tenant}: role logins (password: {args.password})")
+    accounts = seed_users_and_roles(api, args.password, args.email_domain)
+    print("sample business data")
+    seed_business_data(api, accounts)
+    print("done")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

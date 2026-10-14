@@ -796,6 +796,18 @@ services:
       timeout: 5s
       retries: 20
 
+  # Simulated vehicle telematics (no real devices yet). Opt-in:
+  #   docker compose --profile simulator up telematics-simulator
+  telematics-simulator:
+    image: python:3.12-slim
+    profiles: ["simulator"]
+    volumes:
+      - ./scripts/telematics_simulator.py:/sim/telematics_simulator.py:ro
+    command: ["python", "/sim/telematics_simulator.py", "--fleet-url", "http://fleet-svc:8004", "--tenant", "${SIM_TENANT:-voyqi-demo}", "--vehicles", "${SIM_VEHICLES:-12}", "--ticks", "0", "--interval", "5"]
+    depends_on:
+      fleet-svc:
+        condition: service_started
+
 volumes:
   kafka_data:
   rbac_db_data:

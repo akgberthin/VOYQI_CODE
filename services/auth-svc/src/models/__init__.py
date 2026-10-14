@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import GUID, Base
@@ -27,6 +27,9 @@ class UserCredential(Base):
     agree on an id, not a joined relationship."""
 
     __tablename__ = "user_credentials"
+    # Login looks a credential up by (tenant, email) — two rows for the
+    # same pair would make that login fail for good.
+    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_user_credentials_tenant_email"),)
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[str] = mapped_column(String(100), index=True)

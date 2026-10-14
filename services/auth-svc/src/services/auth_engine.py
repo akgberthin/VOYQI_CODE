@@ -86,8 +86,16 @@ async def _issue_token_pair(db: AsyncSession, *, cred: UserCredential, ip_addres
     return TokenPair(access_token=access_token, refresh_token=raw_refresh, refresh_expires_at=expires_at)
 
 
+class CredentialExistsError(Exception):
+    pass
+
+
 async def register_user(db: AsyncSession, *, tenant_id: str, user_id: uuid.UUID, email: str, password: str) -> UserCredential:
-    cred = UserCredential(tenant_id=tenant_id, user_id=user_id, email=email.lower().strip(), password_hash=hash_password(password))
+    email_norm = email.lower().strip()
+    existing = await db.execute(select(UserCredential.id).where(UserCredential.tenant_id == tenant_id, UserCredential.email == email_norm))
+    if existing.first() is not None:
+        raise CredentialExistsError("an account with this email already exists")
+    cred = UserCredential(tenant_id=tenant_id, user_id=user_id, email=email_norm, password_hash=hash_password(password))
     db.add(cred)
     await db.flush()
     return cred
