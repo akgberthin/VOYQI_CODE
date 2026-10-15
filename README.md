@@ -46,6 +46,17 @@ In deployed environments devices use mutual TLS with the VIN as the
 certificate Common Name, and the broker only lets a device publish under
 its own VIN (`infrastructure/mqtt/`, `docs/DEPLOYMENT.md`).
 
+## Demo console
+
+A browser console for showing the platform before the React apps exist —
+roles & access, lead → loan decision, customer inbox, live fleet map,
+AI governance and emergency access, all live through the gateway:
+
+```bash
+python3 scripts/seed_demo.py
+python3 demo-console/server.py     # http://localhost:8090
+```
+
 ## Demo logins
 
 `scripts/seed_demo.py` creates these in tenant `voyqi-demo` (send

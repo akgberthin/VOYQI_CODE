@@ -135,3 +135,16 @@ async def test_hub_coordinates_round_trip_through_the_api(client):
     assert (created.json()["latitude"], created.json()["geofence_radius_miles"]) == (AUSTIN[0], 30)
     bad = await client.post("/api/v1/fleet/hubs", json={"name": "Nowhere", "latitude": 123}, headers=TENANT_HEADERS)
     assert bad.status_code == 422
+
+
+async def test_fleet_positions_return_each_vehicles_latest_reading(client, db_session, vehicle, events):
+    from tests.conftest import TENANT_HEADERS
+
+    topic = mqtt_ingest.vehicle_topic(TENANT, VIN, "telemetry")
+    await mqtt_ingest.handle_message(db_session, topic, _telemetry(*AUSTIN, odometer=1000))
+    await mqtt_ingest.handle_message(db_session, topic, _telemetry(*DALLAS, odometer=1300))
+    positions = (await client.get("/api/v1/fleet/telemetry/latest", headers=TENANT_HEADERS)).json()
+    assert len(positions) == 1
+    assert (positions[0]["vin"], positions[0]["latitude"], positions[0]["odometer_miles"]) == (VIN, DALLAS[0], 1300)
+    other = (await client.get("/api/v1/fleet/telemetry/latest", headers={"X-Tenant-Id": "someone-else"})).json()
+    assert other == []

@@ -58,6 +58,34 @@ async def ingest_telemetry(body: TelemetryIngest, tenant_id: str = Depends(get_t
     )
 
 
+class FleetPosition(BaseModel):
+    vehicle_id: uuid.UUID
+    vin: str
+    make: str
+    model: str
+    status: str
+    current_hub_id: uuid.UUID | None
+    latitude: float
+    longitude: float
+    battery_or_fuel_pct: float
+    odometer_miles: int
+    dtc_codes: list[str]
+    recorded_at: datetime
+
+
+@router.get("/telemetry/latest", response_model=list[FleetPosition])
+async def fleet_positions(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Every reporting vehicle's latest reading, for the live fleet map."""
+    return [
+        FleetPosition(
+            vehicle_id=v.id, vin=v.vin, make=v.make, model=v.model, status=v.status.value, current_hub_id=v.current_hub_id,
+            latitude=r.latitude, longitude=r.longitude, battery_or_fuel_pct=r.battery_or_fuel_pct,
+            odometer_miles=r.odometer_miles, dtc_codes=r.dtc_codes, recorded_at=r.recorded_at,
+        )
+        for r, v in await telematics_engine.latest_readings(db, tenant_id)
+    ]
+
+
 @router.get("/vehicles/{vehicle_id}/latest-telemetry", response_model=ReadingOut | None)
 async def get_latest_reading(vehicle_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     return await telematics_engine.get_latest_reading(db, tenant_id, vehicle_id)

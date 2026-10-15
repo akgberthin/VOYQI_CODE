@@ -9,7 +9,7 @@ Compliance/Audit Agent; routine telemetry ingestion does not.
 import math
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import (
@@ -88,6 +88,28 @@ async def get_latest_reading(db: AsyncSession, tenant_id: str, vehicle_id: uuid.
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+async def latest_readings(db: AsyncSession, tenant_id: str) -> list[tuple[TelemetryReading, Vehicle]]:
+    """Each reporting vehicle's most recent reading — the fleet map in one query."""
+    latest = (
+        select(TelemetryReading.vehicle_id, func.max(TelemetryReading.recorded_at).label("recorded_at"))
+        .where(TelemetryReading.tenant_id == tenant_id)
+        .group_by(TelemetryReading.vehicle_id)
+        .subquery()
+    )
+    result = await db.execute(
+        select(TelemetryReading, Vehicle)
+        .join(latest, (TelemetryReading.vehicle_id == latest.c.vehicle_id) & (TelemetryReading.recorded_at == latest.c.recorded_at))
+        .join(Vehicle, (Vehicle.id == TelemetryReading.vehicle_id) & (Vehicle.tenant_id == tenant_id))
+        .where(TelemetryReading.tenant_id == tenant_id)
+    )
+    seen, rows = set(), []
+    for reading, vehicle in result.all():
+        if vehicle.id not in seen:  # two readings with the same timestamp
+            seen.add(vehicle.id)
+            rows.append((reading, vehicle))
+    return rows
 
 
 async def get_geofence_alert(db: AsyncSession, tenant_id: str, alert_id: uuid.UUID) -> GeofenceAlert | None:
