@@ -23,7 +23,7 @@ spec:
       serviceAccountName: gateway-ksa
       containers:
         - name: api-gateway
-          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway:latest
+          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway-svc:latest
           ports:
             - containerPort: 8000
           envFrom:

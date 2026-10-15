@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.list.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: echo "services=$(ls -d services/*/ | xargs -n1 basename | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover.outputs.services) }}
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/${{ matrix.service }}/requirements.txt
+      - run: pip install -r requirements.txt
+      # Errors only (syntax, undefined names) — not a style gate.
+      - run: pip install ruff && ruff check --select E9,F63,F7,F82 src tests
+      # The whole tests/ directory in one run, never per file: per-file
+      # runs have hidden test-isolation bugs on this platform before.
+      - run: python -m pytest -q
+      - name: Migrations match the models
+        if: hashFiles(format('services/{0}/alembic.ini', matrix.service)) != ''
+        run: |
+          prefix=$(grep -oE 'env_prefix="[A-Z_]+"' src/core/config.py | cut -d'"' -f2)
+          export ${prefix}DATABASE_URL="sqlite+aiosqlite:///$RUNNER_TEMP/migrations.db"
+          alembic upgrade head
+          alembic check || echo "::warning::${{ matrix.service }} models and migrations differ"
+
+  platform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Generated Kubernetes manifests and Kafka topics are up to date
+        run: |
+          python scripts/generate_service_manifests.py
+          python scripts/generate_kafka_topics.py
+          git diff --exit-code -- infrastructure/ || (echo "::error::Run the generators in scripts/ and commit the result" && exit 1)
+      - uses: azure/setup-kubectl@v4
+      - name: Every overlay renders
+        run: |
+          for env in dev staging prod; do
+            kubectl kustomize infrastructure/kubernetes/overlays/$env > /dev/null
+            kubectl kustomize infrastructure/kubernetes/overlays/$env/kafka > /dev/null
+          done
+      - name: docker-compose is valid
+        run: cp .env.example .env && docker compose config -q
+
+  images:
+    needs: discover
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

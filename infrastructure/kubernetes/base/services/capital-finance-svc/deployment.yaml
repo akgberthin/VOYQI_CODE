@@ -15,7 +15,7 @@ metadata:
     app: capital-finance-svc
     voyqi-layer: "2"
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: capital-finance-svc
@@ -30,22 +30,26 @@ spec:
         - name: capital-finance-svc
           image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/capital-finance-svc:latest
           ports:
-            - containerPort: 8028
+            - containerPort: 8035
           env:
             - name: SERVICE_NAME
               value: "capital-finance-svc"
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: capital-finance-svc-config, key: db-connection-name }
+                configMapKeyRef: { name: capital-finance-svc-config, key: DB_INSTANCE_CONNECTION_NAME }
           envFrom:
+            # Per-environment settings (Kafka bootstrap, Cloud SQL instance),
+            # generated into overlays/<env>/service-config.yaml.
+            - configMapRef:
+                name: capital-finance-svc-config
             - secretRef:
-                name: capital-finance-svc-secrets # DB creds, service-specific keys
+                name: capital-finance-svc-secrets # DB creds, service-specific keys — see docs/DEPLOYMENT.md
           readinessProbe:
-            httpGet: { path: /health, port: 8028 }
+            httpGet: { path: /health, port: 8035 }
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health, port: 8028 }
+            httpGet: { path: /health, port: 8035 }
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
@@ -60,7 +64,7 @@ spec:
           env:
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: capital-finance-svc-config, key: db-connection-name }
+                configMapKeyRef: { name: capital-finance-svc-config, key: DB_INSTANCE_CONNECTION_NAME }
           resources:
             requests: { cpu: "50m", memory: "64Mi" }
             limits: { cpu: "200m", memory: "128Mi" }
@@ -74,8 +78,8 @@ spec:
   selector:
     app: capital-finance-svc
   ports:
-    - port: 8028
-      targetPort: 8028
+    - port: 8035
+      targetPort: 8035
   type: ClusterIP
 ---
 apiVersion: autoscaling/v2
@@ -88,8 +92,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: capital-finance-svc
-  minReplicas: 1
-  maxReplicas: 2
+  minReplicas: 2
+  maxReplicas: 8
   metrics:
     - type: Resource
       resource:

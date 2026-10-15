@@ -15,7 +15,7 @@ metadata:
     app: dms-svc
     voyqi-layer: "2"
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: dms-svc
@@ -30,22 +30,26 @@ spec:
         - name: dms-svc
           image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/dms-svc:latest
           ports:
-            - containerPort: 8023
+            - containerPort: 8008
           env:
             - name: SERVICE_NAME
               value: "dms-svc"
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: dms-svc-config, key: db-connection-name }
+                configMapKeyRef: { name: dms-svc-config, key: DB_INSTANCE_CONNECTION_NAME }
           envFrom:
+            # Per-environment settings (Kafka bootstrap, Cloud SQL instance),
+            # generated into overlays/<env>/service-config.yaml.
+            - configMapRef:
+                name: dms-svc-config
             - secretRef:
-                name: dms-svc-secrets # DB creds, service-specific keys
+                name: dms-svc-secrets # DB creds, service-specific keys — see docs/DEPLOYMENT.md
           readinessProbe:
-            httpGet: { path: /health, port: 8023 }
+            httpGet: { path: /health, port: 8008 }
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health, port: 8023 }
+            httpGet: { path: /health, port: 8008 }
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
@@ -60,7 +64,7 @@ spec:
           env:
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: dms-svc-config, key: db-connection-name }
+                configMapKeyRef: { name: dms-svc-config, key: DB_INSTANCE_CONNECTION_NAME }
           resources:
             requests: { cpu: "50m", memory: "64Mi" }
             limits: { cpu: "200m", memory: "128Mi" }
@@ -74,8 +78,8 @@ spec:
   selector:
     app: dms-svc
   ports:
-    - port: 8023
-      targetPort: 8023
+    - port: 8008
+      targetPort: 8008
   type: ClusterIP
 ---
 apiVersion: autoscaling/v2
@@ -88,8 +92,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: dms-svc
-  minReplicas: 1
-  maxReplicas: 2
+  minReplicas: 2
+  maxReplicas: 8
   metrics:
     - type: Resource
       resource:

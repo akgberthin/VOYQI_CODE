@@ -58,3 +58,10 @@ def test_get_book_value_average_hits_the_real_registered_route():
     result = dms_tools.get_book_value_average(tenant_id, vin)
     assert result["average_retail_value_usd"] == 48000.0
     assert result["average_wholesale_value_usd"] == 42000.0
+
+
+def test_submit_valuation_tool_is_callable_from_the_dispatch():
+    """The live-Claude trade-in path dispatches submit_valuation; its
+    definition had been lost in a merge, so the call raised NameError."""
+    dispatch = dms_tools.build_tool_dispatch("tenant-1")
+    assert dispatch["submit_valuation"]({"valuation_usd": 18250.0, "reasoning": "comps"}) == {"valuation_usd": 18250.0, "reasoning": "comps"}

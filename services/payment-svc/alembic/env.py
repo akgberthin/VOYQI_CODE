@@ -3,7 +3,7 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
@@ -34,6 +34,11 @@ def run_migrations_offline() -> None:
 def do_run_migrations(connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
+        if connection.dialect.name == "postgresql":
+            # Every replica runs `alembic upgrade head` on start; this lock
+            # (per database, released at commit) makes them take turns, and
+            # the ones that wait then find the schema already current.
+            connection.execute(text("SELECT pg_advisory_xact_lock(hashtext(current_database()))"))
         context.run_migrations()
 
 

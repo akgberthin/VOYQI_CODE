@@ -1,0 +1,15 @@
+# Kafka topics for the staging cluster (Strimzi, terraform/modules/kafka).
+# Applied separately from the application overlay because topics live in
+# the kafka namespace, where the topic operator watches:
+#   kubectl apply -k infrastructure/kubernetes/overlays/staging/kafka
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kafka
+
+resources:
+  - ../../../base/kafka
+
+labels:
+  - pairs:
+      strimzi.io/cluster: voyqi-staging

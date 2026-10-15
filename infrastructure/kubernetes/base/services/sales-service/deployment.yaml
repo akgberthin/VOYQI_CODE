@@ -36,10 +36,14 @@ spec:
               value: "sales-service"
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: sales-service-config, key: db-connection-name }
+                configMapKeyRef: { name: sales-service-config, key: DB_INSTANCE_CONNECTION_NAME }
           envFrom:
+            # Per-environment settings (Kafka bootstrap, Cloud SQL instance),
+            # generated into overlays/<env>/service-config.yaml.
+            - configMapRef:
+                name: sales-service-config
             - secretRef:
-                name: sales-service-secrets # DB creds, service-specific keys
+                name: sales-service-secrets # DB creds, service-specific keys — see docs/DEPLOYMENT.md
           readinessProbe:
             httpGet: { path: /health, port: 8009 }
             initialDelaySeconds: 5
@@ -60,7 +64,7 @@ spec:
           env:
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: sales-service-config, key: db-connection-name }
+                configMapKeyRef: { name: sales-service-config, key: DB_INSTANCE_CONNECTION_NAME }
           resources:
             requests: { cpu: "50m", memory: "64Mi" }
             limits: { cpu: "200m", memory: "128Mi" }

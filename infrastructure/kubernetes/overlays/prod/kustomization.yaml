@@ -5,10 +5,83 @@ namespace: voyqi
 
 resources:
   - ../../base
+  - service-config.yaml
 
 images:
-  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway
-    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/api-gateway
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/auth-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/auth-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/capital-finance-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/capital-finance-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/crm-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/crm-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/dms-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/dms-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/executive-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/executive-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/fleet-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/fleet-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/hrm-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/hrm-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/hub-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/hub-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/insurance-risk-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/insurance-risk-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ip-asset-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/ip-asset-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/management-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/management-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/marketing-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/marketing-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/notification-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/notification-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/originations-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/originations-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/payment-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/payment-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/pricing-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/pricing-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/rbac-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/rbac-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/real-estate-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/real-estate-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/rental-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/rental-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/sales-service
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/sales-service
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/security-compliance-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/security-compliance-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/subscription-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/subscription-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/user-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/user-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/api-gateway-svc
+    newTag: stable
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-prod/voyqi/ai-orchestration-svc
     newTag: stable
 
 configMapGenerator:
@@ -20,6 +93,7 @@ configMapGenerator:
 # Production additionally gets PodDisruptionBudgets and stricter resource
 # floors across every service — see patches below.
 patches:
+  - path: workload-identity-patch.yaml
   - patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/cpu

@@ -17,28 +17,31 @@ variable "admin_tier" {
 variable "core_service_names" {
   type = list(string)
   default = [
-    "auth-service",
-    "user-service",
-    "subscription-service",
-    "fleet-service",
-    "rental-service",
-    "payment-service",
-    "marketing-service",
-    "notification-service",
-    "global-mobility-svc",
-    "pricing-service",
-    "rbac-service",
+    # Names match the services in code and Kubernetes (see
+    # kubernetes/services-catalog.yaml): database = name with "-" -> "_",
+    # user = that + "_svc" (e.g. auth-svc -> auth_svc / auth_svc_svc).
+    "auth-svc",
+    "user-svc",
+    "subscription-svc",
+    "fleet-svc",
+    "rental-svc",
+    "payment-svc",
+    "marketing-svc",
+    "notification-svc",
+    "hub-svc",
+    "pricing-svc",
+    "rbac-svc",
     "sales-service",
-    "ai-orchestration-service",
+    "ai-orchestration-svc",
   ]
-  description = "Layer 0/1 services, each gets its own database + user on the core instance. api-gateway is stateless and has no database. NOTE (REV D): ai-orchestration-service keeps ONE shared database even though its K8s deployment is now split into ai-orchestration-realtime and ai-orchestration-batch — that split is a scheduling/isolation boundary only. Both deployments read/write the same decision log here and the same Redis-backed LangGraph checkpoint store, per PRD §23.1's rule against building the AI as multiple independent, context-siloed services."
+  description = "Layer 0/1 services, each gets its own database + user on the core instance. api-gateway is stateless and has no database. NOTE (REV D): ai-orchestration-svc keeps ONE shared database even though its K8s deployment is now split into ai-orchestration-realtime and ai-orchestration-batch — that split is a scheduling/isolation boundary only. Both deployments read/write the same decision log here and the same Redis-backed LangGraph checkpoint store, per PRD §23.1's rule against building the AI as multiple independent, context-siloed services."
 }
 
-# Layer 2 (admin-panel-backing services) — 12 services
+# Layer 2 (admin-panel-backing services) — 11 services (the Super Admin
+# panel is served by rbac-svc on the core instance)
 variable "admin_service_names" {
   type = list(string)
   default = [
-    "super-admin-svc",
     "crm-svc",
     "dms-svc",
     "originations-svc",
@@ -47,7 +50,7 @@ variable "admin_service_names" {
     "real-estate-svc",
     "capital-finance-svc",
     "insurance-risk-svc",
-    "technology-ip-svc",
+    "ip-asset-svc",
     "security-compliance-svc",
     "hrm-svc",
   ]

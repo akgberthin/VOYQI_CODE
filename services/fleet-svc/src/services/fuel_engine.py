@@ -10,11 +10,15 @@ driven efficiency drop — without ever altering the logged entry or the
 deterministic math itself.
 """
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import EnergyType, FuelAnomalyAssessment, FuelAnomalyLevel, FuelLogEntry
+
+if TYPE_CHECKING:
+    from src.models import MaintenanceAlert
 
 
 async def log_fuel_entry(db: AsyncSession, tenant_id: str, vehicle_id: uuid.UUID, energy_type: EnergyType, quantity: float, cost_usd: float, odometer_miles: int) -> FuelLogEntry:

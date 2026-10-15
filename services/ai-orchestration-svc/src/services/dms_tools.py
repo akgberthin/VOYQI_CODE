@@ -128,6 +128,9 @@ def evaluate_franchise_remediation(tenant_id: str) -> list[dict]:
 
 def evaluate_dealer_performance(tenant_id: str) -> list[dict]:
     return _post(tenant_id, "/api/v1/dms/performance/evaluate-and-intervene")
+
+
+def submit_valuation(valuation_usd: float, reasoning: str) -> dict[str, Any]:
     """Not a remote call — this tool's only job is to force the agent
     to report a structured number and its own justification rather than
     leaving the valuation buried in free-form prose."""

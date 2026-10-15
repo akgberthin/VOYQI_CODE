@@ -69,7 +69,7 @@ data:
   KAFKA_BOOTSTRAP_SERVERS: "voyqi-prod-kafka-bootstrap.kafka.svc.cluster.local:9092"
   # ai-orchestration-svc reads settings with the AI_ORCH_ prefix
   # (src/core/config.py); unprefixed keys above are not read by the app.
-  AI_ORCH_KAFKA_BOOTSTRAP_SERVERS: "voyqi-prod-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  # AI_ORCH_KAFKA_BOOTSTRAP_SERVERS is per environment: ai-orchestration-svc-config.
   AI_ORCH_TIER_POLICY_PATH: "/etc/voyqi/tier-policy.yaml"
   LANGGRAPH_CHECKPOINTER: "redis"
   LANGGRAPH_CHECKPOINT_NAMESPACE: "voyqi-ai-nucleus"
@@ -121,7 +121,7 @@ spec:
             name: ai-orchestration-tier-policy
       containers:
         - name: ai-orchestration-realtime
-          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-service:latest
+          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-svc:latest
           ports:
             - containerPort: 8020
           env:
@@ -140,6 +140,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: ai-orchestration-shared-config
+            - configMapRef:
+                name: ai-orchestration-svc-config # per-environment Kafka bootstrap
             - secretRef:
                 name: ai-orchestration-realtime-secrets # ANTHROPIC_API_KEY (realtime Workspace key), DB creds
           volumeMounts:
@@ -159,11 +161,41 @@ spec:
             # OOM-killed ahead of a lower-priority batch pod on the node.
             requests: { cpu: "1500m", memory: "3Gi" }
             limits: { cpu: "1500m", memory: "3Gi" }
+        # Cloud SQL Auth Proxy: the service connects to 127.0.0.1:5432
+        # (AI_ORCH_DATABASE_URL in its secret).
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.13.0
+          args: ["--structured-logs", "--port=5432", "$(DB_INSTANCE_CONNECTION_NAME)"]
+          env:
+            - name: DB_INSTANCE_CONNECTION_NAME
+              valueFrom:
+                configMapKeyRef: { name: ai-orchestration-svc-config, key: DB_INSTANCE_CONNECTION_NAME }
+          resources:
+            # Guaranteed QoS needs requests == limits on every container.
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "100m", memory: "128Mi" }
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: ai-orchestration-realtime
+  namespace: voyqi
+spec:
+  selector:
+    app: ai-orchestration-realtime
+  ports:
+    - port: 8020
+      targetPort: 8020
+  type: ClusterIP
+---
+# The hostname the gateway and every service call the AI nucleus on
+# (http://ai-orchestration-svc:8020 — see services/*/src/core/config.py).
+# Served by the realtime group: synchronous HTTP calls are the
+# latency-sensitive path; the batch group works off Kafka.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestration-svc
   namespace: voyqi
 spec:
   selector:
@@ -259,7 +291,7 @@ spec:
             name: ai-orchestration-tier-policy
       containers:
         - name: ai-orchestration-batch
-          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-service:latest
+          image: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-svc:latest
           # The image's default CMD serves on 8020; the batch group is
           # registered on 8014, so override the port here.
           command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8014"]
@@ -285,6 +317,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: ai-orchestration-shared-config
+            - configMapRef:
+                name: ai-orchestration-svc-config # per-environment Kafka bootstrap
             - secretRef:
                 name: ai-orchestration-batch-secrets # ANTHROPIC_API_KEY (batch Workspace key), DB creds
           volumeMounts:
@@ -305,6 +339,18 @@ spec:
             # isn't even on the same node pool anymore).
             requests: { cpu: "1", memory: "2Gi" }
             limits: { cpu: "4", memory: "6Gi" }
+        # Cloud SQL Auth Proxy: the service connects to 127.0.0.1:5432
+        # (AI_ORCH_DATABASE_URL in its secret).
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.13.0
+          args: ["--structured-logs", "--port=5432", "$(DB_INSTANCE_CONNECTION_NAME)"]
+          env:
+            - name: DB_INSTANCE_CONNECTION_NAME
+              valueFrom:
+                configMapKeyRef: { name: ai-orchestration-svc-config, key: DB_INSTANCE_CONNECTION_NAME }
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
 ---
 apiVersion: v1
 kind: Service

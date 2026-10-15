@@ -14,6 +14,7 @@ to be auditable arithmetic, not a model's judgment call.
 """
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,9 @@ from src.models import (
     ChargingSession,
     ChargingSessionStatus,
 )
+
+if TYPE_CHECKING:
+    from src.models import MaintenanceAlert
 
 
 async def start_charging_session(db: AsyncSession, tenant_id: str, vehicle_id: uuid.UUID, station_location: str = "") -> ChargingSession:

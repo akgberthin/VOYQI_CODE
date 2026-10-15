@@ -5,10 +5,83 @@ namespace: voyqi
 
 resources:
   - ../../base
+  - service-config.yaml
 
 images:
-  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway
-    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/api-gateway
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/auth-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/auth-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/capital-finance-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/capital-finance-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/crm-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/crm-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/dms-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/dms-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/executive-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/executive-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/fleet-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/fleet-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/hrm-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/hrm-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/hub-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/hub-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/insurance-risk-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/insurance-risk-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ip-asset-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/ip-asset-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/management-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/management-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/marketing-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/marketing-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/notification-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/notification-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/originations-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/originations-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/payment-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/payment-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/pricing-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/pricing-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/rbac-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/rbac-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/real-estate-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/real-estate-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/rental-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/rental-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/sales-service
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/sales-service
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/security-compliance-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/security-compliance-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/subscription-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/subscription-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/user-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/user-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/api-gateway-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/api-gateway-svc
+    newTag: staging
+  - name: us-east4-docker.pkg.dev/PROJECT_ID/voyqi/ai-orchestration-svc
+    newName: us-east4-docker.pkg.dev/voyqi-mobility-staging/voyqi/ai-orchestration-svc
     newTag: staging
 
 configMapGenerator:
@@ -16,3 +89,6 @@ configMapGenerator:
     literals:
       - ENVIRONMENT=staging
       - LOG_LEVEL=info
+
+patches:
+  - path: workload-identity-patch.yaml

@@ -36,10 +36,14 @@ spec:
               value: "__SERVICE_NAME__"
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: __SERVICE_NAME__-config, key: db-connection-name }
+                configMapKeyRef: { name: __SERVICE_NAME__-config, key: DB_INSTANCE_CONNECTION_NAME }
           envFrom:
+            # Per-environment settings (Kafka bootstrap, Cloud SQL instance),
+            # generated into overlays/<env>/service-config.yaml.
+            - configMapRef:
+                name: __SERVICE_NAME__-config
             - secretRef:
-                name: __SERVICE_NAME__-secrets # DB creds, service-specific keys
+                name: __SERVICE_NAME__-secrets # DB creds, service-specific keys — see docs/DEPLOYMENT.md
           readinessProbe:
             httpGet: { path: /health, port: __PORT__ }
             initialDelaySeconds: 5
@@ -60,7 +64,7 @@ spec:
           env:
             - name: DB_INSTANCE_CONNECTION_NAME
               valueFrom:
-                configMapKeyRef: { name: __SERVICE_NAME__-config, key: db-connection-name }
+                configMapKeyRef: { name: __SERVICE_NAME__-config, key: DB_INSTANCE_CONNECTION_NAME }
           resources:
             requests: { cpu: "50m", memory: "64Mi" }
             limits: { cpu: "200m", memory: "128Mi" }
