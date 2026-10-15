@@ -12,7 +12,7 @@ and a database per service.
 | `services/` | Backend microservices (FastAPI + async SQLAlchemy + Alembic + pytest) |
 | `docker-compose.yml` | Local environment: every service, one Postgres per service, Kafka |
 | `infrastructure/` | Terraform (GCP: GKE, Cloud SQL, Redis, Kafka, IAM) and Kubernetes/Kustomize manifests |
-| `scripts/` | Demo seed, role smoke test, telematics simulator, manifest generator |
+| `scripts/` | Demo seed, guided demo walkthrough, role smoke test, telematics simulator, manifest generator |
 | `docs/` | Architecture, service inventory, port registry, autonomy tiering, AI scaling |
 | `docs/implementation-guides/` | Per-module implementation and installation guides |
 | `prototypes/` | Single-file HTML UI prototypes (design reference, not the production frontend) |
