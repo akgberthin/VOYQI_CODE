@@ -5,10 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core import revocation
 from src.core.config import get_settings
 from src.core.database import get_db
 from src.core.kafka_events import publish_event
 from src.core.security import get_current_user, get_tenant_id
+from src.core.tokens import decode_access_token
 from src.services import auth_engine
 
 # Auth events are security signals. Several are emitted on paths that end
@@ -159,8 +161,11 @@ async def refresh(request: Request, response: Response, tenant_id: str = Depends
     ip_address, user_agent = _client_meta(request)
     try:
         new_tokens = await auth_engine.refresh_tokens(db, tenant_id=tenant_id, raw_refresh_token=raw_refresh, ip_address=ip_address, user_agent=user_agent)
-    except auth_engine.ReuseDetectedError:
+    except auth_engine.ReuseDetectedError as exc:
         await db.commit()
+        # Suspected theft: kill every access token already issued too,
+        # not just the refresh tokens.
+        await revocation.revoke_all_for_credential(tenant_id, exc.user_credential_id)
         _emit("auth.refresh_token_reuse_detected", tenant_id, {"ip_address": ip_address})
         _clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Session revoked — possible token theft detected, please log in again")
@@ -179,6 +184,14 @@ async def logout(request: Request, response: Response, tenant_id: str = Depends(
     if raw_refresh:
         await auth_engine.logout(db, tenant_id=tenant_id, raw_refresh_token=raw_refresh)
         await db.commit()
+    raw_access = request.cookies.get(ACCESS_COOKIE)
+    if raw_access:
+        try:
+            claims = decode_access_token(raw_access)
+        except Exception:  # noqa: BLE001 — an already-invalid token needs no revoking
+            claims = None
+        if claims:
+            await revocation.revoke_token(claims.get("jti"), claims.get("exp"))
     _clear_auth_cookies(response)
     return {"status": "success"}
 
@@ -203,9 +216,11 @@ async def password_reset_request(payload: PasswordResetRequestIn, tenant_id: str
 async def password_reset_confirm(payload: PasswordResetIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     if len(payload.new_password) < 10:
         raise HTTPException(status_code=422, detail="Password must be at least 10 characters")
+    credential_id = await auth_engine.credential_id_for_reset_token(db, tenant_id=tenant_id, raw_reset_token=payload.token)
     ok = await auth_engine.reset_password(db, tenant_id=tenant_id, raw_reset_token=payload.token, new_password=payload.new_password)
     await db.commit()
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    await revocation.revoke_all_for_credential(tenant_id, credential_id)
     _emit("auth.password_reset_completed", tenant_id, {})
     return {"status": "success"}

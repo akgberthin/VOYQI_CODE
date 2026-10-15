@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     rate_limit_requests_per_window: int = 100
     rate_limit_window_seconds: int = 60
 
+    # Shared Redis (Memorystore in production): rate-limit counters across
+    # replicas, and the access-token revocation list auth-svc writes. When
+    # unset, rate limiting is per-process and revocation isn't checked.
+    redis_url: str | None = None
+
     request_timeout_seconds: float = 30.0
 
     # Role-based authorization (src/services/authorization.py). On by

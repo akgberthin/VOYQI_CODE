@@ -1,18 +1,19 @@
-"""In-memory sliding-window rate limiter, keyed by (tenant_id, path prefix).
+"""Rate limiter keyed by (tenant_id, path prefix).
 
-Honest limitation: this state lives in one process's memory. A single
-gateway replica enforces it correctly; multiple replicas behind a load
-balancer would each track their own counters, so the *effective* limit
-becomes (configured limit x replica count) rather than the configured
-limit. That's a real gap for a multi-replica production deployment — the
-fix is a shared store (Redis INCR + EXPIRE is the standard pattern), not
-a bigger in-memory structure. Documented here rather than silently wrong
-once this ships past a single instance.
+With GATEWAY_REDIS_URL set, counters live in Redis (fixed window,
+INCR + EXPIRE), so every gateway replica enforces one shared limit.
+Without it — or if Redis is unreachable — each process falls back to its
+own in-memory sliding window, which is exact for a single replica but
+multiplies the effective limit by the replica count.
 """
+import logging
 import time
 from collections import defaultdict, deque
 
+from src.core import redis_client
 from src.core.config import get_settings
+
+logger = logging.getLogger("api-gateway-svc.rate_limiter")
 
 settings = get_settings()
 
@@ -41,6 +42,25 @@ def check_rate_limit(*, tenant_id: str, path_prefix: str) -> tuple[bool, int]:
     timestamps.append(now)
     remaining = settings.rate_limit_requests_per_window - len(timestamps)
     return True, remaining
+
+
+async def check_rate_limit_shared(*, tenant_id: str, path_prefix: str) -> tuple[bool, int]:
+    client = redis_client.get_redis()
+    if client is None:
+        return check_rate_limit(tenant_id=tenant_id, path_prefix=path_prefix)
+    window = settings.rate_limit_window_seconds
+    key = f"ratelimit:{_key(tenant_id, path_prefix)}:{int(time.time()) // window}"
+    try:
+        count = await client.incr(key)
+        if count == 1:
+            await client.expire(key, window)
+        if count > settings.rate_limit_requests_per_window:
+            await client.decr(key)  # a rejected request doesn't consume a slot
+            return False, 0
+        return True, settings.rate_limit_requests_per_window - count
+    except Exception:  # noqa: BLE001
+        logger.warning("shared rate limit unavailable; falling back to per-process", exc_info=True)
+        return check_rate_limit(tenant_id=tenant_id, path_prefix=path_prefix)
 
 
 def reset_all() -> None:

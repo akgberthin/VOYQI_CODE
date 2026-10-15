@@ -34,6 +34,7 @@ def issue_access_token(*, user_credential_id: uuid.UUID, user_id: uuid.UUID, ten
         "user_id": str(user_id),
         "tenant_id": tenant_id,
         "type": "access",
+        "jti": uuid.uuid4().hex,  # lets one token be revoked before it expires
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_ttl_minutes),
     }

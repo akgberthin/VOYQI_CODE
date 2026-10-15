@@ -10,7 +10,8 @@ import httpx
 from src.core.config import get_settings
 from src.core.tokens import TokenInvalidError, decode_access_token
 from src.services.authorization import AuthorizationError, authorize
-from src.services.rate_limiter import check_rate_limit
+from src.services.rate_limiter import check_rate_limit_shared
+from src.services.revocation import is_revoked
 from src.services.routing import is_public_path, resolve_route
 
 settings = get_settings()
@@ -57,6 +58,8 @@ async def handle_request(
             claims = decode_access_token(access_token_cookie)
         except TokenInvalidError as exc:
             raise GatewayError(401, str(exc)) from exc
+        if await is_revoked(claims):
+            raise GatewayError(401, "access token revoked")
         try:
             await authorize(claims, route, method, path)
         except AuthorizationError as exc:
@@ -67,7 +70,7 @@ async def handle_request(
         outgoing_headers["x-user-credential-id"] = claims["sub"]
         tenant_id_for_rate_limit = claims["tenant_id"]
 
-    allowed, remaining = check_rate_limit(tenant_id=tenant_id_for_rate_limit, path_prefix=route.prefix)
+    allowed, remaining = await check_rate_limit_shared(tenant_id=tenant_id_for_rate_limit, path_prefix=route.prefix)
     if not allowed:
         raise GatewayError(429, f"Rate limit exceeded for {route.prefix}")
 

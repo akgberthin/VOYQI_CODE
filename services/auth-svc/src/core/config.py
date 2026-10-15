@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     allow_insecure_dev_secret: bool = False
 
     access_token_ttl_minutes: int = 15
+    # Shared with api-gateway-svc for early access-token revocation (src/core/revocation.py).
+    redis_url: str | None = None
     refresh_token_ttl_days: int = 30
 
     # Account lockout policy (brute-force protection) — deterministic,

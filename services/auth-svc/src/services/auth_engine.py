@@ -61,6 +61,10 @@ class ReuseDetectedError(Exception):
     presented again — the standard signal of token theft. Callers should
     treat this as a security incident, not an ordinary auth failure."""
 
+    def __init__(self, message: str, user_credential_id: uuid.UUID | None = None):
+        super().__init__(message)
+        self.user_credential_id = user_credential_id
+
 
 async def _log_attempt(
     db: AsyncSession, *, tenant_id: str, email: str, success: bool,
@@ -221,7 +225,9 @@ async def refresh_tokens(
             .where(RefreshToken.user_credential_id == token_row.user_credential_id, RefreshToken.revoked_at.is_(None))
             .values(revoked_at=utcnow())
         )
-        raise ReuseDetectedError(f"revoked refresh token reused for user_credential_id={token_row.user_credential_id}")
+        raise ReuseDetectedError(
+            f"revoked refresh token reused for user_credential_id={token_row.user_credential_id}", token_row.user_credential_id,
+        )
 
     if _aware(token_row.expires_at) < utcnow():
         raise ValueError("expired refresh token")
@@ -264,6 +270,15 @@ async def request_password_reset(db: AsyncSession, *, tenant_id: str, email: str
         token_hash=hash_token(raw_token), expires_at=utcnow() + timedelta(minutes=settings.password_reset_ttl_minutes),
     ))
     return raw_token
+
+
+async def credential_id_for_reset_token(db: AsyncSession, *, tenant_id: str, raw_reset_token: str) -> uuid.UUID | None:
+    result = await db.execute(
+        select(PasswordResetToken.user_credential_id).where(
+            PasswordResetToken.token_hash == hash_token(raw_reset_token), PasswordResetToken.tenant_id == tenant_id,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def reset_password(db: AsyncSession, *, tenant_id: str, raw_reset_token: str, new_password: str) -> bool:

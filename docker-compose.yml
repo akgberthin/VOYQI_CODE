@@ -34,6 +34,18 @@ services:
       retries: 15
       start_period: 20s
 
+  # Shared cache: gateway rate-limit counters and the access-token
+  # revocation list (Memorystore in production).
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   rbac-db:
     image: postgres:16
     environment:
@@ -389,7 +401,10 @@ services:
       # Shared with api-gateway-svc's GATEWAY_JWT_SECRET below — both
       # must match exactly for the gateway to verify tokens statelessly.
       AUTH_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
+      AUTH_REDIS_URL: redis://redis:6379/0
     depends_on:
+      redis:
+        condition: service_started
       auth-db:
         condition: service_healthy
       kafka:
@@ -402,7 +417,10 @@ services:
       - "8000:8000"
     environment:
       GATEWAY_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
+      GATEWAY_REDIS_URL: redis://redis:6379/0
     depends_on:
+      redis:
+        condition: service_started
       auth-svc:
         condition: service_started
 
