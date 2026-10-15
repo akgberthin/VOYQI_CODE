@@ -222,3 +222,35 @@ isolation need is structural or regulatory rather than throughput-related
 need its own audit boundary and fair-lending explainability trail separate
 from consumer-facing agents. That is a case-by-case decision per agent,
 not a reason to decompose the current six.
+
+## Implementation status (October 2026)
+
+What the code does today against the design above:
+
+- **Two tiers, one decision log** — implemented: `AI_ORCH_CONSUMER_ROLE`
+  (`realtime` / `batch`) selects the consumer loop, both tiers write the
+  same Postgres decision log and recommendation queue.
+- **Prompt & Policy Manager (AI-003)** — implemented: prompt versions per
+  agent prompt key in Postgres, evaluate-before-promote, the promoted
+  version used per tenant at call time, replicas refreshed within a minute.
+- **Tier policy changes (AI-005)** — implemented: per-tenant overrides via
+  `/api/v1/ai/tier-policy`, tier 3 locked, tier-1 promotion gated on 90-day
+  approval evidence.
+- **State / session affinity (§4)** — the goal is met without a LangGraph
+  checkpointer. Each agent run is one event-scoped tool loop that finishes
+  within the request; nothing a later turn needs is kept in process
+  memory. Conversation history lives in crm-svc (concierge threads), and
+  pending work in the recommendation queue and goal-state tables in
+  Postgres. Any replica can take any event, and a pod restart loses at
+  most the in-flight event, which Kafka redelivers (offsets are committed
+  after processing). A Redis checkpointer becomes worthwhile only if an
+  agent is built that pauses mid-graph across turns (e.g. a multi-turn
+  interview); add it with that agent.
+- **Anthropic Batch API (§2)** — not used yet. Every agent today is a
+  tool-use loop: each model response can ask for a tool result before the
+  next call, and a batch round trip (minutes to hours) per loop step would
+  make even scheduled jobs take hours. The candidates are single-shot
+  calls with no tools — e.g. a nightly narrative summary over the
+  portfolio rollup once its numbers are computed. Turn on
+  `ANTHROPIC_BATCH_API_ENABLED` only for those, after measuring the batch
+  Workspace's actual synchronous spend with live keys.
