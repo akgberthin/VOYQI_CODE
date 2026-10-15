@@ -17,8 +17,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Hub, TransferOrder, TransferOrderStatus, Vehicle, VehicleStatus
 
 
-async def create_hub(db: AsyncSession, tenant_id: str, name: str, region: str = "") -> Hub:
-    hub = Hub(tenant_id=tenant_id, name=name, region=region)
+async def create_hub(
+    db: AsyncSession, tenant_id: str, name: str, region: str = "",
+    latitude: float | None = None, longitude: float | None = None, geofence_radius_miles: float | None = None,
+) -> Hub:
+    hub = Hub(
+        tenant_id=tenant_id, name=name, region=region,
+        latitude=latitude, longitude=longitude, geofence_radius_miles=geofence_radius_miles,
+    )
     db.add(hub)
     await db.commit()
     await db.refresh(hub)

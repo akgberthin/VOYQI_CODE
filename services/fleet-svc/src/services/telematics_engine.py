@@ -61,6 +61,10 @@ async def check_geofence(
     distance = haversine_miles(vehicle_lat, vehicle_lon, hub_lat, hub_lon)
     if distance <= GEOFENCE_RADIUS_MILES:
         return None
+    return await record_geofence_alert(db, tenant_id, vehicle_id, hub_id, distance)
+
+
+async def record_geofence_alert(db: AsyncSession, tenant_id: str, vehicle_id: uuid.UUID, hub_id: uuid.UUID, distance: float) -> GeofenceAlert:
     alert = GeofenceAlert(tenant_id=tenant_id, vehicle_id=vehicle_id, hub_id=hub_id, distance_miles=distance)
     db.add(alert)
     await db.commit()

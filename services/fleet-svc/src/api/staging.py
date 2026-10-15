@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,9 @@ router = APIRouter(prefix="/api/v1/fleet", tags=["staging"])
 class HubCreate(BaseModel):
     name: str
     region: str = ""
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    geofence_radius_miles: float | None = Field(default=None, gt=0)
 
 
 class HubOut(BaseModel):
@@ -25,6 +28,9 @@ class HubOut(BaseModel):
     id: uuid.UUID
     name: str
     region: str
+    latitude: float | None = None
+    longitude: float | None = None
+    geofence_radius_miles: float | None = None
 
 
 class TransferCreate(BaseModel):
@@ -56,7 +62,10 @@ class DispatchRequest(BaseModel):
 
 @router.post("/hubs", response_model=HubOut, status_code=201)
 async def create_hub(body: HubCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    return await staging_engine.create_hub(db, tenant_id=tenant_id, name=body.name, region=body.region)
+    return await staging_engine.create_hub(
+        db, tenant_id=tenant_id, name=body.name, region=body.region,
+        latitude=body.latitude, longitude=body.longitude, geofence_radius_miles=body.geofence_radius_miles,
+    )
 
 
 @router.get("/hubs", response_model=list[HubOut])

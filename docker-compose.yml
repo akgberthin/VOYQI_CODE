@@ -49,6 +49,17 @@ services:
       timeout: 3s
       retries: 20
 
+  # Telematics broker. Devices publish to voyqi/{tenant}/vehicles/{vin}/...;
+  # fleet-svc subscribes. Dev config is anonymous plain TCP — production
+  # (mTLS, VIN-scoped ACL) is infrastructure/mqtt/mosquitto.conf.
+  mosquitto:
+    image: eclipse-mosquitto:2.1.2-alpine
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infrastructure/mqtt/mosquitto.dev.conf:/mosquitto/config/mosquitto.conf:ro
+
   rbac-db:
     image: postgres:16
     environment:
@@ -190,11 +201,14 @@ services:
       FLEET_DATABASE_URL: postgresql+asyncpg://fleet_svc:${FLEET_DB_PASSWORD:-devpassword}@fleet-db:5432/fleet
       FLEET_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       FLEET_AI_ORCHESTRATION_SVC_BASE_URL: http://ai-orchestration-svc:8020
+      FLEET_MQTT_HOST: mosquitto
     depends_on:
       fleet-db:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      mosquitto:
+        condition: service_started
 
   subscription-db:
     image: postgres:16
@@ -824,9 +838,11 @@ services:
     profiles: ["simulator"]
     volumes:
       - ./scripts/telematics_simulator.py:/sim/telematics_simulator.py:ro
-    command: ["python", "/sim/telematics_simulator.py", "--fleet-url", "http://fleet-svc:8004", "--tenant", "${SIM_TENANT:-voyqi-demo}", "--vehicles", "${SIM_VEHICLES:-12}", "--ticks", "0", "--interval", "5"]
+    command: ["python", "/sim/telematics_simulator.py", "--fleet-url", "http://fleet-svc:8004", "--tenant", "${SIM_TENANT:-voyqi-demo}", "--vehicles", "${SIM_VEHICLES:-12}", "--ticks", "0", "--interval", "5", "--transport", "mqtt", "--mqtt-host", "mosquitto"]
     depends_on:
       fleet-svc:
+        condition: service_started
+      mosquitto:
         condition: service_started
 
 volumes:

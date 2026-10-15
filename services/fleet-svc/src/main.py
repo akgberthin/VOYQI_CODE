@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -16,13 +18,20 @@ from src.api import (
     staging,
     telematics,
 )
+from src.core import mqtt
+from src.core.config import get_settings
 from src.core.database import init_models
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
+    subscriber = asyncio.create_task(mqtt.run()) if get_settings().mqtt_host else None
     yield
+    if subscriber is not None:
+        subscriber.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await subscriber
 
 
 app = FastAPI(title="fleet-svc", version="1.0.0", lifespan=lifespan)

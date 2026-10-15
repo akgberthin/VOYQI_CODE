@@ -29,12 +29,22 @@ python3 scripts/role_smoke_test.py
 Gateway: <http://localhost:8000>. Every service also listens on its own
 port for local debugging; clients should only ever use the gateway.
 
-Simulated vehicle telematics (no real devices yet):
+Simulated vehicle telematics (no real devices yet). The simulator
+publishes over MQTT like a real unit (`voyqi/<tenant>/vehicles/<VIN>/telemetry|tamper`)
+to the Mosquitto broker on port 1883; fleet-svc subscribes, stores each
+reading, geofences it against the vehicle's hub, raises an alert for the
+Fleet Intelligence Agent when a vehicle leaves the hub area, and sends
+tamper signals to human security review:
 
 ```bash
 docker compose --profile simulator up telematics-simulator
-# or: python3 scripts/telematics_simulator.py --tenant voyqi-demo --vehicles 12 --ticks 30
+# or: python3 scripts/telematics_simulator.py --transport mqtt --mqtt-host localhost --tenant voyqi-demo --vehicles 12 --ticks 30
+# or over HTTP ingest: python3 scripts/telematics_simulator.py --tenant voyqi-demo --vehicles 12 --ticks 30
 ```
+
+In deployed environments devices use mutual TLS with the VIN as the
+certificate Common Name, and the broker only lets a device publish under
+its own VIN (`infrastructure/mqtt/`, `docs/DEPLOYMENT.md`).
 
 ## Demo logins
 
@@ -118,10 +128,9 @@ pick up changes within a minute.
 | 8020 | ai-orchestration-svc | 8034 | real-estate-svc |
 | 8021 | crm-svc | 8035 | capital-finance-svc |
 | 9092 | Kafka | 8036 | originations-svc (also `/api/v1/org`) |
+| 6379 | Redis | 1883 | MQTT broker (Mosquitto) |
 
-These differ from `docs/PORT_REGISTRY.md` and the Kubernetes service
-catalog, which use different names and ports for some services — align
-them before the first cluster deployment.
+The Kubernetes service catalog uses the same names and ports.
 
 ## Database schema
 

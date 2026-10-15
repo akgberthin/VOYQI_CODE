@@ -157,6 +157,11 @@ class Hub(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     region: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    # Where the hub is, so telemetry arriving over MQTT can be geofenced
+    # server-side; a hub without coordinates is never geofenced.
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    geofence_radius_miles: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

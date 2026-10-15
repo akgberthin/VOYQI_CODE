@@ -1,0 +1,9 @@
+# Devices (username = VIN from the client certificate): publish only
+# their own telemetry and tamper signals, read nothing.
+pattern write voyqi/+/vehicles/%u/telemetry
+pattern write voyqi/+/vehicles/%u/tamper
+
+# fleet-svc: reads every device topic (via $share/fleet-svc/... so each
+# message reaches one replica), writes nothing.
+user fleet-svc
+topic read voyqi/+/vehicles/+/+

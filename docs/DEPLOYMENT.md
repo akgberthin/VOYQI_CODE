@@ -13,6 +13,7 @@ has to exist before it can. Architecture background is in
 | `overlays/<env>/service-config.yaml` (Cloud SQL instance, Kafka bootstrap per service) | the catalog + each service's `env_prefix` | same |
 | `overlays/<env>/workload-identity-patch.yaml` | GSA names in `terraform/modules/iam` | same |
 | `infrastructure/kubernetes/base/kafka/topics.yaml` | every `publish_event` call in `services/` | `python3 scripts/generate_kafka_topics.py` |
+| `infrastructure/kubernetes/base/mqtt/broker-config.yaml` | `infrastructure/mqtt/mosquitto.conf` + `acl` | `python3 scripts/generate_service_manifests.py` |
 
 CI fails if any of these are out of date. Kubernetes Service names equal
 the hostnames the code calls (`auth-svc:8024`, `ai-orchestration-svc:8020`, …),
@@ -49,6 +50,7 @@ so a service is renamed in the code and the catalog together or not at all.
    | `gateway-secrets` | `GATEWAY_JWT_SECRET` (same value as `AUTH_JWT_SECRET`), `GATEWAY_REDIS_URL` |
    | `ai-orchestration-realtime-secrets` | `AI_ORCH_DATABASE_URL`, `AI_ORCH_ANTHROPIC_API_KEY` (realtime Workspace key) |
    | `ai-orchestration-batch-secrets` | `AI_ORCH_DATABASE_URL`, `AI_ORCH_ANTHROPIC_API_KEY` (batch Workspace key) |
+   | `fleet-svc-secrets` | `FLEET_DATABASE_URL`, `FLEET_MQTT_PASSWORD` (the `fleet-svc` user in `mqtt-broker-passwords`) |
    | `payment-svc-secrets` | `PAYMENT_STRIPE_API_KEY`, `PAYMENT_STRIPE_WEBHOOK_SECRET` |
    | `notification-svc-secrets` | `NOTIF_SMTP_PASSWORD`, `NOTIF_SMS_PROVIDER_API_KEY`, `NOTIF_PUSH_PROVIDER_API_KEY` (and the matching host/user settings) |
 
@@ -64,7 +66,28 @@ so a service is renamed in the code and the catalog together or not at all.
    `rediss://:<auth-string>@<host>:6378/0`. Kafka bootstrap and the Cloud
    SQL instance are not secrets — they come from `service-config.yaml`.
 
-3. **Deploy credentials for CI.** Create a Workload Identity Federation
+3. **Telematics broker.** Devices authenticate with a client certificate
+   whose Common Name is the vehicle's VIN, issued by a device CA at
+   provisioning (`ProvisioningRecord.tls_cert_common_name`); the broker
+   ACL lets each device publish only to
+   `voyqi/<tenant>/vehicles/<its VIN>/telemetry|tamper`. Create:
+
+   ```bash
+   # broker cert (CN/SAN = the mqtt-devices load balancer's DNS name) + the device CA
+   kubectl -n voyqi create secret generic mqtt-broker-tls \
+     --from-file=ca.crt=device-ca.crt --from-file=tls.crt=broker.crt --from-file=tls.key=broker.key
+   # fleet-svc's login on the in-cluster listener (same password in fleet-svc-secrets)
+   docker run --rm -v "$PWD":/p eclipse-mosquitto:2.1.2-alpine mosquitto_passwd -b -c /p/passwd fleet-svc '<password>'
+   kubectl -n voyqi create secret generic mqtt-broker-passwords --from-file=passwd=passwd
+   ```
+
+   Certificates need the standard extensions (CA: `basicConstraints
+   CA:TRUE`, `keyUsage keyCertSign`; leaves: `authorityKeyIdentifier`,
+   `extendedKeyUsage serverAuth|clientAuth`) — modern TLS clients reject
+   certificates without them. Point a DNS name at the `mqtt-devices`
+   LoadBalancer (port 8883) and configure units with it.
+
+4. **Deploy credentials for CI.** Create a Workload Identity Federation
    provider for the GitHub repository and a deploy service account with
    Artifact Registry Writer and Kubernetes Engine Developer. In the GitHub
    environment (`dev`/`staging`/`prod`) set `vars.GCP_PROJECT_ID`,

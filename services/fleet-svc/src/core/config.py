@@ -25,6 +25,17 @@ class Settings(BaseSettings):
 
     ai_orchestration_svc_base_url: str = "http://ai-orchestration-svc:8020"
 
+    # Device telemetry over MQTT (services/mqtt_ingest.py). Empty host
+    # disables the subscriber; the HTTP ingest endpoints work either way.
+    mqtt_host: str = ""
+    mqtt_port: int = 1883
+    mqtt_username: str = ""
+    mqtt_password: str = ""
+    mqtt_subscription: str = "$share/fleet-svc/voyqi/+/vehicles/+/+"
+    mqtt_tls_ca_file: str = ""
+    mqtt_tls_cert_file: str = ""
+    mqtt_tls_key_file: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

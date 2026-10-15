@@ -1,0 +1,127 @@
+# Telematics MQTT broker (Eclipse Mosquitto, Phase 1 — a single replica;
+# Mosquitto doesn't cluster, EMQX replaces it in Phase 2).
+#
+# Config and ACL: broker-config.yaml, generated from infrastructure/mqtt/.
+# Secrets created per environment (docs/DEPLOYMENT.md):
+#   mqtt-broker-tls        ca.crt (device CA), tls.crt, tls.key (broker cert)
+#   mqtt-broker-passwords  passwd (mosquitto_passwd file with the fleet-svc user)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mqtt-broker-data
+  namespace: voyqi
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-broker
+  namespace: voyqi
+  labels:
+    app: mqtt-broker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # the data volume is ReadWriteOnce
+  selector:
+    matchLabels:
+      app: mqtt-broker
+  template:
+    metadata:
+      labels:
+        app: mqtt-broker
+    spec:
+      securityContext:
+        runAsUser: 1883
+        runAsGroup: 1883
+        fsGroup: 1883
+      containers:
+        - name: mosquitto
+          image: eclipse-mosquitto:2.1.2-alpine
+          ports:
+            - name: mqtts
+              containerPort: 8883
+            - name: mqtt-internal
+              containerPort: 1883
+          readinessProbe:
+            tcpSocket: { port: 1883 }
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 1883 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+          volumeMounts:
+            - { name: config, mountPath: /mosquitto/config, readOnly: true }
+            - { name: tls, mountPath: /mosquitto/tls, readOnly: true }
+            - { name: passwords, mountPath: /mosquitto/passwords, readOnly: true }
+            - { name: data, mountPath: /mosquitto/data }
+      volumes:
+        - name: config
+          configMap: { name: mqtt-broker-config, defaultMode: 0440 }
+        - name: tls
+          secret: { secretName: mqtt-broker-tls, defaultMode: 0440 }
+        - name: passwords
+          secret: { secretName: mqtt-broker-passwords, defaultMode: 0440 }
+        - name: data
+          persistentVolumeClaim: { claimName: mqtt-broker-data }
+---
+# In-cluster listener for fleet-svc (password auth).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt-broker
+  namespace: voyqi
+spec:
+  selector:
+    app: mqtt-broker
+  ports:
+    - name: mqtt-internal
+      port: 1883
+      targetPort: 1883
+  type: ClusterIP
+---
+# Devices on the road connect here: mutual TLS, VIN-certificate identity.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt-devices
+  namespace: voyqi
+spec:
+  selector:
+    app: mqtt-broker
+  ports:
+    - name: mqtts
+      port: 8883
+      targetPort: 8883
+  type: LoadBalancer
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-devices-and-fleet-to-mqtt-broker
+  namespace: voyqi
+spec:
+  podSelector:
+    matchLabels:
+      app: mqtt-broker
+  policyTypes:
+    - Ingress
+  ingress:
+    - from: [] # devices, over the load balancer; certificates do the gating
+      ports:
+        - protocol: TCP
+          port: 8883
+    - from:
+        - podSelector:
+            matchLabels:
+              app: fleet-svc
+      ports:
+        - protocol: TCP
+          port: 1883
