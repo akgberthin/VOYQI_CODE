@@ -113,6 +113,10 @@ async def run_consumer_loop(db_session_factory, event_types: list[str], group_id
         # event. With committed offsets, this only applies to partitions
         # the group has never read.
         auto_offset_reset="earliest",
+        # Offsets are committed only after an event has been handled, so
+        # a pod killed mid-event gets it redelivered instead of losing it
+        # (at-least-once; auto-commit could commit ahead of processing).
+        enable_auto_commit=False,
     )
     consumer.subscribe(pattern=PLATFORM_TOPIC_PATTERN)
     await consumer.start()
@@ -126,6 +130,7 @@ async def run_consumer_loop(db_session_factory, event_types: list[str], group_id
                     # later event from being processed.
                     logger.exception("%s consumer failed handling a message from %s", group_id_suffix, msg.topic)
                     await db.rollback()
+            await consumer.commit()
     finally:
         await consumer.stop()
 

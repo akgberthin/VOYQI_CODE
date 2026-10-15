@@ -151,3 +151,57 @@ async def test_handle_raw_message_skips_event_already_evaluated_synchronously(db
     assert skipped == []
     assert routed == ["routed"]
     assert called == ["deposit.capture_requested"]
+
+
+async def test_offsets_are_committed_only_after_each_event_is_handled(monkeypatch):
+    """At-least-once: auto-commit is off and each offset is committed
+    after its event has been handled (or has failed and been logged), so
+    a pod killed mid-event gets it redelivered."""
+    import contextlib
+    from types import SimpleNamespace
+
+    from src.core import kafka_consumer
+
+    log, created = [], {}
+
+    class _FakeConsumer:
+        def __init__(self, **kwargs):
+            created.update(kwargs)
+
+        def subscribe(self, pattern):
+            pass
+
+        async def start(self):
+            pass
+
+        async def stop(self):
+            log.append("stop")
+
+        async def commit(self):
+            log.append("commit")
+
+        def __aiter__(self):
+            async def messages():
+                for value in (b"ok-1", b"boom", b"ok-2"):
+                    yield SimpleNamespace(value=value, topic="fleet.telematics")
+            return messages()
+
+    async def fake_handle(db, raw, handled):
+        log.append(f"handle {raw.decode()}")
+        if raw == b"boom":
+            raise RuntimeError("agent failed")
+
+    class _Db:
+        async def rollback(self):
+            log.append("rollback")
+
+    @contextlib.asynccontextmanager
+    async def factory():
+        yield _Db()
+
+    monkeypatch.setattr("aiokafka.AIOKafkaConsumer", _FakeConsumer)
+    monkeypatch.setattr(kafka_consumer, "handle_raw_message", fake_handle)
+    await run_consumer_loop(factory, ["vehicle.tamper_detected"], "commit-test")
+
+    assert created["enable_auto_commit"] is False
+    assert log == ["handle ok-1", "commit", "handle boom", "rollback", "commit", "handle ok-2", "commit", "stop"]
