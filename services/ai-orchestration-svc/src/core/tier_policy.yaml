@@ -175,6 +175,7 @@ agents:
   portfolio-intelligence:
     actions:
       rollup.generate_report: { tier: 1 }
+      kpi_alert.assess: { tier: 1 }
 
   # DMS dealership operations orchestrated by dealer_intelligence_agent —
   # the DMS build runs these sweeps autonomously. Deal structuring is

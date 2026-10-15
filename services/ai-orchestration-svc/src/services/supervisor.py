@@ -26,6 +26,7 @@ from src.services import (
     concierge_agent,
     fleet_intelligence_agent,
     member_experience_agent,
+    portfolio_intelligence_agent,
     pricing_intelligence_agent,
     revenue_agent,
     talent_agent,
@@ -46,6 +47,11 @@ class SkippedEvaluation:
 # table is complete and each future agent slots into an already-known
 # contract.
 EVENT_ROUTING: dict[str, list[tuple[str, AgentHandler]]] = {
+    "executive.kpi_alert.triggered": [(portfolio_intelligence_agent.AGENT_KEY, portfolio_intelligence_agent.handle_kpi_alert)],
+    "management.kpi_alert.triggered": [(portfolio_intelligence_agent.AGENT_KEY, portfolio_intelligence_agent.handle_kpi_alert)],
+    "real_estate.kpi_alert.triggered": [(portfolio_intelligence_agent.AGENT_KEY, portfolio_intelligence_agent.handle_kpi_alert)],
+    "capital_finance.kpi_alert.triggered": [(portfolio_intelligence_agent.AGENT_KEY, portfolio_intelligence_agent.handle_kpi_alert)],
+    "portfolio.rollup.scheduled": [(portfolio_intelligence_agent.AGENT_KEY, portfolio_intelligence_agent.handle_rollup_scheduled)],
     "role.assigned": [(compliance_audit_agent.AGENT_KEY, compliance_audit_agent.evaluate_event)],
     "role.revoked": [(compliance_audit_agent.AGENT_KEY, compliance_audit_agent.evaluate_event)],
     "permission.granted": [(compliance_audit_agent.AGENT_KEY, compliance_audit_agent.evaluate_event)],

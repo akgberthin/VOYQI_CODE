@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.roster import ROSTER
 from src.core.security import get_tenant_id
 from src.models import Agent, AgentStatus
 from src.services import compliance_audit_agent
@@ -90,3 +91,11 @@ async def set_agent_status(
         )
         await db.refresh(agent)
     return agent
+
+
+@router.get("/roster")
+async def get_roster():
+    """The 12-agent roster (docs/AI_ORCHESTRATION_SCALING.md) and which
+    code implements each — including what is still missing."""
+    return ROSTER
+

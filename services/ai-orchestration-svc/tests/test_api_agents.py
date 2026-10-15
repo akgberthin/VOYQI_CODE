@@ -73,3 +73,19 @@ async def test_status_change_without_on_off_transition_is_not_audited(client):
     await client.post(f"/api/v1/ai/agents/{agent_id}/status", json={"status": "disabled"}, headers=TENANT_HEADERS)
 
     assert len(await _decision_log(client)) == 1
+
+
+async def test_roster_lists_twelve_agents_that_resolve_to_real_code(client):
+    import yaml
+    from pathlib import Path
+
+    roster = (await client.get("/api/v1/ai/roster", headers=TENANT_HEADERS)).json()
+    assert len(roster) == 12
+    policy = yaml.safe_load(Path("src/core/tier_policy.yaml").read_text())["agents"]
+    for entry in roster:
+        if entry["policy_agent"]:
+            assert entry["policy_agent"] in policy, entry["name"]
+        for module in entry["implemented_by"]:
+            assert Path("src", module.split(" ")[0]).exists(), module
+        assert entry["status"] in ("implemented", "partial", "missing")
+        assert (entry["status"] == "implemented") == ("missing" not in entry), entry["name"]

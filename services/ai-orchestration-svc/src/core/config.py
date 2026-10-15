@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     hub_svc_base_url: str = "http://hub-svc:8006"
     org_svc_base_url: str = "http://originations-svc:8036"
     hrm_svc_base_url: str = "http://hrm-svc:8023"
+    # Portfolio Intelligence (read-only)
+    executive_svc_base_url: str = "http://executive-svc:8032"
+    management_svc_base_url: str = "http://management-svc:8033"
+    real_estate_svc_base_url: str = "http://real-estate-svc:8034"
+    capital_finance_svc_base_url: str = "http://capital-finance-svc:8035"
 
     # Revenue Agent — CRM-001 identity resolution. Mirrors crm-svc's own
     # threshold of the same name; kept as two settings in two services

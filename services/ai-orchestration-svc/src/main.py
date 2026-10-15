@@ -16,6 +16,7 @@ from src.api import (
     marketing_content,
     member_experience,
     policies,
+    portfolio_intelligence,
     pricing_intelligence,
     recommendations,
     revenue_intelligence,
@@ -103,6 +104,7 @@ app.include_router(revenue_intelligence.org_router)
 app.include_router(concierge.router)
 app.include_router(talent.router)
 app.include_router(dealer_intelligence.router)
+app.include_router(portfolio_intelligence.router)
 
 
 @app.get("/health")
