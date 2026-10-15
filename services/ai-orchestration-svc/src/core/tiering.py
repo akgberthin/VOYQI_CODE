@@ -66,11 +66,32 @@ def get_tier(agent: str, action_type: str, context: dict[str, Any] | None = None
 
     tier = action_cfg["tier"]
     threshold = action_cfg.get("threshold")
+    if tier != 3:  # tier 3 is never overridden, whatever is stored (AI-005)
+        override = _override_for(agent, action_type)
+        if override is not None:
+            tier, threshold = override
     if tier == 3 or not threshold:
         return tier
     if _evaluate_threshold(threshold, context or {}) is False:
         return max(tier - 1, 1)
     return tier
+
+
+# (tenant_id, policy_agent, action_type) -> (tier, threshold); loaded by
+# core/tier_overrides.refresh and kept current on every change.
+_overrides: dict[tuple[str, str, str], tuple[int, str | None]] = {}
+
+
+def _override_for(agent: str, action_type: str) -> tuple[int, str | None] | None:
+    from src.core.prompts import current_tenant  # the request/event's tenant
+
+    tenant = current_tenant.get()
+    return _overrides.get((tenant, agent, action_type)) if tenant else None
+
+
+def base_action(agent: str, action_type: str) -> dict | None:
+    """The tier-policy.yaml entry, ignoring tenant overrides."""
+    return _load_policy().get("agents", {}).get(agent, {}).get("actions", {}).get(action_type)
 
 
 def approval_required(tier: int) -> bool:

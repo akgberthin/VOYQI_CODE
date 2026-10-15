@@ -20,6 +20,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core import prompts
 from src.models import Agent, AgentStatus
 from src.services import (
     compliance_audit_agent,
@@ -155,6 +156,7 @@ async def _agent_status(db: AsyncSession, tenant_id: str, agent_key: str) -> Age
 
 
 async def route_event(db: AsyncSession, tenant_id: str, event_type: str, payload: dict) -> list:
+    prompts.current_tenant.set(tenant_id)  # selects the tenant's promoted prompts (AI-003)
     routes = EVENT_ROUTING.get(event_type, [])
     results = []
     for agent_key, handler in routes:

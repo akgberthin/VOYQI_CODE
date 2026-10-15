@@ -89,6 +89,18 @@ per action in `services/ai-orchestration-svc/src/core/tier_policy.yaml`
 `GET /api/v1/ai/audit/tier-graduation` reports approval and override
 rates per action — the evidence for promoting a tier-2 action to tier 1.
 
+Per-tenant tier changes go through `/api/v1/ai/tier-policy`
+(`GET` effective policy, `PUT|DELETE /{policy_agent}/{action_type}`,
+`GET .../evidence`). Tier-3 actions can't be changed, nothing can be
+raised to tier 3 there, and removing an approval gate (→ tier 1) needs
+≥20 decisions in 90 days with ≥90% approved.
+
+Agent system prompts are versioned per prompt key (`GET /api/v1/ai/prompts`,
+`POST /api/v1/ai/policies` with `prompt_key`, then `/evaluate` and
+`/promote`). A version can only be promoted after a stored evaluation;
+the promoted version is used for that tenant's agent calls, and replicas
+pick up changes within a minute.
+
 ## Local ports
 
 | Port | Service | Port | Service |

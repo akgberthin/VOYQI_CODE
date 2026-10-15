@@ -17,6 +17,7 @@ from typing import Any
 
 import anthropic
 
+from src.core import prompts
 from src.core.config import get_settings
 
 
@@ -81,7 +82,7 @@ class AnthropicAgentClient:
             response = self._client.messages.create(
                 model=self._settings.anthropic_model,
                 max_tokens=self._settings.anthropic_max_tokens,
-                system=system_prompt,
+                system=prompts.resolve(system_prompt),
                 messages=messages,
                 tools=tools,
             )

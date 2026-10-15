@@ -21,9 +21,11 @@ from src.api import (
     recommendations,
     revenue_intelligence,
     talent,
+    tier_policy,
 )
+from src.core import prompts, tier_overrides
 from src.core.config import get_settings
-from src.core.database import AsyncSessionLocal, init_models
+from src.core.database import AsyncSessionLocal, engine, init_models
 
 logger = logging.getLogger("ai-orchestration-svc.main")
 
@@ -67,10 +69,28 @@ async def lifespan(app: FastAPI):
 
         consumer_task = asyncio.create_task(_guarded_consumer())
 
+    prompt_task: asyncio.Task | None = None
+    if engine.url.get_backend_name() != "sqlite":
+        # Pick up prompt versions (AI-003) and tier changes (AI-005) made
+        # on other replicas.
+        async def _refresh_prompts():
+            while True:
+                try:
+                    async with AsyncSessionLocal() as db:
+                        await prompts.refresh(db)
+                        await tier_overrides.refresh(db)
+                except Exception:
+                    logger.exception("prompt/tier refresh failed; keeping the versions already loaded")
+                await asyncio.sleep(prompts.PROMPT_REFRESH_SECONDS)
+
+        prompt_task = asyncio.create_task(_refresh_prompts())
+
     yield
 
     if consumer_task is not None:
         consumer_task.cancel()
+    if prompt_task is not None:
+        prompt_task.cancel()
 
 
 app = FastAPI(title="ai-orchestration-svc", version="1.0.0", lifespan=lifespan)
@@ -105,6 +125,7 @@ app.include_router(concierge.router)
 app.include_router(talent.router)
 app.include_router(dealer_intelligence.router)
 app.include_router(portfolio_intelligence.router)
+app.include_router(tier_policy.router)
 
 
 @app.get("/health")

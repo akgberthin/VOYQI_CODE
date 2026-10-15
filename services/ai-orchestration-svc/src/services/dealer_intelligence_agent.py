@@ -30,7 +30,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.tiering import get_tier
 from src.core import action_gate
 from src.models import Agent, AgentStatus, AIRecommendation, DecisionLog, RecommendationStatus
-from src.services import dms_tools
 
 AGENT_KEY = "dealer_intelligence_agent"
 

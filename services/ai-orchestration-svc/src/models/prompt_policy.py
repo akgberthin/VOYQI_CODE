@@ -30,6 +30,10 @@ class PromptPolicy(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     agent_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # Which of the agent's prompts this versions ("<agent module>.<CONSTANT>",
+    # see core/prompts.registry). Versions without one predate per-prompt
+    # versioning and never take effect.
+    prompt_key: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
 

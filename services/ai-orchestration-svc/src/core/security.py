@@ -8,10 +8,13 @@ downstream can distinguish AI-driven actions from human-driven ones.
 """
 from fastapi import Header, HTTPException
 
+from src.core import prompts
+
 
 async def get_tenant_id(x_tenant_id: str | None = Header(default=None)) -> str:
     if not x_tenant_id:
         raise HTTPException(status_code=400, detail="X-Tenant-Id header is required")
+    prompts.current_tenant.set(x_tenant_id)  # selects the tenant's promoted prompts (AI-003)
     return x_tenant_id
 
 
