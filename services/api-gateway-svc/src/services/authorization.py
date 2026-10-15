@@ -5,7 +5,9 @@ Each route prefix is a module ("/api/v1/fleet" -> "fleet"). Reading
 (GET/HEAD/OPTIONS) needs "<module>.read", anything else needs
 "<module>.write". A user's effective permissions come from rbac-svc
 (roles + overrides, deny always wins) and may include wildcards:
-"<module>.*" grants both, "*" grants everything.
+"<module>.*" grants both, "*" grants everything. "<module>.self" grants
+only the self-service endpoints in self_service.py, on the caller's own
+records (members).
 
 Fails closed: if rbac-svc can't be reached, the request is refused,
 never let through. Service-to-service calls (the AI nucleus calling
@@ -16,6 +18,7 @@ import time
 import httpx
 
 from src.core.config import get_settings
+from src.services import self_service
 from src.services.routing import RouteConfig
 
 READ_METHODS = {"GET", "HEAD", "OPTIONS"}
@@ -90,12 +93,20 @@ async def permissions_for(tenant_id: str, user_id: str) -> frozenset[str]:
     return permissions
 
 
-async def authorize(claims: dict, route: RouteConfig, method: str, path: str) -> None:
+async def authorize(claims: dict, route: RouteConfig, method: str, path: str, body: bytes = b"") -> None:
     """Raises AuthorizationError unless the caller may make this request."""
     if not get_settings().enforce_rbac:
         return
     if is_self_service(path, claims["user_id"]):
         return
     required = required_permission(route, method)
-    if not is_allowed(await permissions_for(claims["tenant_id"], claims["user_id"]), required):
-        raise AuthorizationError(403, f"Missing permission: {required}")
+    permissions = await permissions_for(claims["tenant_id"], claims["user_id"])
+    if is_allowed(permissions, required):
+        return
+    if f"{module_for(route)}.self" in permissions:
+        try:
+            await self_service.check(claims, method, path, body)
+        except self_service.NotOwnerError as exc:
+            raise AuthorizationError(403, str(exc)) from exc
+        return
+    raise AuthorizationError(403, f"Missing permission: {required}")

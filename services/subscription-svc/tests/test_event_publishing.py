@@ -78,3 +78,15 @@ async def test_declare_travel_publishes_travel_activated(client, monkeypatch):
     # staging evaluation reads directly from the payload
     assert payload["destination_hub_id"] == hub_id
     assert payload["destination_market"] == "Austin"
+
+
+async def test_subscription_and_upgrade_case_can_be_fetched_by_id(client):
+    """The lookups the gateway uses to check a member owns what they act on."""
+    plan = (await client.post("/api/v1/subscription/plans", json={"mobility_class": "urban", "market": "austin", "monthly_price_usd": 449}, headers=TENANT_HEADERS)).json()
+    member = (await client.post("/api/v1/subscription/members", json={"user_id": str(uuid.uuid4()), "full_name": "A", "email": "a@x.com"}, headers=TENANT_HEADERS)).json()
+    sub = (await client.post("/api/v1/subscription/subscriptions", json={"member_profile_id": member["id"], "plan_id": plan["id"]}, headers=TENANT_HEADERS)).json()
+
+    fetched = await client.get(f"/api/v1/subscription/subscriptions/{sub['id']}", headers=TENANT_HEADERS)
+    assert fetched.status_code == 200 and fetched.json()["member_profile_id"] == member["id"]
+    assert (await client.get(f"/api/v1/subscription/subscriptions/{uuid.uuid4()}", headers=TENANT_HEADERS)).status_code == 404
+    assert (await client.get(f"/api/v1/subscription/upgrade-cases/{uuid.uuid4()}", headers=TENANT_HEADERS)).status_code == 404

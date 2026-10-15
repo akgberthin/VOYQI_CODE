@@ -24,6 +24,11 @@ from src.models import (
 from src.services import ai_orchestration_tools
 
 
+async def get_subscription(db: AsyncSession, tenant_id: str, subscription_id: uuid.UUID) -> Subscription | None:
+    result = await db.execute(select(Subscription).where(Subscription.id == subscription_id, Subscription.tenant_id == tenant_id))
+    return result.scalar_one_or_none()
+
+
 async def pause_subscription(db: AsyncSession, tenant_id: str, subscription_id: uuid.UUID, resume_at: datetime) -> Subscription | None:
     result = await db.execute(select(Subscription).where(Subscription.id == subscription_id, Subscription.tenant_id == tenant_id))
     sub = result.scalar_one_or_none()

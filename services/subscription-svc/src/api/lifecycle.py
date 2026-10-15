@@ -66,6 +66,16 @@ async def create_subscription(
     return subscription
 
 
+@router.get("/subscriptions/{subscription_id}", response_model=SubscriptionOut)
+async def get_subscription(subscription_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Also the lookup the gateway uses to confirm a member owns the
+    subscription they're acting on."""
+    subscription = await lifecycle_engine.get_subscription(db, tenant_id, subscription_id)
+    if subscription is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    return subscription
+
+
 @router.post("/subscriptions/{subscription_id}/pause", response_model=SubscriptionOut)
 async def pause(subscription_id: uuid.UUID, body: PauseRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     sub = await lifecycle_engine.pause_subscription(db, tenant_id, subscription_id, body.resume_at)

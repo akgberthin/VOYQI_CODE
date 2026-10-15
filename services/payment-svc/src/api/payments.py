@@ -47,7 +47,7 @@ class WebhookIn(BaseModel):
 
 def _serialize_charge(c) -> dict:
     return {
-        "id": c.id, "status": c.status, "amount_cents": c.amount_cents, "currency": c.currency,
+        "id": c.id, "user_id": c.user_id, "status": c.status, "amount_cents": c.amount_cents, "currency": c.currency,
         "provider_mode": c.provider_mode, "provider_charge_id": c.provider_charge_id,
         "failure_reason": c.failure_reason, "refunded_amount_cents": c.refunded_amount_cents,
     }

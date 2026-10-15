@@ -38,8 +38,14 @@ ROLES = {
         "executive.read", "management.read", "real-estate.read", "capital-finance.read", "insurance-risk.read", "ai.read",
     ]),
     "compliance_officer": ("Compliance Officer", "employee", ["security-compliance.*", "identity.*", "rbac.read", "ai.*", "insurance-risk.*"]),
-    "member": ("Member", "member", ["subscription.*", "rental.*", "hub.read", "payment.write", "pricing.read"]),
+    # ".self": only the member self-service endpoints, on their own records
+    # (enforced by the gateway). Rental reservations aren't linked to a
+    # user, so members have no rental access.
+    "member": ("Member", "member", ["subscription.self", "payment.self", "hub.read", "pricing.read"]),
 }
+# Extra logins that share a role, e.g. a second member to show members
+# can't see each other's records.
+EXTRA_LOGINS = {"member.two": "member"}
 
 
 class Api:
@@ -74,28 +80,41 @@ def login(api: Api, email: str, password: str) -> str:
 def seed_users_and_roles(api: Api, password: str, domain: str) -> dict:
     existing_roles = {r["key"]: r for r in api.call("rbac", "GET", "/api/v1/rbac/roles")[1]}
     existing_platform_users = {u["id"] for u in api.call("rbac", "GET", "/api/v1/rbac/users")[1]}
+    roles = {}
+    for key, (name, _user_type, permissions) in ROLES.items():
+        wanted_exact = sorted(p for p in permissions if not p.endswith("*"))
+        wanted_wild = sorted(p for p in permissions if p.endswith("*"))
+        role = existing_roles.get(key)
+        if role is None:
+            role = api.call("rbac", "POST", "/api/v1/rbac/roles", {
+                "key": key, "name": name, "permission_keys": wanted_exact, "wildcard_permissions": wanted_wild,
+                "is_system_role": key == "super_admin",
+            })[1]
+        elif sorted(role["permission_keys"]) != wanted_exact or sorted(role["wildcard_permissions"]) != wanted_wild:
+            print(f"  ! role {key} exists with different permissions than this script defines — left unchanged", flush=True)
+        roles[key] = role
+
+    logins = [(key.replace("_", "."), key) for key in ROLES] + list(EXTRA_LOGINS.items())
     accounts = {}
-    for key, (name, user_type, permissions) in ROLES.items():
-        role = existing_roles.get(key) or api.call("rbac", "POST", "/api/v1/rbac/roles", {
-            "key": key, "name": name, "permission_keys": [p for p in permissions if not p.endswith("*")],
-            "wildcard_permissions": [p for p in permissions if p.endswith("*")], "is_system_role": key == "super_admin",
-        })[1]
-        email = f"{key.replace('_', '.')}@{domain}"
+    for login_name, role_key in logins:
+        name, user_type, _permissions = ROLES[role_key]
+        email = f"{login_name}@{domain}"
         first, _, last = name.partition(" ")
         try:
             api.call("gateway", "POST", "/api/v1/user/users/register", {
-                "user_type": user_type, "first_name": first, "last_name": last or "Demo", "email": email, "password": password,
+                "user_type": user_type, "first_name": first, "last_name": last or login_name.split(".")[-1].title(),
+                "email": email, "password": password,
             })
         except RuntimeError as exc:
-            if "409" not in str(exc) and "already" not in str(exc).lower() and "502" not in str(exc):
+            if "409" not in str(exc):
                 raise
         token = login(api, email, password)
         user_id = api.call("gateway", "GET", "/api/v1/auth/me", cookie=token)[1]["user_id"]
         if user_id not in existing_platform_users:
             api.call("rbac", "POST", "/api/v1/rbac/users", {"id": user_id, "email": email, "display_name": name})
-            api.call("rbac", "POST", "/api/v1/rbac/role-assignments", {"user_id": user_id, "role_id": role["id"], "assigned_by": "seed_demo"})
-        accounts[key] = {"email": email, "user_id": user_id}
-        print(f"  {key:<19} {email}", flush=True)
+            api.call("rbac", "POST", "/api/v1/rbac/role-assignments", {"user_id": user_id, "role_id": roles[role_key]["id"], "assigned_by": "seed_demo"})
+        accounts[login_name] = {"email": email, "user_id": user_id, "role": role_key}
+        print(f"  {role_key:<19} {email}", flush=True)
     return accounts
 
 
@@ -114,6 +133,18 @@ def seed_business_data(api: Api, accounts: dict) -> None:
         {"mobility_class": c, "market": "national", "monthly_price_usd": p} for c, p in
         [("urban", 449), ("family", 699), ("executive", 899), ("luxury", 1499), ("performance", 1799)]
     ], "mobility_class")
+    members = 0
+    for account in accounts.values():
+        if account["role"] != "member":
+            continue
+        status, _body, _h = api.call("subscription", "GET", f"/api/v1/subscription/members/by-user-id/{account['user_id']}", ok=(200, 404))
+        if status == 404:
+            api.call("subscription", "POST", "/api/v1/subscription/members", {
+                "user_id": account["user_id"], "full_name": account["email"].split("@")[0].replace(".", " ").title(), "email": account["email"],
+            })
+            members += 1
+    print(f"  {'subscription':<13} {'member profiles for member logins':<40} +{members}", flush=True)
+
     created = 0
     for mobility_class, price_cents in (("urban", 44900), ("executive", 89900), ("luxury", 149900)):
         status, _body, _h = api.call("pricing", "GET", f"/api/v1/pricing/rate-cards/current?mobility_class={mobility_class}", ok=(200, 404))

@@ -61,7 +61,7 @@ async def handle_request(
         if await is_revoked(claims):
             raise GatewayError(401, "access token revoked")
         try:
-            await authorize(claims, route, method, path)
+            await authorize(claims, route, method, path, body)
         except AuthorizationError as exc:
             raise GatewayError(exc.status_code, exc.detail) from exc
         # Enforced from the verified token — a client cannot override these via headers.

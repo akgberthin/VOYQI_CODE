@@ -51,7 +51,7 @@ The sample business data is invented — replace it before an external demo.
 | Marketing Manager | `marketing.manager@voyqi.example` | marketing, CRM, AI |
 | Executive | `executive@voyqi.example` | executive, management, real estate, capital finance, insurance risk — read only |
 | Compliance Officer | `compliance.officer@voyqi.example` | security & compliance, identity sessions, RBAC (read), insurance risk, AI |
-| Member | `member@voyqi.example` | subscriptions, rentals, hubs (read), payments, pricing (read) |
+| Member | `member@voyqi.example`, `member.two@voyqi.example` | their own membership, subscriptions and payments; hubs and prices (read) |
 
 ## How requests are authorized
 
@@ -60,10 +60,18 @@ every other request the gateway verifies it, takes tenant and user from
 the token (never from client headers), and checks the user's role
 permissions from rbac-svc. Each route prefix is a module — reading needs
 `<module>.read`, writing needs `<module>.write`; `<module>.*` and `*` are
-wildcards; a deny override always wins. If rbac-svc is unreachable the
+wildcards; a deny override always wins. `<module>.self` (members) allows
+only the self-service endpoints in
+`services/api-gateway-svc/src/services/self_service.py`, and only on the
+caller's own records — ownership is checked with the owning service
+before forwarding. If rbac-svc is unreachable the
 request is refused. Self-service paths (`/api/v1/auth/*`, the caller's
 own user record) need no role. `GATEWAY_ENFORCE_RBAC=false` turns
 enforcement off for debugging.
+
+Logout, password reset and refresh-token reuse revoke access tokens
+immediately through Redis; without Redis a token stays valid until it
+expires (15 minutes).
 
 ## How the AI acts
 

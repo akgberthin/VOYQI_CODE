@@ -95,6 +95,14 @@ async def list_upgrade_cases(member_profile_id: uuid.UUID | None = None, tenant_
     return await upgrade_intelligence_engine.list_upgrade_cases(db, tenant_id, member_profile_id)
 
 
+@router.get("/upgrade-cases/{case_id}", response_model=UpgradeCaseOut)
+async def get_upgrade_case(case_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    case = await upgrade_intelligence_engine.get_upgrade_case(db, tenant_id, case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Upgrade case not found")
+    return case
+
+
 @router.post("/upgrade-cases/{case_id}/accept")
 async def accept_upgrade_case(case_id: uuid.UUID, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """The member's own acceptance — the one action in this module
