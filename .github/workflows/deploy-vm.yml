@@ -1,0 +1,45 @@
+name: Deploy to VM
+
+# Deploys the current main branch to the single Compute Engine VM this
+# project actually runs on, over SSH. Separate from deploy.yml, which
+# targets GKE/Artifact Registry infrastructure that does not exist yet
+# for this project.
+#
+# Needs these repo secrets:
+#   VM_SSH_PRIVATE_KEY   private half of the github-actions-deploy keypair
+#   VM_HOST              the VM's external IP or hostname
+#   VM_USER              the SSH user whose authorized_keys holds the public half
+#   ANTHROPIC_API_KEY     (optional) enables live-Claude reasoning
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: Deploy over SSH
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" bash -s << EOF
+            set -e
+            cd ~/voyqi-platform
+            git fetch origin main
+            git reset --hard origin/main
+            if [ -n "${ANTHROPIC_API_KEY}" ]; then
+              echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" > .env
+            fi
+            sudo docker compose up -d --build
+            sudo docker compose ps
+          EOF
