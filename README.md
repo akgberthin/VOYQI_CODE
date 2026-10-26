@@ -46,6 +46,27 @@ In deployed environments devices use mutual TLS with the VIN as the
 certificate Common Name, and the broker only lets a device publish under
 its own VIN (`infrastructure/mqtt/`, `docs/DEPLOYMENT.md`).
 
+## Super admin console
+
+`frontend/super-admin` (React + TypeScript) — the operator's control
+panel for the whole platform, signed in through the gateway as a user
+with the platform permission (`super.admin@voyqi.example` in the demo):
+
+- **Services & APIs** — health of every service, and every API each one
+  exposes, callable from forms generated from the service's OpenAPI
+  description (via `GET /api/v1/platform/services[/{name}/openapi]` on
+  the gateway).
+- **AI** — every agent with a per-tenant kill switch, the approval
+  queue, autonomy tiers, prompt versions (evaluate → promote), goals and
+  the decision log.
+- **Access & security** — users, roles, overrides, ABAC policies,
+  tenants, break-glass/impersonation sessions and the audit log.
+
+```bash
+docker compose up -d                    # serves it at http://localhost:3001
+# or, while developing: cd frontend/super-admin && npm install && npm run dev   # :5180
+```
+
 ## Demo console
 
 A browser console for showing the platform before the React apps exist —
@@ -140,6 +161,7 @@ pick up changes within a minute.
 | 8021 | crm-svc | 8035 | capital-finance-svc |
 | 9092 | Kafka | 8036 | originations-svc (also `/api/v1/org`) |
 | 6379 | Redis | 1883 | MQTT broker (Mosquitto) |
+| 3001 | Super admin console | | |
 
 The Kubernetes service catalog uses the same names and ports.
 

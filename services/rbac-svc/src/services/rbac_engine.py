@@ -137,6 +137,11 @@ async def get_user_rbac_context(db: AsyncSession, tenant_id: str, user_id: uuid.
     return {
         "user_id": str(user_id),
         "roles": [{"key": r.key, "name": r.name} for r in roles],
+        # Assignment ids, so an admin screen can revoke a specific role.
+        "assignments": [
+            {"id": str(a.id), "role_id": str(a.role_id), "role_key": next((r.key for r in roles if r.id == a.role_id), None), "assigned_by": a.assigned_by}
+            for a in assignments
+        ],
         "active_overrides": [
             {
                 "id": str(o.id), "permission_key": o.permission_key, "effect": o.effect.value,

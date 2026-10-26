@@ -49,6 +49,16 @@ services:
       timeout: 3s
       retries: 20
 
+
+  # Super admin console (frontend/super-admin): http://localhost:3001
+  super-admin:
+    build: ./frontend/super-admin
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      api-gateway-svc:
+        condition: service_started
   # Telematics broker. Devices publish to voyqi/{tenant}/vehicles/{vin}/...;
   # fleet-svc subscribes. Dev config is anonymous plain TCP — production
   # (mTLS, VIN-scoped ACL) is infrastructure/mqtt/mosquitto.conf.

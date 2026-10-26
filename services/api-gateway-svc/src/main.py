@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from src.api.platform import router as platform_router
 from src.api.proxy import router as proxy_router
 from src.core.config import get_settings
 
@@ -26,6 +27,8 @@ app = FastAPI(title="api-gateway-svc", lifespan=lifespan)
 async def health():
     return {"status": "ok", "service": settings.service_name}
 
+
+app.include_router(platform_router)
 
 # Registered last: this is a catch-all, so anything more specific (like
 # /health above) must be declared before it.

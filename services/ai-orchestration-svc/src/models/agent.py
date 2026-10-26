@@ -12,7 +12,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import GUID, Base
@@ -26,11 +26,14 @@ class AgentStatus(str, enum.Enum):
 
 class Agent(Base):
     __tablename__ = "agents"
+    # One row per agent per tenant: pausing an agent for one tenant must
+    # not need (or block) a row for the same agent in another.
+    __table_args__ = (UniqueConstraint("tenant_id", "key", name="uq_agents_tenant_key"),)
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
-    key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(String(512), nullable=False, default="")
 
