@@ -16,7 +16,9 @@ router = APIRouter()
 def _publish(background_tasks: BackgroundTasks, event_type: str, tenant_id: str, user) -> None:
     background_tasks.add_task(
         publish_event, "user.lifecycle", event_type, tenant_id,
-        {"user_id": str(user.id), "user_type": user.user_type, "status": user.status, "email": user.email},
+        {"user_id": str(user.id), "user_type": user.user_type, "status": user.status, "email": user.email,
+         # the name lets consumers greet the person (marketing welcome journeys)
+         "full_name": f"{user.first_name} {user.last_name}".strip()},
     )
 
 

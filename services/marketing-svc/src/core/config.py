@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # images from it): the gateway's external URL in a deployment.
     public_base_url: str = "http://localhost:8000"
     max_upload_bytes: int = 8 * 1024 * 1024
+    # Listen to platform events that start automation journeys.
+    journey_events_enabled: bool = True
     delivery_concurrency: int = 10
 
     # The one hard, structural gate in this entire service: a contact

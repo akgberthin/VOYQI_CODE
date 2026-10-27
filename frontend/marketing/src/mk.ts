@@ -8,7 +8,7 @@ export const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬",
 
 export type Campaign = { id: string; name: string; channel: Channel; objective: string; status: string; audience_segment_id: string | null; created_by: string };
 export type Draft = { id: string; campaign_id: string; channel: Channel; subject_line: string; body_text: string; media_asset_ids: string[]; status: string; guardrail_findings: string[]; reviewed_by: string | null; created_by: string };
-export type Send = { id: string; campaign_id: string; content_draft_id: string; channel: Channel; scheduled_at: string; status: string; recipients_targeted: number; recipients_suppressed: number; recipients_failed: number; recipients_console: number; failure_detail: string; sent_at: string | null };
+export type Send = { id: string; campaign_id: string; content_draft_id: string; channel: Channel; scheduled_at: string; status: string; recipients_targeted: number; recipients_suppressed: number; recipients_failed: number; recipients_console: number; failure_detail: string; recurrence: string; sent_at: string | null };
 export type Segment = { id: string; name: string; filter_criteria: Record<string, unknown>; member_count: number; created_by: string };
 export type Snapshot = { id: string; campaign_id: string; channel: Channel; sent_count: number; open_count: number; click_count: number; conversion_count: number; revenue_usd: number };
 export type CalendarEntry = { id: string; channel: Channel; title: string; scheduled_at: string; reference_id: string; reference_type: string };
@@ -32,13 +32,13 @@ export const mk = {
   rejectDraft: (id: string, reviewed_by: string) => must<Draft>(post(`${M}/content/${id}/reject`, { reviewed_by })),
 
   sends: (campaign_id?: string) => must<Send[]>(get(`${M}/sends${q({ campaign_id })}`)),
-  scheduleSend: (body: { campaign_id: string; content_draft_id: string; channel: string; scheduled_at: string }) => must<Send>(post(`${M}/sends`, body)),
-  executeSend: (id: string, recipient_contacts: string[] = []) => must<Send>(post(`${M}/sends/${id}/execute`, { recipient_contacts })),
+  scheduleSend: (body: { campaign_id: string; content_draft_id: string; channel: string; scheduled_at: string; recurrence?: string }) => must<Send>(post(`${M}/sends`, body)),
+  executeSend: (id: string, recipient_contacts: string[] = [], consent_confirmed = false) => must<Send>(post(`${M}/sends/${id}/execute`, { recipient_contacts, consent_confirmed })),
 
   segments: () => must<Segment[]>(get(`${M}/audience/segments`)),
   createSegment: (body: Partial<Segment>) => must<Segment>(post(`${M}/audience/segments`, body)),
   members: (id: string) => must<any[]>(get(`${M}/audience/segments/${id}/members`)),
-  addMembers: (id: string, members: { name?: string; email?: string; phone?: string; push_token?: string }[]) => must<{ added: number; skipped: number }>(post(`${M}/audience/segments/${id}/members`, { members })),
+  addMembers: (id: string, members: { name?: string; email?: string; phone?: string; push_token?: string; consent_voice?: boolean }[]) => must<{ added: number; skipped: number }>(post(`${M}/audience/segments/${id}/members`, { members })),
   removeMember: (id: string, memberId: string) => must(del(`${M}/audience/segments/${id}/members/${memberId}`)),
   setMemberCount: (id: string, member_count: number) => must<Segment>(api_patch(`${M}/audience/segments/${id}/member-count`, { member_count })),
 
@@ -62,7 +62,7 @@ export const mk = {
   connectAccount: (body: { platform: string; handle: string }) => must(post(`${M}/social/accounts`, body)),
   disconnectAccount: (id: string) => must(post(`${M}/social/accounts/${id}/disconnect`)),
   posts: () => must<any[]>(get(`${M}/social/posts`)),
-  schedulePost: (body: { social_account_id: string; content_draft_id: string; scheduled_at: string; media_asset_id?: string | null }) => must(post(`${M}/social/posts`, body)),
+  schedulePost: (body: { social_account_id: string; content_draft_id: string; scheduled_at: string; media_asset_id?: string | null; recurrence?: string }) => must(post(`${M}/social/posts`, body)),
   assets: () => must<{ id: string; title: string; content_type: string; source: string; url: string; created_at: string }[]>(get(`${M}/media`)),
   uploadAsset: (body: { title: string; content_type: string; data_base64: string; created_by: string }) => must<{ id: string; url: string }>(post(`${M}/media`, body)),
   publishPost: (id: string) => must(post(`${M}/social/posts/${id}/publish`, {})),
@@ -87,6 +87,16 @@ export const mk = {
   slots: () => must<any[]>(get(`${M}/autopilot/slots`)),
   approveSlot: (id: string) => must(post(`${M}/autopilot/slots/${id}/approve`, {})),
   rejectSlot: (id: string) => must(post(`${M}/autopilot/slots/${id}/reject`, {})),
+  journeyTemplates: () => must<any[]>(get(`${M}/journeys/templates`)),
+  journeys: () => must<any[]>(get(`${M}/journeys`)),
+  createJourney: (body: { name: string; trigger_event: string; steps: any[] }) => must<any>(post(`${M}/journeys`, body)),
+  updateJourney: (id: string, body: any) => must<any>(api("PATCH", `${M}/journeys/${id}`, body)),
+  enroll: (id: string, body: { contacts?: any[]; segment_id?: string }) => must<{ enrolled: number }>(post(`${M}/journeys/${id}/enroll`, body)),
+  enrollments: (id: string) => must<any[]>(get(`${M}/journeys/${id}/enrollments`)),
+  stopEnrollment: (id: string) => must(post(`${M}/journeys/enrollments/${id}/stop`, {})),
+  settings: () => must<any>(get(`${M}/settings`)),
+  saveSettings: (body: any) => must<any>(api("PUT", `${M}/settings`, body)),
+  report: (days: number) => must<any>(get(`${M}/reports?days=${days}`)),
   leads: (campaign_id?: string) => must<any[]>(get(`${M}/lead-captures${q({ campaign_id })}`)),
 };
 
@@ -117,3 +127,9 @@ export const OBJECTIVES: [string, string][] = [
   ["winback", "Reactivation / winback"], ["term_conversion", "Term membership conversion"], ["service_upgrade", "Service level upgrade"], ["travel_mode", "Travel mode activation"],
 ];
 export const TONES: [string, string][] = [["premium", "Premium & aspirational"], ["personal", "Warm & personal"], ["urgent", "Urgent & action-focused"], ["exclusive", "Exclusive & invitation-only"], ["friendly", "Friendly & accessible"]];
+
+export const RECURRENCE: [string, string][] = [["none", "One-time"], ["daily", "Daily"], ["3x_week", "3× per week (Mon/Wed/Fri)"], ["weekly", "Weekly"]];
+export const TRIGGERS: [string, string][] = [
+  ["manual", "Manual / segment enrolment"], ["user.created", "New user signs up"], ["lead.captured", "Website lead captured"],
+  ["crm.person_profile_created", "New CRM contact"], ["subscription.cancelled", "Subscription cancelled"],
+];

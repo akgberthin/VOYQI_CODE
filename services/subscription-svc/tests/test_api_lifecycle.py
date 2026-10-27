@@ -84,3 +84,21 @@ async def test_pause_resume_api(client):
 
     resume_resp = await client.post(f"/api/v1/subscription/subscriptions/{sub_id}/resume", headers=TENANT_HEADERS)
     assert resume_resp.json()["status"] == "active"
+
+
+async def test_finalizing_a_cancellation_announces_it_with_the_contact(client, monkeypatch):
+    from src.api import lifecycle
+
+    events = []
+
+    async def record(topic, event_type, tenant_id, payload):
+        events.append((topic, event_type, payload))
+
+    monkeypatch.setattr(lifecycle, "publish_event", record)
+    member = (await client.post("/api/v1/subscription/members", json={"user_id": str(uuid.uuid4()), "full_name": "Mia Garcia", "email": "mia@example.com"}, headers=TENANT_HEADERS)).json()
+    sub = (await client.post("/api/v1/subscription/subscriptions", json={"member_profile_id": member["id"], "plan_id": str(uuid.uuid4())}, headers=TENANT_HEADERS)).json()
+    resp = await client.post(f"/api/v1/subscription/subscriptions/{sub['id']}/finalize-cancellation", json={"reason": "moving"}, headers=TENANT_HEADERS)
+    assert resp.status_code == 200
+    [(topic, event_type, payload)] = [e for e in events if e[1] == "subscription.cancelled"]
+    assert topic == "subscription.lifecycle"
+    assert (payload["full_name"], payload["email"], payload["reason"]) == ("Mia Garcia", "mia@example.com", "moving")

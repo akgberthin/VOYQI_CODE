@@ -61,7 +61,7 @@ async def add_members(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID, m
         email, phone = (m.get("email") or "").strip().lower(), (m.get("phone") or "").strip()
         if not (email or phone or m.get("push_token")) or (email and email in seen) or (phone and phone in seen):
             continue
-        db.add(SegmentMember(tenant_id=tenant_id, segment_id=segment_id, name=(m.get("name") or "").strip(), email=email, phone=phone, push_token=(m.get("push_token") or "").strip()))
+        db.add(SegmentMember(tenant_id=tenant_id, segment_id=segment_id, name=(m.get("name") or "").strip(), email=email, phone=phone, push_token=(m.get("push_token") or "").strip(), consent_voice=bool(m.get("consent_voice"))))
         seen |= {x for x in (email, phone) if x}
         added += 1
     await db.flush()

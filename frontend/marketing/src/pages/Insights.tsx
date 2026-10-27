@@ -53,6 +53,7 @@ export function Audience() {
           {openSeg && <Contacts segmentId={openSeg} name={(segments.data || []).find((x) => x.id === openSeg)?.name || ""} onChange={segments.reload} />}
         </div>
         <div>
+          <CallingWindow />
           <div className="card mb">
             <h3>Suppression list</h3>
             <div className="form mt">
@@ -81,24 +82,44 @@ export function Audience() {
   );
 }
 
+function CallingWindow() {
+  const run = useAction();
+  const { data, reload } = useLoad(() => mk.settings());
+  const [f, setF] = useState<any>(null);
+  if (data && !f) setF(data);
+  if (!f) return null;
+  return (
+    <div className="card mb">
+      <div className="row between"><h3>Calling window</h3><span className={`badge ${data?.voice_window_open_now ? "ok" : "warn"}`}>{data?.voice_window_open_now ? "open now" : "closed now"}</span></div>
+      <div className="sub">AI voice calls are placed only between these hours (local time); outside them, scheduled calls wait for the next window. 08:00-21:00 is the legal limit.</div>
+      <div className="form mt">
+        <label className="field">Timezone<input value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} /></label>
+        <label className="field">From (hour)<input type="number" min={8} max={21} value={f.voice_window_start} onChange={(e) => setF({ ...f, voice_window_start: Number(e.target.value) })} /></label>
+        <label className="field">Until (hour)<input type="number" min={8} max={21} value={f.voice_window_end} onChange={(e) => setF({ ...f, voice_window_end: Number(e.target.value) })} /></label>
+      </div>
+      <button className="mt" onClick={() => run("Calling window saved", () => mk.saveSettings({ timezone: f.timezone, voice_window_start: f.voice_window_start, voice_window_end: f.voice_window_end })).then(reload)}>Save</button>
+    </div>
+  );
+}
+
 function Contacts({ segmentId, name, onChange }: { segmentId: string; name: string; onChange: () => void }) {
   const run = useAction();
   const members = useLoad(() => mk.members(segmentId), [segmentId]);
   const [text, setText] = useState("");
-  const parse = () => text.split("\n").map((l) => l.split(",").map((x) => x.trim())).filter((p) => p.some(Boolean)).map(([n = "", a = "", b = ""]) => {
+  const parse = () => text.split("\n").map((l) => l.split(",").map((x) => x.trim())).filter((p) => p.some(Boolean)).map(([n = "", a = "", b = "", c = ""]) => {
     const parts = [a, b];
-    return { name: n, email: parts.find((x) => x.includes("@")) || "", phone: parts.find((x) => /^\+?[\d\s()-]{7,}$/.test(x)) || "" };
+    return { name: n, email: parts.find((x) => x.includes("@")) || "", phone: parts.find((x) => /^\+?[\d\s()-]{7,}$/.test(x)) || "", consent_voice: /^(voice|yes|y|true|1)$/i.test(c) };
   });
   const rows = members.data || [];
   return (
     <div className="card mt">
       <h3>Contacts in “{name}”</h3>
-      <div className="sub">One per line: <span className="mono">name, email, phone</span> (either contact may be left out). Duplicates are skipped.</div>
+      <div className="sub">One per line: <span className="mono">name, email, phone, voice</span> — either contact may be left out; put <span className="mono">voice</span> last only for people who gave written consent to automated calls. Duplicates are skipped.</div>
       <textarea className="mt" style={{ minHeight: 90 }} placeholder={"Ava Patel, ava@example.com, +15125550101\nNoah Kim, noah@example.com"} value={text} onChange={(e) => setText(e.target.value)} />
       <button className="mt" disabled={!text.trim()} onClick={() => run("Contacts imported", async () => { const r = await mk.addMembers(segmentId, parse()); setText(""); members.reload(); onChange(); return r; })}>Import</button>
       {members.loading ? <Loading /> : !rows.length ? <Empty>No contacts yet.</Empty> : (
         <table className="mt"><tbody>{rows.slice(0, 200).map((m) => (
-          <tr key={m.id}><td>{m.name || <span className="muted">—</span>}</td><td className="mono">{m.email}</td><td className="mono">{m.phone}</td>
+          <tr key={m.id}><td>{m.name || <span className="muted">—</span>}</td><td className="mono">{m.email}</td><td className="mono">{m.phone}</td><td>{m.consent_voice && <span className="badge ok" title="Consented to automated calls">voice ✓</span>}</td>
             <td><button className="sm ghost" onClick={() => run("Removed", () => mk.removeMember(segmentId, m.id)).then(() => { members.reload(); onChange(); })}>×</button></td></tr>
         ))}</tbody></table>
       )}

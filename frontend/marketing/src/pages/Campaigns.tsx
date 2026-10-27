@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSession } from "@shared/session";
 import { Empty, ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useAction, useLoad } from "@shared/ui";
 import { Ch, DraftCard } from "../bits";
-import { CHANNELS, CHANNEL_LABEL, inHours, mk, money, pct, toIso, type Draft } from "../mk";
+import { CHANNELS, CHANNEL_LABEL, RECURRENCE, inHours, mk, money, pct, toIso, type Draft } from "../mk";
 
 export function Campaigns() {
   const run = useAction();
@@ -69,7 +69,7 @@ export function CampaignDetail() {
   const [manual, setManual] = useState({ subject_line: "", body_text: "" });
   const [brief, setBrief] = useState("");
   const [busyAI, setBusyAI] = useState(false);
-  const [sched, setSched] = useState<{ draft: Draft | null; at: string }>({ draft: null, at: inHours(24) });
+  const [sched, setSched] = useState<{ draft: Draft | null; at: string; recurrence: string }>({ draft: null, at: inHours(24), recurrence: "none" });
   const [recipients, setRecipients] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
 
@@ -90,15 +90,19 @@ export function CampaignDetail() {
     const at = toIso(sched.at);
     const clash = await mk.conflicts(c.channel, at).catch(() => []);
     if (clash.length && !confirm(`${clash.length} other ${c.channel} send(s) are within the spacing window:\n${clash.map((e) => `• ${e.title} @ ${new Date(e.scheduled_at).toLocaleString()}`).join("\n")}\n\nSchedule anyway?`)) return;
-    await run("Send scheduled", () => mk.scheduleSend({ campaign_id: c.id, content_draft_id: sched.draft!.id, channel: c.channel, scheduled_at: at }));
-    setSched({ draft: null, at: inHours(24) });
+    await run("Send scheduled", () => mk.scheduleSend({ campaign_id: c.id, content_draft_id: sched.draft!.id, channel: c.channel, scheduled_at: at, recurrence: sched.recurrence }));
+    setSched({ draft: null, at: inHours(24), recurrence: "none" });
     reload();
   };
   const execute = (sendId: string) => {
     const list = (recipients[sendId] || "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
     if (!list.length && !segment) return alert("This campaign has no audience segment — add contacts, or type recipients.");
     if (!confirm(list.length ? `Send now to ${list.length} recipient(s)?` : `Send now to the ${segment!.member_count} contacts in “${segment!.name}”?`)) return;
-    run("Sent — every recipient checked against the suppression list", () => mk.executeSend(sendId, list)).then(reload);
+    const consent = c.channel === "voice" && list.length > 0
+      ? confirm("Automated calls need prior express consent (TCPA). Confirm every number listed has given it?")
+      : false;
+    if (c.channel === "voice" && list.length > 0 && !consent) return;
+    run("Sent — every recipient checked against the suppression list", () => mk.executeSend(sendId, list, consent)).then(reload);
   };
 
   return (
@@ -146,6 +150,7 @@ export function CampaignDetail() {
               <h3>Schedule “{(sched.draft.subject_line || sched.draft.body_text).slice(0, 60)}”</h3>
               <div className="row mt">
                 <input type="datetime-local" value={sched.at} onChange={(e) => setSched({ ...sched, at: e.target.value })} />
+                <select value={sched.recurrence} onChange={(e) => setSched({ ...sched, recurrence: e.target.value })}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
                 <button onClick={schedule}>Schedule</button><button className="ghost" onClick={() => setSched({ ...sched, draft: null })}>Cancel</button>
               </div>
               <div className="sub mt">Checks the calendar for other {c.channel} sends too close to this one (over-messaging guard).</div>
@@ -163,7 +168,7 @@ export function CampaignDetail() {
           <thead><tr><th>When</th><th>Status</th><th>Reached</th><th>Not reached</th><th>Send now</th></tr></thead>
           <tbody>{sends.map((s) => (
             <tr key={s.id}>
-              <td>{fmtTime(s.scheduled_at)}{s.sent_at && <div className="muted">ran {fmtTime(s.sent_at)}</div>}</td>
+              <td>{fmtTime(s.scheduled_at)}{s.recurrence !== "none" && <div><span className="badge info">{RECURRENCE.find(([k]) => k === s.recurrence)?.[1]}</span></div>}{s.sent_at && <div className="muted">ran {fmtTime(s.sent_at)}</div>}</td>
               <td><StatusBadge value={s.status} /></td>
               <td>{s.status === "scheduled" ? "—" : <>
                 <div>{s.recipients_targeted - s.recipients_suppressed - s.recipients_failed - s.recipients_console} delivered</div>

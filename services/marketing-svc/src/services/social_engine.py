@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import CalendarEntry, ContentDraft, ContentStatus, SocialAccount, SocialPost, SocialPostStatus
 from src.core import integrations
-from src.services import media_engine, social_adapters
+from src.services import channel_policy, media_engine, social_adapters
 from src.services.send_engine import DraftNotApprovedError
 
 
@@ -42,7 +42,8 @@ async def disconnect_account(db: AsyncSession, tenant_id: str, account_id: uuid.
     return account
 
 
-async def schedule_post(db: AsyncSession, tenant_id: str, social_account_id: uuid.UUID, content_draft_id: uuid.UUID, scheduled_at: datetime, media_asset_id: uuid.UUID | None = None) -> SocialPost:
+async def schedule_post(db: AsyncSession, tenant_id: str, social_account_id: uuid.UUID, content_draft_id: uuid.UUID, scheduled_at: datetime,
+                        media_asset_id: uuid.UUID | None = None, recurrence: str = "none") -> SocialPost:
     """Refuses to schedule a draft that hasn't cleared the guardrail,
     the same structural check as send_engine.schedule_send."""
     draft_result = await db.execute(select(ContentDraft).where(ContentDraft.id == content_draft_id, ContentDraft.tenant_id == tenant_id))
@@ -52,7 +53,10 @@ async def schedule_post(db: AsyncSession, tenant_id: str, social_account_id: uui
     if draft.status != ContentStatus.APPROVED:
         raise DraftNotApprovedError(f"content draft is {draft.status.value}, not approved")
 
-    post = SocialPost(tenant_id=tenant_id, social_account_id=social_account_id, content_draft_id=content_draft_id, scheduled_at=scheduled_at, media_asset_id=media_asset_id)
+    if recurrence not in channel_policy.RECURRENCES:
+        raise ValueError(f"recurrence must be one of {', '.join(channel_policy.RECURRENCES)}")
+    post = SocialPost(tenant_id=tenant_id, social_account_id=social_account_id, content_draft_id=content_draft_id, scheduled_at=scheduled_at,
+                      media_asset_id=media_asset_id, recurrence=recurrence)
     db.add(post)
     draft.status = ContentStatus.SCHEDULED
 
@@ -115,6 +119,16 @@ async def publish_post(db: AsyncSession, tenant_id: str, post_id: uuid.UUID, pla
         post.published_at = datetime.now(timezone.utc)
         if draft:
             draft.status = ContentStatus.SENT
+    nxt = channel_policy.next_occurrence(post.scheduled_at, post.recurrence)
+    if nxt is not None:
+        nxt = nxt if nxt.tzinfo else nxt.replace(tzinfo=timezone.utc)
+        while nxt <= datetime.now(timezone.utc):
+            nxt = channel_policy.next_occurrence(nxt, post.recurrence)
+        follow = SocialPost(tenant_id=tenant_id, social_account_id=post.social_account_id, content_draft_id=post.content_draft_id,
+                            scheduled_at=nxt, media_asset_id=post.media_asset_id, recurrence=post.recurrence)
+        db.add(follow)
+        await db.flush()
+        db.add(CalendarEntry(tenant_id=tenant_id, channel="social", title=f"Post: {(draft.body_text if draft else '')[:40]} (recurring)", scheduled_at=nxt, reference_id=follow.id, reference_type="social_post"))
     await db.commit()
     await db.refresh(post)
     return post

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useSession } from "@shared/session";
 import { Empty, ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useAction, useLoad } from "@shared/ui";
 import { Ch, DraftCard } from "../bits";
-import { CHANNELS, CHANNEL_LABEL, CLASSES, OBJECTIVES, TONES, fileToBase64, inHours, mk, toIso } from "../mk";
+import { CHANNELS, CHANNEL_LABEL, CLASSES, OBJECTIVES, RECURRENCE, TONES, fileToBase64, inHours, mk, toIso } from "../mk";
 
 const PLATFORMS = ["instagram", "facebook", "linkedin", "twitter", "tiktok"];
 
@@ -14,7 +14,7 @@ export function Social() {
   const drafts = useLoad(async () => (await mk.drafts(undefined, "approved")).filter((d) => d.channel === "social"));
   const assets = useLoad(() => mk.assets());
   const [acct, setAcct] = useState({ platform: "instagram", handle: "" });
-  const [post, setPost] = useState({ social_account_id: "", content_draft_id: "", media_asset_id: "", at: inHours(4) });
+  const [post, setPost] = useState({ social_account_id: "", content_draft_id: "", media_asset_id: "", at: inHours(4), recurrence: "none" });
   const reloadAll = () => { accounts.reload(); posts.reload(); drafts.reload(); };
   const handle = (id: string) => (accounts.data || []).find((a) => a.id === id);
   return (
@@ -42,11 +42,12 @@ export function Social() {
               <label className="field">Content<select value={post.content_draft_id} onChange={(e) => setPost({ ...post, content_draft_id: e.target.value })}><option value="">— choose —</option>{(drafts.data || []).map((d) => <option key={d.id} value={d.id}>{d.body_text.slice(0, 50)}</option>)}</select></label>
               <label className="field">Image<select value={post.media_asset_id} onChange={(e) => setPost({ ...post, media_asset_id: e.target.value })}><option value="">none</option>{(assets.data || []).map((a) => <option key={a.id} value={a.id}>{a.title.slice(0, 50) || a.id.slice(0, 8)} ({a.source})</option>)}</select></label>
               <label className="field">When<input type="datetime-local" value={post.at} onChange={(e) => setPost({ ...post, at: e.target.value })} /></label>
+              <label className="field">Repeat<select value={post.recurrence} onChange={(e) => setPost({ ...post, recurrence: e.target.value })}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
             </div>
           )}
           {post.media_asset_id && <img src={(assets.data || []).find((a) => a.id === post.media_asset_id)?.url} alt="" style={{ maxWidth: 220, borderRadius: 8, marginTop: 10 }} />}
           {(accounts.data || []).find((a) => a.id === post.social_account_id)?.platform === "instagram" && !post.media_asset_id && <div className="notice warn mt">Instagram only publishes posts with an image.</div>}
-          <button className="mt" disabled={!post.social_account_id || !post.content_draft_id} onClick={() => run("Post scheduled — it publishes automatically at that time", () => mk.schedulePost({ social_account_id: post.social_account_id, content_draft_id: post.content_draft_id, media_asset_id: post.media_asset_id || null, scheduled_at: toIso(post.at) })).then(reloadAll)}>Schedule post</button>
+          <button className="mt" disabled={!post.social_account_id || !post.content_draft_id} onClick={() => run("Post scheduled — it publishes automatically at that time", () => mk.schedulePost({ social_account_id: post.social_account_id, content_draft_id: post.content_draft_id, media_asset_id: post.media_asset_id || null, scheduled_at: toIso(post.at), recurrence: post.recurrence })).then(reloadAll)}>Schedule post</button>
         </div>
       </div>
       <h3>Posts</h3>

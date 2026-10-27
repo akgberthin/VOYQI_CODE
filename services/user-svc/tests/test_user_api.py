@@ -160,6 +160,18 @@ async def test_user_lifecycle_publishes_events(client, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_user_created_event_carries_the_name_and_email(client, monkeypatch):
+    payloads = []
+
+    async def _spy(topic, event_type, tenant_id, payload):
+        payloads.append(payload)
+
+    monkeypatch.setattr("src.api.users.publish_event", _spy)
+    await client.post("/api/v1/user/users", json={"user_type": "member", "first_name": "Zara", "last_name": "Khan", "email": "zara@voyqi.com"}, headers=TENANT_HEADERS)
+    assert (payloads[0]["full_name"], payloads[0]["email"]) == ("Zara Khan", "zara@voyqi.com")
+
+
+@pytest.mark.asyncio
 async def test_same_email_cannot_be_created_twice_in_a_tenant(client):
     body = {"user_type": "member", "first_name": "Ada", "last_name": "L", "email": "Dup@voyqi.com"}
     assert (await client.post("/api/v1/user/users", json=body, headers=TENANT_HEADERS)).status_code == 201

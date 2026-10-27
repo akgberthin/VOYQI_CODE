@@ -3,7 +3,7 @@ import { Link, NavLink, useParams } from "react-router-dom";
 import { useSession } from "@shared/session";
 import { PageHead, useAction, useLoad } from "@shared/ui";
 import { DraftCard } from "../bits";
-import { CHANNEL_ICON, CHANNEL_LABEL, inHours, mk, toIso, type Draft } from "../mk";
+import { CHANNEL_ICON, CHANNEL_LABEL, RECURRENCE, inHours, mk, toIso, type Draft } from "../mk";
 
 const LIMIT: Record<string, number> = { sms: 320, push: 178 };
 const HINT: Record<string, string> = {
@@ -28,6 +28,7 @@ export default function Compose() {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<Draft | null>(null);
   const [at, setAt] = useState(inHours(24));
+  const [recurrence, setRecurrence] = useState("none");
 
   useEffect(() => { setCampaignId(""); setSaved(null); setSubject(""); setBody(""); }, [channel]);
   useEffect(() => { if (!campaignId && campaigns.data?.length) setCampaignId(campaigns.data[0].id); }, [campaigns.data, campaignId]);
@@ -54,7 +55,7 @@ export default function Compose() {
     setBusy(false);
   };
   const schedule = () => run("Scheduled — on the calendar", async () => {
-    await mk.scheduleSend({ campaign_id: saved!.campaign_id, content_draft_id: saved!.id, channel, scheduled_at: toIso(at) });
+    await mk.scheduleSend({ campaign_id: saved!.campaign_id, content_draft_id: saved!.id, channel, scheduled_at: toIso(at), recurrence });
     setSaved({ ...saved!, status: "scheduled" });
   });
   const toLibrary = () => run("Saved to library", () => mk.saveToLibrary({ title: subject || body.slice(0, 40), channel, body_text: subject ? `${subject}\n\n${body}` : body, tags: [], created_by: actor })).then(library.reload);
@@ -114,7 +115,7 @@ export default function Compose() {
               {saved.status === "approved" && (
                 <div className="card">
                   <h3>Schedule</h3>
-                  <div className="row mt"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /><button onClick={schedule}>Schedule send</button></div>
+                  <div className="row mt"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /><select value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select><button onClick={schedule}>Schedule send</button></div>
                 </div>
               )}
               {saved.status === "scheduled" && <div className="notice ok">Scheduled. Send it to recipients from the <Link to={`/campaigns/${saved.campaign_id}`}>campaign page</Link>.</div>}

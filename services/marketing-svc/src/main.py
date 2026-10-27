@@ -13,6 +13,7 @@ from src.api import (
     calendar,
     campaigns,
     content,
+    journeys,
     lead_captures,
     library,
     media,
@@ -24,15 +25,21 @@ from src.api import (
 )
 from src.core.config import get_settings
 from src.core.database import AsyncSessionLocal, init_models
+from src.core import event_consumer
 from src.services import scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
-    task = asyncio.create_task(scheduler.loop(AsyncSessionLocal)) if get_settings().scheduler_interval_seconds > 0 else None
+    settings = get_settings()
+    tasks = []
+    if settings.scheduler_interval_seconds > 0:
+        tasks.append(asyncio.create_task(scheduler.loop(AsyncSessionLocal)))
+    if settings.journey_events_enabled and not settings.database_url.startswith("sqlite"):
+        tasks.append(asyncio.create_task(event_consumer.run(AsyncSessionLocal)))
     yield
-    if task is not None:
+    for task in tasks:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
@@ -53,6 +60,7 @@ app.add_middleware(
 app.include_router(campaigns.router)
 app.include_router(lead_captures.router)
 app.include_router(content.router)
+app.include_router(journeys.router)
 app.include_router(library.router)
 app.include_router(media.router)
 app.include_router(notes.router)

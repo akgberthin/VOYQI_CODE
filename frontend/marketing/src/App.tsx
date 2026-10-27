@@ -6,6 +6,8 @@ import { mk } from "./mk";
 import { CampaignDetail, Campaigns } from "./pages/Campaigns";
 import { Leads, Library, Review, Social, Studio } from "./pages/Channels";
 import Autopilot from "./pages/Autopilot";
+import Automation from "./pages/Automation";
+import Reports from "./pages/Reports";
 import Compose from "./pages/Compose";
 import { AbTests, Analytics, Audience, Calendar } from "./pages/Insights";
 import Overview from "./pages/Overview";
@@ -26,10 +28,10 @@ export default function App() {
   const [held, setHeld] = useState(0);
   return (
     <Shell app="marketing" title="Marketing" defaultEmail="marketing.manager@voyqi.example" verify={verify} nav={() => [
-      { title: "Marketing", links: [{ to: "/", label: "Command center" }, { to: "/campaigns", label: "Campaigns" }, { to: "/review", label: "Content review", badge: held }, { to: "/calendar", label: "Calendar" }] },
+      { title: "Marketing", links: [{ to: "/", label: "Command center" }, { to: "/campaigns", label: "Campaigns" }, { to: "/review", label: "Content review", badge: held }, { to: "/calendar", label: "Calendar" }, { to: "/automation", label: "Automation flows" }] },
       { title: "Channels", links: [{ to: "/compose/email", label: "✉ Email" }, { to: "/compose/sms", label: "💬 SMS" }, { to: "/compose/push", label: "🔔 Push" }, { to: "/compose/voice", label: "📞 Voice" }, { to: "/social", label: "◎ Social" }, { to: "/autopilot", label: "◎ Social autopilot" }] },
       { title: "Create", links: [{ to: "/studio", label: "✦ AI studio" }, { to: "/library", label: "Library" }] },
-      { title: "Audience & results", links: [{ to: "/audience", label: "Audience & suppression" }, { to: "/ab-tests", label: "A/B tests" }, { to: "/analytics", label: "Analytics" }, { to: "/leads", label: "Leads" }] },
+      { title: "Audience & results", links: [{ to: "/audience", label: "Audience & suppression" }, { to: "/ab-tests", label: "A/B tests" }, { to: "/analytics", label: "Analytics" }, { to: "/reports", label: "Reports" }, { to: "/leads", label: "Leads" }] },
     ]}>
       <HeldCounter onCount={setHeld} />
       <Routes>
@@ -41,6 +43,8 @@ export default function App() {
         <Route path="/compose/:channel" element={<Compose />} />
         <Route path="/social" element={<Social />} />
         <Route path="/autopilot" element={<Autopilot />} />
+        <Route path="/automation" element={<Automation />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/studio" element={<Studio />} />
         <Route path="/library" element={<Library />} />
         <Route path="/audience" element={<Audience />} />

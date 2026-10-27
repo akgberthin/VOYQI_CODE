@@ -53,6 +53,7 @@ class MemberIn(BaseModel):
     email: str = ""
     phone: str = ""
     push_token: str = ""
+    consent_voice: bool = False
 
 
 class MemberOut(BaseModel):
@@ -62,6 +63,7 @@ class MemberOut(BaseModel):
     email: str
     phone: str
     push_token: str
+    consent_voice: bool
 
 
 class MembersImport(BaseModel):

@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -49,6 +50,7 @@ class PostSchedule(BaseModel):
     content_draft_id: uuid.UUID
     scheduled_at: datetime
     media_asset_id: uuid.UUID | None = None
+    recurrence: Literal["none", "daily", "weekly", "3x_week"] = "none"
 
 
 class PostOut(BaseModel):
@@ -63,12 +65,13 @@ class PostOut(BaseModel):
     delivery_mode: str
     error_detail: str
     media_asset_id: uuid.UUID | None
+    recurrence: str
 
 
 @router.post("/posts", response_model=PostOut, status_code=201)
 async def schedule_post(body: PostSchedule, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
-        return await social_engine.schedule_post(db, tenant_id, body.social_account_id, body.content_draft_id, body.scheduled_at, body.media_asset_id)
+        return await social_engine.schedule_post(db, tenant_id, body.social_account_id, body.content_draft_id, body.scheduled_at, body.media_asset_id, body.recurrence)
     except social_engine.DraftNotApprovedError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:

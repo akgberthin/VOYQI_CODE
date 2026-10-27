@@ -2,9 +2,10 @@
 replica runs this loop; claiming makes sure each executes exactly once."""
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 
 from src.core.config import get_settings
-from src.services import autopilot, send_engine, social_engine
+from src.services import autopilot, journeys, send_engine, social_engine
 
 logger = logging.getLogger("marketing-svc.scheduler")
 
@@ -19,10 +20,29 @@ async def run_once(session_factory) -> int:
                 continue  # another replica took it
             try:
                 send = await send_engine.execute_send(db, tenant_id, send_id, claimed=True)
+                if send.status.value == "scheduled":  # a call outside the calling window, moved to the next one
+                    logger.info("scheduled send %s for %s waits for the calling window (%s)", send_id, tenant_id, send.scheduled_at)
+                    continue
                 logger.info("scheduled send %s for %s: %s", send_id, tenant_id, send.status.value)
                 ran += 1
             except Exception:
                 logger.exception("scheduled send %s failed", send_id)
+    async with session_factory() as db:
+        steps = await journeys.due(db)
+    for enrollment_id in steps:
+        async with session_factory() as db:
+            enrollment = await journeys.claim(db, enrollment_id)
+            if enrollment is None:
+                continue
+            try:
+                await journeys.run_step(db, enrollment)
+                ran += 1
+            except Exception:
+                logger.exception("journey step for enrollment %s failed; retrying in an hour", enrollment_id)
+                await db.rollback()
+                enrollment.claimed_at = None
+                enrollment.next_run_at = datetime.now(timezone.utc) + timedelta(hours=1)
+                await db.commit()
     async with session_factory() as db:
         planning = await autopilot.due_configs(db)
     for tenant_id in planning:

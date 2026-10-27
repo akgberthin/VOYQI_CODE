@@ -69,14 +69,34 @@ docker compose up -d                    # serves it at http://localhost:3001
 
 ## Marketing console
 
-`frontend/marketing` — the Marketing Command Center (React prototype
-port), signed in as a user with marketing permissions
-(`marketing.manager@voyqi.example`): campaigns with their content, sends
-and results; per-channel composers (email, SMS, push, voice) with live
-preview; AI drafting through the Marketing Content Agent; the guardrail
-review queue; social accounts and posts; audience segments and the
-suppression list; A/B tests with significance; calendar; analytics;
-library; leads.
+`frontend/marketing` (:3002) — the Marketing Command Center, signed in
+as a user with marketing permissions (`marketing.manager@voyqi.example`):
+
+- **Campaigns & composers** — email, SMS, push and voice with live
+  preview; content through the brand/compliance guardrail; sends go to
+  the campaign's segment, personalised (`{first_name}`), suppression-
+  checked, and run automatically at their time (recurring if set).
+- **Real delivery** through the providers configured in super admin →
+  Integrations (SMTP, Twilio SMS/voice, FCM). Without a provider a
+  message is only logged ("console only") and never counted as reach.
+- **Social** — Facebook, Instagram, LinkedIn and X publishing through the
+  Meta/LinkedIn/X integrations; hosted images (uploaded or generated with
+  OpenAI); **autopilot** plans the week's posts (Suggest or Auto-publish;
+  guardrail-flagged copy always waits for a person).
+- **AI studio** — copy variants per tone for a class, channel and
+  objective from the Marketing Content Agent.
+- **Automation flows** — event-triggered journeys (sign-up, lead,
+  cancellation, new CRM contact) or segment enrolment, multi-step across
+  channels.
+- **Voice compliance** — calls reach only contacts with voice consent,
+  open by saying they're automated, and wait for the calling window
+  (set per tenant, within 08:00-21:00).
+- Audience segments with contacts, suppression list, A/B tests,
+  calendar, analytics, reports (CSV), leads.
+
+Dev inbox: emails sent by the platform appear in Mailpit at
+http://localhost:8125 once the SMTP integration points at host `mailpit`,
+port 1025, STARTTLS false.
 
 ```bash
 docker compose up -d                    # http://localhost:3002

@@ -161,6 +161,9 @@ class SegmentMember(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
     phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     push_token: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    # Prior express written consent to automated (AI voice) calls — TCPA.
+    # Voice sends only ever reach members with it.
+    consent_voice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -220,6 +223,9 @@ class ScheduledSend(Base):
     # Set when a scheduler replica takes the send, so no other replica
     # executes it too.
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # none / daily / weekly / 3x_week (Mon, Wed, Fri): after it runs, the
+    # next occurrence is scheduled automatically.
+    recurrence: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -289,6 +295,7 @@ class SocialPost(Base):
     error_detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
     media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recurrence: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -452,3 +459,55 @@ class AutopilotSlot(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="proposed")
     decided_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class MarketingSettings(Base):
+    """Per-tenant channel rules. Voice calls only go out inside the calling
+    window (local time in `timezone`); outside it they wait for the next
+    window."""
+
+    __tablename__ = "marketing_settings"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Chicago")
+    voice_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
+    voice_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+
+class Journey(Base):
+    """An automation flow: when trigger_event happens for a contact (or they
+    are enrolled by hand), each step goes out after its delay."""
+
+    __tablename__ = "journeys"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    trigger_event: Mapped[str] = mapped_column(String(128), nullable=False, default="manual")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="paused")  # active / paused
+    # [{"delay_hours": 0, "channel": "email", "subject": "...", "body": "..."}]
+    steps: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class JourneyEnrollment(Base):
+    __tablename__ = "journey_enrollments"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    journey_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("journeys.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    push_token: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    consent_voice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    current_step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")  # active / completed / stopped
+    history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    source: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
