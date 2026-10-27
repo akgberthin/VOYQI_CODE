@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./marketing.db"
     kafka_bootstrap_servers: str = "kafka:9092"
     ai_orchestration_svc_base_url: str = "http://ai-orchestration-svc:8020"
+    # Delivery goes through notification-svc, which holds the channel
+    # providers (SMTP, Twilio, FCM) configured per tenant.
+    notification_svc_base_url: str = "http://notification-svc:8027"
+    # The scheduler executes sends whose time has come; 0 disables it.
+    scheduler_interval_seconds: float = 30.0
+    delivery_concurrency: int = 10
 
     # The one hard, structural gate in this entire service: a contact
     # on the suppression list (opted out, bounced, complained) can

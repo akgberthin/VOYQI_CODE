@@ -8,7 +8,7 @@ export const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬",
 
 export type Campaign = { id: string; name: string; channel: Channel; objective: string; status: string; audience_segment_id: string | null; created_by: string };
 export type Draft = { id: string; campaign_id: string; channel: Channel; subject_line: string; body_text: string; media_asset_ids: string[]; status: string; guardrail_findings: string[]; reviewed_by: string | null; created_by: string };
-export type Send = { id: string; campaign_id: string; content_draft_id: string; channel: Channel; scheduled_at: string; status: string; recipients_targeted: number; recipients_suppressed: number; sent_at: string | null };
+export type Send = { id: string; campaign_id: string; content_draft_id: string; channel: Channel; scheduled_at: string; status: string; recipients_targeted: number; recipients_suppressed: number; recipients_failed: number; recipients_console: number; failure_detail: string; sent_at: string | null };
 export type Segment = { id: string; name: string; filter_criteria: Record<string, unknown>; member_count: number; created_by: string };
 export type Snapshot = { id: string; campaign_id: string; channel: Channel; sent_count: number; open_count: number; click_count: number; conversion_count: number; revenue_usd: number };
 export type CalendarEntry = { id: string; channel: Channel; title: string; scheduled_at: string; reference_id: string; reference_type: string };
@@ -33,10 +33,13 @@ export const mk = {
 
   sends: (campaign_id?: string) => must<Send[]>(get(`${M}/sends${q({ campaign_id })}`)),
   scheduleSend: (body: { campaign_id: string; content_draft_id: string; channel: string; scheduled_at: string }) => must<Send>(post(`${M}/sends`, body)),
-  executeSend: (id: string, recipient_contacts: string[]) => must<Send>(post(`${M}/sends/${id}/execute`, { recipient_contacts })),
+  executeSend: (id: string, recipient_contacts: string[] = []) => must<Send>(post(`${M}/sends/${id}/execute`, { recipient_contacts })),
 
   segments: () => must<Segment[]>(get(`${M}/audience/segments`)),
   createSegment: (body: Partial<Segment>) => must<Segment>(post(`${M}/audience/segments`, body)),
+  members: (id: string) => must<any[]>(get(`${M}/audience/segments/${id}/members`)),
+  addMembers: (id: string, members: { name?: string; email?: string; phone?: string; push_token?: string }[]) => must<{ added: number; skipped: number }>(post(`${M}/audience/segments/${id}/members`, { members })),
+  removeMember: (id: string, memberId: string) => must(del(`${M}/audience/segments/${id}/members/${memberId}`)),
   setMemberCount: (id: string, member_count: number) => must<Segment>(api_patch(`${M}/audience/segments/${id}/member-count`, { member_count })),
 
   suppression: (channel?: string) => must<any[]>(get(`${M}/suppression${q({ channel })}`)),

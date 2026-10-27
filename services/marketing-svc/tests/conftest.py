@@ -45,3 +45,19 @@ async def client(db_engine):
 
 
 TENANT_HEADERS = {"X-Tenant-Id": "voyqi-holdings"}
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _no_real_delivery(monkeypatch):
+    """Tests never reach notification-svc: by default deliveries behave as
+    it does with no provider configured (logged, console mode). Tests
+    about delivery replace this with their own stand-in."""
+    from src.services import delivery
+
+    async def console(tenant_id, channel, recipient, body, subject, source):
+        return {"status": "sent", "delivery_mode": "console", "error_message": None}
+
+    monkeypatch.setattr(delivery, "deliver", console)

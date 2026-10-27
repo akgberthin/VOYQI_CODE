@@ -14,6 +14,7 @@ export function Audience() {
   const [seg, setSeg] = useState({ name: "", rules: [{ field: "city", value: "" }] as { field: string; value: string }[] });
   const [s, setS] = useState({ channel: "email", contact_identifier: "", reason: "opt_out" });
   const [check, setCheck] = useState<{ contact: string; result: string } | null>(null);
+  const [openSeg, setOpenSeg] = useState<string | null>(null);
   const criteria = Object.fromEntries(seg.rules.filter((r) => r.field && r.value).map((r) => [r.field, r.value]));
   return (
     <>
@@ -44,11 +45,12 @@ export function Audience() {
                 <tr key={x.id}>
                   <td><b>{x.name}</b><div className="muted">{x.created_by}</div></td>
                   <td>{Object.entries(x.filter_criteria).map(([k, v]) => <span key={k} className="badge" style={{ marginRight: 4 }}>{k}: {String(v)}</span>)}</td>
-                  <td><button className="sm ghost" title="Update count" onClick={() => { const n = prompt(`Member count for ${x.name}`, String(x.member_count)); if (n !== null) run("Updated", () => mk.setMemberCount(x.id, Number(n))).then(segments.reload); }}>{x.member_count.toLocaleString()}</button></td>
+                  <td><button className="sm ghost" onClick={() => setOpenSeg(openSeg === x.id ? null : x.id)}>{x.member_count.toLocaleString()} · contacts</button></td>
                 </tr>
               ))}</tbody>
             </table></div>
           )}
+          {openSeg && <Contacts segmentId={openSeg} name={(segments.data || []).find((x) => x.id === openSeg)?.name || ""} onChange={segments.reload} />}
         </div>
         <div>
           <div className="card mb">
@@ -76,6 +78,32 @@ export function Audience() {
         </div>
       </div>
     </>
+  );
+}
+
+function Contacts({ segmentId, name, onChange }: { segmentId: string; name: string; onChange: () => void }) {
+  const run = useAction();
+  const members = useLoad(() => mk.members(segmentId), [segmentId]);
+  const [text, setText] = useState("");
+  const parse = () => text.split("\n").map((l) => l.split(",").map((x) => x.trim())).filter((p) => p.some(Boolean)).map(([n = "", a = "", b = ""]) => {
+    const parts = [a, b];
+    return { name: n, email: parts.find((x) => x.includes("@")) || "", phone: parts.find((x) => /^\+?[\d\s()-]{7,}$/.test(x)) || "" };
+  });
+  const rows = members.data || [];
+  return (
+    <div className="card mt">
+      <h3>Contacts in “{name}”</h3>
+      <div className="sub">One per line: <span className="mono">name, email, phone</span> (either contact may be left out). Duplicates are skipped.</div>
+      <textarea className="mt" style={{ minHeight: 90 }} placeholder={"Ava Patel, ava@example.com, +15125550101\nNoah Kim, noah@example.com"} value={text} onChange={(e) => setText(e.target.value)} />
+      <button className="mt" disabled={!text.trim()} onClick={() => run("Contacts imported", async () => { const r = await mk.addMembers(segmentId, parse()); setText(""); members.reload(); onChange(); return r; })}>Import</button>
+      {members.loading ? <Loading /> : !rows.length ? <Empty>No contacts yet.</Empty> : (
+        <table className="mt"><tbody>{rows.slice(0, 200).map((m) => (
+          <tr key={m.id}><td>{m.name || <span className="muted">—</span>}</td><td className="mono">{m.email}</td><td className="mono">{m.phone}</td>
+            <td><button className="sm ghost" onClick={() => run("Removed", () => mk.removeMember(segmentId, m.id)).then(() => { members.reload(); onChange(); })}>×</button></td></tr>
+        ))}</tbody></table>
+      )}
+      {rows.length > 200 && <div className="muted mt">Showing 200 of {rows.length}.</div>}
+    </div>
   );
 }
 

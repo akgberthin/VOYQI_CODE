@@ -73,6 +73,16 @@ services:
     depends_on:
       api-gateway-svc:
         condition: service_started
+
+  # Local inbox for development: point the SMTP integration at host
+  # "mailpit", port 1025, STARTTLS false — every email the platform sends
+  # shows up at http://localhost:8125 instead of reaching real people.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      - "8125:8025"
+      - "1025:1025"
   # Telematics broker. Devices publish to voyqi/{tenant}/vehicles/{vin}/...;
   # fleet-svc subscribes. Dev config is anonymous plain TCP — production
   # (mTLS, VIN-scoped ACL) is infrastructure/mqtt/mosquitto.conf.
@@ -104,6 +114,9 @@ services:
     ports:
       - "8011:8011"
     environment:
+      # Encrypts integration credentials (super admin → Integrations). Dev-only key; set INTEGRATIONS_KEY elsewhere.
+      RBAC_INTEGRATIONS_KEY: ${INTEGRATIONS_KEY:-oBE95Al1TrMdZitl_4RKK07oKgai2R6oHPGNs8Crsok=}
+      RBAC_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
       RBAC_DATABASE_URL: postgresql+asyncpg://rbac_svc:${RBAC_DB_PASSWORD:-devpassword}@rbac-db:5432/rbac
       RBAC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
@@ -132,13 +145,14 @@ services:
     ports:
       - "8020:8020"
     environment:
+      AI_ORCH_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
       AI_ORCH_DATABASE_URL: postgresql+asyncpg://ai_orch_svc:${AI_ORCH_DB_PASSWORD:-devpassword}@ai-orchestration-db:5432/ai_orchestration
       AI_ORCH_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       # One container locally, so it runs both the realtime and batch
       # consumer tiers. Kubernetes runs each tier as its own Deployment.
       AI_ORCH_CONSUMER_ROLE: all
       AI_ORCH_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      AI_ORCH_ANTHROPIC_MODEL: claude-sonnet-5
+      AI_ORCH_ANTHROPIC_MODEL: claude-sonnet-5-5
       AI_ORCH_RBAC_SVC_BASE_URL: http://rbac-svc:8011
       AI_ORCH_MARKETING_SVC_BASE_URL: http://marketing-svc:8007
       AI_ORCH_FLEET_SVC_BASE_URL: http://fleet-svc:8004
@@ -544,6 +558,7 @@ services:
     ports:
       - "8027:8027"
     environment:
+      NOTIF_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
       NOTIF_DATABASE_URL: postgresql+asyncpg://notification_svc:${NOTIFICATION_DB_PASSWORD:-devpassword}@notification-db:5432/notification
       NOTIF_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       # No SMTP/SMS provider credentials in this environment — the

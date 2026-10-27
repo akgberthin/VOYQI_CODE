@@ -63,16 +63,31 @@ async def _scheduled_send(client):
     return campaign, send
 
 
-async def test_executing_a_send_records_what_was_delivered(client):
+@pytest.fixture
+def provider(monkeypatch):
+    """notification-svc answering as if a real provider is configured."""
+    from src.services import delivery
+    calls = []
+
+    async def fake_deliver(tenant_id, channel, recipient, body, subject, source):
+        calls.append({"recipient": recipient, "body": body, "subject": subject, "channel": channel})
+        return {"status": "sent", "delivery_mode": "real_provider", "error_message": None}
+
+    monkeypatch.setattr(delivery, "deliver", fake_deliver)
+    return calls
+
+
+async def test_executing_a_send_records_what_was_delivered(client, provider):
     campaign, send = await _scheduled_send(client)
     await client.post("/api/v1/marketing/suppression", json={"channel": "email", "contact_identifier": "out@x.com", "reason": "opt_out"}, headers=TENANT_HEADERS)
     done = (await client.post(f"/api/v1/marketing/sends/{send['id']}/execute", json={"recipient_contacts": ["a@x.com", "b@x.com", "out@x.com"]}, headers=TENANT_HEADERS)).json()
     assert (done["status"], done["recipients_suppressed"]) == ("sent", 1)
+    assert [c["recipient"] for c in provider] == ["a@x.com", "b@x.com"]  # the suppressed one never reached a provider
     summary = (await client.get(f"/api/v1/marketing/analytics/campaigns/{campaign['id']}/summary", headers=TENANT_HEADERS)).json()
     assert summary["total_sent"] == 2
 
 
-async def test_a_send_cannot_be_executed_twice(client):
+async def test_a_send_cannot_be_executed_twice(client, provider):
     _campaign_, send = await _scheduled_send(client)
     url = f"/api/v1/marketing/sends/{send['id']}/execute"
     assert (await client.post(url, json={"recipient_contacts": ["a@x.com"]}, headers=TENANT_HEADERS)).status_code == 200

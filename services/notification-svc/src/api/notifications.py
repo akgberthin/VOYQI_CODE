@@ -25,6 +25,16 @@ class SendIn(BaseModel):
     user_id: uuid.UUID | None = None
 
 
+class DirectIn(BaseModel):
+    channel: str
+    recipient: str
+    body: str
+    subject: str | None = None
+    category: str = "marketing"
+    source: str = "direct"
+    user_id: uuid.UUID | None = None
+
+
 class PreferenceIn(BaseModel):
     user_id: uuid.UUID
     category: str
@@ -60,6 +70,27 @@ async def send(payload: SendIn, background_tasks: BackgroundTasks, tenant_id: st
         "id": notification.id, "status": notification.status, "delivery_mode": notification.delivery_mode,
         "error_message": notification.error_message,
     }
+
+
+@router.post("/send-direct", status_code=201)
+async def send_direct(payload: DirectIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Deliver content another service already wrote (e.g. a marketing
+    send) on email, sms, push or voice — no template involved."""
+    try:
+        notification = await notification_engine.send_direct(
+            db, tenant_id=tenant_id, channel=payload.channel, recipient=payload.recipient, body=payload.body,
+            subject=payload.subject, category=payload.category, user_id=payload.user_id, source=payload.source,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    background_tasks.add_task(
+        publish_event, "notification.delivery", DELIVERY_EVENT.get(notification.status, "notification.queued"), tenant_id,
+        {"notification_id": str(notification.id), "channel": payload.channel, "template": payload.source,
+         "category": payload.category, "status": notification.status, "error_message": notification.error_message},
+    )
+    return {"id": notification.id, "status": notification.status, "delivery_mode": notification.delivery_mode,
+            "provider_message_id": notification.provider_message_id, "error_message": notification.error_message}
 
 
 @router.get("/notifications")

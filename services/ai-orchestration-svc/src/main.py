@@ -23,7 +23,7 @@ from src.api import (
     talent,
     tier_policy,
 )
-from src.core import prompts, tier_overrides
+from src.core import integrations, prompts, tier_overrides
 from src.core.config import get_settings
 from src.core.database import AsyncSessionLocal, engine, init_models
 
@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
                     async with AsyncSessionLocal() as db:
                         await prompts.refresh(db)
                         await tier_overrides.refresh(db)
+                    await integrations.refresh()
                 except Exception:
                     logger.exception("prompt/tier refresh failed; keeping the versions already loaded")
                 await asyncio.sleep(prompts.PROMPT_REFRESH_SECONDS)

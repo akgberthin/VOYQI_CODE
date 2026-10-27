@@ -28,6 +28,12 @@ class Settings(BaseSettings):
 
     push_provider_api_key: str | None = None
 
+    # Per-tenant provider credentials set in the super admin console live
+    # in rbac-svc; they take precedence over the env settings above.
+    rbac_base_url: str = "http://rbac-svc:8011"
+    internal_token: str = ""
+    integrations_cache_seconds: float = 60.0
+
 
 @lru_cache
 def get_settings() -> Settings:

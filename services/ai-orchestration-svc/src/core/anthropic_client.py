@@ -17,7 +17,7 @@ from typing import Any
 
 import anthropic
 
-from src.core import prompts
+from src.core import integrations, prompts
 from src.core.config import get_settings
 
 
@@ -47,7 +47,15 @@ class AnthropicAgentClient:
     def __init__(self) -> None:
         self._settings = get_settings()
         self._client: anthropic.Anthropic | None = None
-        if self._settings.anthropic_api_key:
+        self._model = self._settings.anthropic_model
+        # The tenant's own key (super admin → Integrations) wins over the
+        # platform's env key.
+        tenant = integrations.for_tenant("anthropic", prompts.current_tenant.get())
+        if tenant and tenant.get("api_key"):
+            headers = {"anthropic-workspace-id": tenant["workspace_id"]} if tenant.get("workspace_id") else None
+            self._client = anthropic.Anthropic(api_key=tenant["api_key"], default_headers=headers)
+            self._model = tenant.get("model") or self._model
+        elif self._settings.anthropic_api_key:
             self._client = anthropic.Anthropic(api_key=self._settings.anthropic_api_key)
 
     @property
@@ -80,7 +88,7 @@ class AnthropicAgentClient:
 
         for _ in range(max_tool_iterations):
             response = self._client.messages.create(
-                model=self._settings.anthropic_model,
+                model=self._model,
                 max_tokens=self._settings.anthropic_max_tokens,
                 system=prompts.resolve(system_prompt),
                 messages=messages,

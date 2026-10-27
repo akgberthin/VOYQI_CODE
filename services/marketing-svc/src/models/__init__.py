@@ -22,7 +22,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base, GUID
@@ -147,6 +147,23 @@ class AudienceSegment(Base):
 # Suppression list — the ONE hard, structural gate in this service.
 # ══════════════════════════════════════════════════════════════════
 
+class SegmentMember(Base):
+    """A contact in a segment, with whatever channels they can be reached
+    on. Imported by the marketing team (or synced from CRM/membership)."""
+
+    __tablename__ = "segment_members"
+    __table_args__ = (UniqueConstraint("segment_id", "email", "phone", name="uq_segment_member_contact"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    segment_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("audience_segments.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    push_token: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class SuppressionReason(str, enum.Enum):
     OPT_OUT = "opt_out"
     BOUNCE = "bounce"
@@ -195,6 +212,14 @@ class ScheduledSend(Base):
     status: Mapped[SendStatus] = mapped_column(Enum(SendStatus), nullable=False, default=SendStatus.SCHEDULED)
     recipients_targeted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     recipients_suppressed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Of the rest: how many the channel provider refused, and how many
+    # only went to the console because no provider is configured.
+    recipients_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recipients_console: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failure_detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Set when a scheduler replica takes the send, so no other replica
+    # executes it too.
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

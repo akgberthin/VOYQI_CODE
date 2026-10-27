@@ -44,3 +44,46 @@ async def set_member_count(db: AsyncSession, tenant_id: str, segment_id: uuid.UU
     await db.commit()
     await db.refresh(segment)
     return segment
+
+
+async def add_members(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID, members: list[dict]) -> int:
+    """Adds contacts, skipping ones already in the segment (same email or
+    phone). Keeps member_count equal to the real number of contacts."""
+    from src.models import AudienceSegment, SegmentMember
+
+    segment = (await db.execute(select(AudienceSegment).where(AudienceSegment.id == segment_id, AudienceSegment.tenant_id == tenant_id))).scalar_one_or_none()
+    if segment is None:
+        raise ValueError("segment not found")
+    existing = (await db.execute(select(SegmentMember).where(SegmentMember.segment_id == segment_id))).scalars().all()
+    seen = {m.email.lower() for m in existing if m.email} | {m.phone for m in existing if m.phone}
+    added = 0
+    for m in members:
+        email, phone = (m.get("email") or "").strip().lower(), (m.get("phone") or "").strip()
+        if not (email or phone or m.get("push_token")) or (email and email in seen) or (phone and phone in seen):
+            continue
+        db.add(SegmentMember(tenant_id=tenant_id, segment_id=segment_id, name=(m.get("name") or "").strip(), email=email, phone=phone, push_token=(m.get("push_token") or "").strip()))
+        seen |= {x for x in (email, phone) if x}
+        added += 1
+    await db.flush()
+    segment.member_count = len(existing) + added
+    await db.commit()
+    return added
+
+
+async def list_members(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID) -> list:
+    from src.models import SegmentMember
+
+    return list((await db.execute(select(SegmentMember).where(SegmentMember.segment_id == segment_id, SegmentMember.tenant_id == tenant_id))).scalars().all())
+
+
+async def remove_member(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID, member_id: uuid.UUID) -> bool:
+    from src.models import AudienceSegment, SegmentMember
+
+    member = (await db.execute(select(SegmentMember).where(SegmentMember.id == member_id, SegmentMember.segment_id == segment_id, SegmentMember.tenant_id == tenant_id))).scalar_one_or_none()
+    if member is None:
+        return False
+    await db.delete(member)
+    segment = (await db.execute(select(AudienceSegment).where(AudienceSegment.id == segment_id))).scalar_one()
+    segment.member_count = max(segment.member_count - 1, 0)
+    await db.commit()
+    return True

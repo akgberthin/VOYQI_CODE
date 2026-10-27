@@ -29,6 +29,9 @@ class ScheduledSendOut(BaseModel):
     status: str
     recipients_targeted: int
     recipients_suppressed: int
+    recipients_failed: int
+    recipients_console: int
+    failure_detail: str
     sent_at: datetime | None
 
 
@@ -50,7 +53,8 @@ async def list_scheduled_sends(campaign_id: uuid.UUID | None = None, tenant_id: 
 
 
 class ExecuteSendRequest(BaseModel):
-    recipient_contacts: list[str]
+    # Leave empty to send to the campaign's segment.
+    recipient_contacts: list[str] = []
 
 
 @router.post("/{send_id}/execute", response_model=ScheduledSendOut)
@@ -59,7 +63,7 @@ async def execute_send(send_id: uuid.UUID, body: ExecuteSendRequest, tenant_id: 
     counting them as sent — no bypass parameter anywhere in this
     request body."""
     try:
-        return await send_engine.execute_send(db, tenant_id, send_id, body.recipient_contacts)
+        return await send_engine.execute_send(db, tenant_id, send_id, body.recipient_contacts or None)
     except send_engine.AlreadyExecutedError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:

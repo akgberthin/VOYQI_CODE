@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -18,13 +20,20 @@ from src.api import (
     social,
     suppression,
 )
-from src.core.database import init_models
+from src.core.config import get_settings
+from src.core.database import AsyncSessionLocal, init_models
+from src.services import scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
+    task = asyncio.create_task(scheduler.loop(AsyncSessionLocal)) if get_settings().scheduler_interval_seconds > 0 else None
     yield
+    if task is not None:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 app = FastAPI(title="marketing-svc", version="1.0.0", lifespan=lifespan)

@@ -5,6 +5,7 @@ import { ToastHost } from "./components/ui";
 import { Policies, Roles, Tenants, Users } from "./pages/Access";
 import { Agents, Approvals, DecisionLog, Goals, Prompts, TierPolicy } from "./pages/Ai";
 import ApiExplorer from "./pages/ApiExplorer";
+import Integrations from "./pages/Integrations";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
 import { AuditLog, Sessions } from "./pages/Security";
@@ -12,7 +13,7 @@ import Services from "./pages/Services";
 import { SessionCtx, type Me } from "./session";
 
 const NAV: [string, [string, string][]][] = [
-  ["Platform", [["/", "Overview"], ["/services", "Services & APIs"]]],
+  ["Platform", [["/", "Overview"], ["/services", "Services & APIs"], ["/integrations", "Integrations"]]],
   ["AI orchestration", [["/ai/agents", "Agents"], ["/ai/approvals", "Approvals"], ["/ai/tiers", "Autonomy tiers"], ["/ai/prompts", "Prompts"], ["/ai/goals", "Goals"], ["/ai/decisions", "Decision log"]]],
   ["Access", [["/access/users", "Users & roles"], ["/access/roles", "Roles"], ["/access/policies", "Access policies"], ["/access/tenants", "Tenants"]]],
   ["Security", [["/security/sessions", "Privileged sessions"], ["/security/audit", "Audit log"]]],
@@ -65,6 +66,7 @@ export default function App() {
               <Route path="/" element={<Overview />} />
               <Route path="/services" element={<Services />} />
               <Route path="/services/:name" element={<ApiExplorer />} />
+              <Route path="/integrations" element={<Integrations />} />
               <Route path="/ai/agents" element={<Agents />} />
               <Route path="/ai/approvals" element={<Approvals />} />
               <Route path="/ai/tiers" element={<TierPolicy />} />

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api import abac, audit, content, media, modules, rbac, sections, settings, tenants, theme
+from src.api import abac, audit, content, integrations, media, modules, rbac, sections, settings, tenants, theme
 from src.core.database import init_models
 
 
@@ -37,6 +37,8 @@ app.include_router(content.router)
 app.include_router(sections.router)
 app.include_router(theme.router)
 app.include_router(media.router)
+app.include_router(integrations.router)
+app.include_router(integrations.internal)
 
 
 @app.get("/health")

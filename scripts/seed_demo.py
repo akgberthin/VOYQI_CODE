@@ -192,6 +192,27 @@ def seed_business_data(api: Api, accounts: dict) -> None:
     print(f"  executive     revenue rollups for {period_start:%B %Y} ({'existing' if rollups else 'created'})", flush=True)
 
 
+DEMO_CONTACTS = {
+    "Austin renters, EV-curious": [("Ava Patel", "ava.patel@example.com", "+15125550111"), ("Noah Kim", "noah.kim@example.com", "+15125550112"),
+                                   ("Liam Chen", "liam.chen@example.com", "+15125550113"), ("Optout Person", "optout@example.com", "+15125550199")],
+    "Executive members": [("Sofia Rossi", "sofia.rossi@example.com", "+12145550121"), ("Ethan Brooks", "ethan.brooks@example.com", "+12145550122")],
+    "Lapsed subscribers": [("Mia Garcia", "mia.garcia@example.com", "+17135550131")],
+}
+
+
+def seed_segment_contacts(api: Api) -> None:
+    """Demo contacts for the demo segments (only where a segment has none),
+    so sends and the scheduler have someone to reach."""
+    M = "/api/v1/marketing/audience/segments"
+    added = 0
+    for segment in api.call("marketing", "GET", M)[1] or []:
+        contacts = DEMO_CONTACTS.get(segment["name"])
+        if not contacts or api.call("marketing", "GET", f"{M}/{segment['id']}/members")[1]:
+            continue
+        added += api.call("marketing", "POST", f"{M}/{segment['id']}/members", {"members": [{"name": n, "email": e, "phone": p} for n, e, p in contacts]})[1]["added"]
+    print(f"  marketing     demo segment contacts +{added}", flush=True)
+
+
 def seed_marketing(api: Api) -> None:
     """A lived-in marketing workspace: segments, templates, campaigns with
     content (one held by the guardrail), delivered sends with results, a
@@ -272,6 +293,7 @@ def main() -> int:
     print("sample business data")
     seed_business_data(api, accounts)
     seed_marketing(api)
+    seed_segment_contacts(api)
     print("done")
     return 0
 

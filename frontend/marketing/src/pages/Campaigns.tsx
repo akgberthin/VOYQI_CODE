@@ -96,8 +96,9 @@ export function CampaignDetail() {
   };
   const execute = (sendId: string) => {
     const list = (recipients[sendId] || "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
-    if (!list.length) return alert("Add at least one recipient.");
-    run("Sent — suppression list checked for every recipient", () => mk.executeSend(sendId, list)).then(reload);
+    if (!list.length && !segment) return alert("This campaign has no audience segment — add contacts, or type recipients.");
+    if (!confirm(list.length ? `Send now to ${list.length} recipient(s)?` : `Send now to the ${segment!.member_count} contacts in “${segment!.name}”?`)) return;
+    run("Sent — every recipient checked against the suppression list", () => mk.executeSend(sendId, list)).then(reload);
   };
 
   return (
@@ -154,24 +155,34 @@ export function CampaignDetail() {
         </>
       )}
 
+      {tab === "sends" && c.status !== "active" && sends.some((s) => s.status === "scheduled") && (
+        <div className="notice warn mb">This campaign is {c.status}: its scheduled sends wait until it's activated (Send now still works).</div>
+      )}
       {tab === "sends" && (!sends.length ? <Empty>Nothing scheduled. Approve a draft and schedule it from the Content tab.</Empty> : (
         <div className="card table-wrap"><table>
-          <thead><tr><th>When</th><th>Status</th><th>Delivered</th><th>Suppressed</th><th>Send now</th></tr></thead>
+          <thead><tr><th>When</th><th>Status</th><th>Reached</th><th>Not reached</th><th>Send now</th></tr></thead>
           <tbody>{sends.map((s) => (
             <tr key={s.id}>
-              <td>{fmtTime(s.scheduled_at)}{s.sent_at && <div className="muted">sent {fmtTime(s.sent_at)}</div>}</td>
+              <td>{fmtTime(s.scheduled_at)}{s.sent_at && <div className="muted">ran {fmtTime(s.sent_at)}</div>}</td>
               <td><StatusBadge value={s.status} /></td>
-              <td>{s.status === "scheduled" ? "—" : s.recipients_targeted - s.recipients_suppressed}</td>
-              <td>{s.status === "scheduled" ? "—" : s.recipients_suppressed}</td>
+              <td>{s.status === "scheduled" ? "—" : <>
+                <div>{s.recipients_targeted - s.recipients_suppressed - s.recipients_failed - s.recipients_console} delivered</div>
+                {s.recipients_console > 0 && <div className="muted" title="No provider is configured for this channel in Integrations, so these were only logged">{s.recipients_console} console only</div>}
+              </>}</td>
+              <td>{s.status === "scheduled" ? "—" : <>
+                {s.recipients_suppressed > 0 && <div className="muted">{s.recipients_suppressed} suppressed</div>}
+                {s.recipients_failed > 0 && <div style={{ color: "var(--bad)" }}>{s.recipients_failed} failed</div>}
+                {s.failure_detail && <div className="muted" style={{ fontSize: 12, maxWidth: 320 }}>{s.failure_detail}</div>}
+              </>}</td>
               <td>{s.status === "scheduled" && (
                 <div className="row">
-                  <input style={{ minWidth: 260 }} placeholder={c.channel === "email" ? "a@x.com, b@y.com" : "+15125550101, …"} value={recipients[s.id] || ""} onChange={(e) => setRecipients({ ...recipients, [s.id]: e.target.value })} />
-                  <button className="sm" onClick={() => execute(s.id)}>Send</button>
+                  <input style={{ minWidth: 220 }} placeholder={segment ? `${segment.name} (${segment.member_count})` : c.channel === "email" ? "a@x.com, b@y.com" : "+15125550101, …"} value={recipients[s.id] || ""} onChange={(e) => setRecipients({ ...recipients, [s.id]: e.target.value })} />
+                  <button className="sm" onClick={() => execute(s.id)}>Send now</button>
                 </div>
               )}</td>
             </tr>
           ))}</tbody>
-        </table><div className="sub mt">Every recipient is checked against the suppression list (opt-outs, bounces, complaints) before sending — no override exists.</div></div>
+        </table><div className="sub mt">Scheduled sends go out automatically at their time to the campaign's segment. Every recipient is checked against the suppression list first — no override exists. Delivery uses the providers set up in super admin → Integrations; without one, messages are only logged (“console only”) and not counted as reach.</div></div>
       ))}
 
       {tab === "results" && <Results campaignId={c.id} channel={c.channel} onChange={reload} summary={summary} />}
