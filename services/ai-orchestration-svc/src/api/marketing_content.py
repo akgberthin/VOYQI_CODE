@@ -33,3 +33,20 @@ async def generate_content(
         "skipped_reason": result.skipped_reason,
         "decision_log_id": str(result.decision_log.id),
     }
+
+
+class ComposeRequest(BaseModel):
+    channel: str
+    mobility_class: str = ""
+    objective: str = "acquisition"
+    tones: list[str] = ["premium", "personal", "urgent"]
+    context: str = ""
+
+
+@router.post("/compose")
+async def compose(body: ComposeRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """AI studio: copy variants, one per tone, for the marketer to choose
+    from. Nothing is drafted or sent."""
+    return await marketing_content_agent.compose_variants(
+        db, tenant_id, body.channel, body.mobility_class, body.objective, body.tones, body.context,
+    )

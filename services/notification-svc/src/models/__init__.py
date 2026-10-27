@@ -16,6 +16,7 @@ class Channel(str, enum.Enum):
     EMAIL = "email"
     SMS = "sms"
     PUSH = "push"
+    VOICE = "voice"
 
 
 class NotificationStatus(str, enum.Enum):

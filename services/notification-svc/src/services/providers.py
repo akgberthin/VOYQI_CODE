@@ -1,62 +1,139 @@
 """Delivery providers. Each returns (success, delivery_mode, provider_message_id, error_message).
 
-Every provider is honest about whether it actually delivered something or
-just logged it: DeliveryMode.CONSOLE means no real credentials were
-configured for this environment, and the "notification" only ever
-existed as a database row and a log line — never presented as sent.
+Credentials come from the tenant's integrations (super admin console),
+then env settings. With neither, a provider is honest about it:
+DeliveryMode.CONSOLE means the message was rendered and logged, never
+presented as delivered to a real person.
 """
+import asyncio
+import json
 import logging
 import smtplib
+import time
 import uuid
 from email.mime.text import MIMEText
+from xml.sax.saxutils import escape
 
+import httpx
+
+from src.core import integrations
 from src.core.config import get_settings
 from src.models import DeliveryMode
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
+TIMEOUT = 20.0
+Result = tuple[bool, str, str | None, str | None]
 
 
-async def send_email(*, recipient: str, subject: str, body: str) -> tuple[bool, str, str | None, str | None]:
-    if not settings.smtp_host:
-        logger.info("CONSOLE EMAIL to=%s subject=%r body=%r", recipient, subject, body)
-        return True, DeliveryMode.CONSOLE.value, f"console-{uuid.uuid4()}", None
+def _console(kind: str, recipient: str, body: str) -> Result:
+    logger.info("CONSOLE %s to=%s body=%r", kind, recipient, body)
+    return True, DeliveryMode.CONSOLE.value, f"console-{uuid.uuid4()}", None
 
-    msg = MIMEText(body, "html")
-    msg["Subject"] = subject
-    msg["From"] = settings.smtp_from_address
-    msg["To"] = recipient
+
+def _failed(error: str) -> Result:
+    return False, DeliveryMode.REAL_PROVIDER.value, None, error[:500]
+
+
+async def send_email(*, recipient: str, subject: str, body: str, tenant_id: str | None = None) -> Result:
+    settings = get_settings()
+    c = await integrations.get(tenant_id, "smtp") or (
+        {"host": settings.smtp_host, "port": settings.smtp_port, "username": settings.smtp_username, "password": settings.smtp_password,
+         "from_address": settings.smtp_from_address, "use_tls": str(settings.smtp_use_tls).lower()} if settings.smtp_host else None
+    )
+    if not c:
+        return _console("EMAIL", recipient, f"{subject} | {body}")
+    msg = MIMEText(body, "html" if "<" in body else "plain")
+    msg["Subject"], msg["From"], msg["To"] = subject, c["from_address"], recipient
+
+    def deliver():
+        with smtplib.SMTP(c["host"], int(c.get("port") or 587), timeout=TIMEOUT) as server:
+            if str(c.get("use_tls", "true")).lower() == "true":
+                server.starttls()
+            if c.get("username") and c.get("password"):
+                server.login(c["username"], c["password"])
+            server.sendmail(c["from_address"], [recipient], msg.as_string())
 
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
-            if settings.smtp_use_tls:
-                server.starttls()
-            if settings.smtp_username and settings.smtp_password:
-                server.login(settings.smtp_username, settings.smtp_password)
-            server.sendmail(settings.smtp_from_address, [recipient], msg.as_string())
+        await asyncio.to_thread(deliver)
         return True, DeliveryMode.REAL_PROVIDER.value, None, None
     except (smtplib.SMTPException, OSError) as exc:
         logger.error("SMTP delivery failed for %s: %s", recipient, exc)
-        return False, DeliveryMode.REAL_PROVIDER.value, None, str(exc)
+        return _failed(str(exc))
 
 
-async def send_sms(*, recipient: str, body: str) -> tuple[bool, str, str | None, str | None]:
-    if not settings.sms_provider_api_key:
-        logger.info("CONSOLE SMS to=%s body=%r", recipient, body)
-        return True, DeliveryMode.CONSOLE.value, f"console-{uuid.uuid4()}", None
+async def _twilio(c: dict, resource: str, data: dict) -> Result:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post(f"https://api.twilio.com/2010-04-01/Accounts/{c['account_sid']}/{resource}.json",
+                                 auth=(c["account_sid"], c["auth_token"]), data=data)
+    if resp.status_code in (200, 201):
+        return True, DeliveryMode.REAL_PROVIDER.value, resp.json().get("sid"), None
+    try:
+        message = resp.json().get("message")
+    except ValueError:
+        message = resp.text[:200]
+    return _failed(f"Twilio HTTP {resp.status_code}: {message}")
 
-    # A real SMS provider (Twilio-shaped) integration point — no API key
-    # is configured in this environment, so this branch is unexercised
-    # here, but the shape is real: swap in the actual HTTP call when a
-    # provider account exists, nothing else about the engine changes.
-    logger.warning("SMS provider configured but no real HTTP integration is wired yet for %s", recipient)
-    return False, DeliveryMode.REAL_PROVIDER.value, None, "SMS provider integration not implemented"
+
+async def send_sms(*, recipient: str, body: str, tenant_id: str | None = None) -> Result:
+    c = await integrations.get(tenant_id, "twilio")
+    if not c:
+        return _console("SMS", recipient, body)
+    try:
+        return await _twilio(c, "Messages", {"To": recipient, "From": c["from_number"], "Body": body})
+    except httpx.HTTPError as exc:
+        return _failed(f"Twilio unreachable: {type(exc).__name__}")
 
 
-async def send_push(*, recipient: str, body: str) -> tuple[bool, str, str | None, str | None]:
-    if not settings.push_provider_api_key:
-        logger.info("CONSOLE PUSH to=%s body=%r", recipient, body)
-        return True, DeliveryMode.CONSOLE.value, f"console-{uuid.uuid4()}", None
+async def send_voice(*, recipient: str, body: str, tenant_id: str | None = None) -> Result:
+    """An outbound call that reads the script aloud. It opens by saying
+    it's an automated call (required for AI voice under TCPA)."""
+    c = await integrations.get(tenant_id, "twilio")
+    if not c:
+        return _console("VOICE", recipient, body)
+    voice = escape(c.get("voice") or "Polly.Joanna", {'"': "&quot;"})
+    twiml = (f'<Response><Say voice="{voice}">This is an automated call from VOYQI.</Say>'
+             f'<Pause length="1"/><Say voice="{voice}">{escape(body)}</Say></Response>')
+    try:
+        return await _twilio(c, "Calls", {"To": recipient, "From": c["from_number"], "Twiml": twiml})
+    except httpx.HTTPError as exc:
+        return _failed(f"Twilio unreachable: {type(exc).__name__}")
 
-    logger.warning("Push provider configured but no real HTTP integration is wired yet for %s", recipient)
-    return False, DeliveryMode.REAL_PROVIDER.value, None, "Push provider integration not implemented"
+
+_fcm_tokens: dict[str, tuple[float, str, str]] = {}
+
+
+async def _fcm_token(service_account_json: str) -> tuple[str, str]:
+    import jwt  # PyJWT with the cryptography backend
+
+    cached = _fcm_tokens.get(service_account_json)
+    if cached and cached[0] > time.time() + 60:
+        return cached[1], cached[2]
+    account = json.loads(service_account_json)
+    now = int(time.time())
+    token_uri = account.get("token_uri", "https://oauth2.googleapis.com/token")
+    assertion = jwt.encode({"iss": account["client_email"], "scope": "https://www.googleapis.com/auth/firebase.messaging",
+                            "aud": token_uri, "iat": now, "exp": now + 3600}, account["private_key"], algorithm="RS256")
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post(token_uri, data={"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": assertion})
+    resp.raise_for_status()
+    token = resp.json()["access_token"]
+    _fcm_tokens[service_account_json] = (now + 3300, token, account["project_id"])
+    return token, account["project_id"]
+
+
+async def send_push(*, recipient: str, body: str, subject: str = "", tenant_id: str | None = None) -> Result:
+    """recipient is the device's FCM registration token."""
+    c = await integrations.get(tenant_id, "fcm")
+    if not c:
+        return _console("PUSH", recipient, body)
+    try:
+        token, project = await _fcm_token(c["service_account_json"])
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            resp = await client.post(f"https://fcm.googleapis.com/v1/projects/{project}/messages:send",
+                                     headers={"Authorization": f"Bearer {token}"},
+                                     json={"message": {"token": recipient, "notification": {"title": subject or "VOYQI", "body": body}}})
+    except (httpx.HTTPError, ValueError, KeyError) as exc:
+        return _failed(f"FCM: {type(exc).__name__}: {exc}")
+    if resp.status_code == 200:
+        return True, DeliveryMode.REAL_PROVIDER.value, resp.json().get("name"), None
+    return _failed(f"FCM HTTP {resp.status_code}: {resp.text[:200]}")

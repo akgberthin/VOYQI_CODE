@@ -17,7 +17,7 @@ from typing import Any
 
 import anthropic
 
-from src.core import prompts
+from src.core import integrations, prompts
 from src.core.config import get_settings
 
 
@@ -47,12 +47,30 @@ class AnthropicAgentClient:
     def __init__(self) -> None:
         self._settings = get_settings()
         self._client: anthropic.Anthropic | None = None
-        if self._settings.anthropic_api_key:
+        self._model = self._settings.anthropic_model
+        # The tenant's own key (super admin → Integrations) wins over the
+        # platform's env key.
+        tenant = integrations.for_tenant("anthropic", prompts.current_tenant.get())
+        if tenant and tenant.get("api_key"):
+            headers = {"anthropic-workspace-id": tenant["workspace_id"]} if tenant.get("workspace_id") else None
+            self._client = anthropic.Anthropic(api_key=tenant["api_key"], default_headers=headers)
+            self._model = tenant.get("model") or self._model
+        elif self._settings.anthropic_api_key:
             self._client = anthropic.Anthropic(api_key=self._settings.anthropic_api_key)
 
     @property
     def is_configured(self) -> bool:
         return self._client is not None
+
+    def complete(self, system_prompt: str, user_message: str, max_tokens: int | None = None) -> str:
+        """One message, no tools — for pure generation (copy variants)."""
+        if not self._client:
+            raise AnthropicNotConfiguredError("ANTHROPIC_API_KEY is not set for ai-orchestration-svc.")
+        response = self._client.messages.create(
+            model=self._model, max_tokens=max_tokens or self._settings.anthropic_max_tokens,
+            system=prompts.resolve(system_prompt), messages=[{"role": "user", "content": user_message}],
+        )
+        return "".join(block.text for block in response.content if block.type == "text")
 
     def run_agent_turn(
         self,
@@ -80,7 +98,7 @@ class AnthropicAgentClient:
 
         for _ in range(max_tool_iterations):
             response = self._client.messages.create(
-                model=self._settings.anthropic_model,
+                model=self._model,
                 max_tokens=self._settings.anthropic_max_tokens,
                 system=prompts.resolve(system_prompt),
                 messages=messages,

@@ -95,12 +95,20 @@ async def send_notification(
         await db.flush()
         return notification
 
+    return await _deliver(db, tenant_id=tenant_id, channel=channel, template_key=template_key, recipient=recipient,
+                          user_id=user_id, subject=subject, body=body)
+
+
+async def _deliver(db: AsyncSession, *, tenant_id: str, channel: str, template_key: str, recipient: str,
+                   user_id: uuid.UUID | None, subject: str | None, body: str) -> Notification:
     if channel == Channel.EMAIL.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_email(recipient=recipient, subject=subject or "", body=body)
+        success, delivery_mode, provider_message_id, error = await providers.send_email(recipient=recipient, subject=subject or "", body=body, tenant_id=tenant_id)
     elif channel == Channel.SMS.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_sms(recipient=recipient, body=body)
+        success, delivery_mode, provider_message_id, error = await providers.send_sms(recipient=recipient, body=body, tenant_id=tenant_id)
     elif channel == Channel.PUSH.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_push(recipient=recipient, body=body)
+        success, delivery_mode, provider_message_id, error = await providers.send_push(recipient=recipient, body=body, subject=subject or "", tenant_id=tenant_id)
+    elif channel == Channel.VOICE.value:
+        success, delivery_mode, provider_message_id, error = await providers.send_voice(recipient=recipient, body=body, tenant_id=tenant_id)
     else:
         raise ValueError(f"unsupported channel: {channel}")
 
@@ -114,6 +122,24 @@ async def send_notification(
     db.add(notification)
     await db.flush()
     return notification
+
+
+async def send_direct(
+    db: AsyncSession, *, tenant_id: str, channel: str, recipient: str, body: str, subject: str | None = None,
+    category: str = "marketing", user_id: uuid.UUID | None = None, source: str = "direct",
+) -> Notification:
+    """Already-written content (a marketing send) rather than a template.
+    Opt-out preferences still apply."""
+    if await _is_opted_out(db, tenant_id=tenant_id, user_id=user_id, category=category, channel=channel):
+        notification = Notification(
+            tenant_id=tenant_id, channel=channel, template_key=source, recipient=recipient, user_id=user_id,
+            subject=subject, body=body, status=NotificationStatus.SKIPPED_OPTED_OUT.value,
+        )
+        db.add(notification)
+        await db.flush()
+        return notification
+    return await _deliver(db, tenant_id=tenant_id, channel=channel, template_key=source, recipient=recipient,
+                          user_id=user_id, subject=subject, body=body)
 
 
 async def set_preference(db: AsyncSession, *, tenant_id: str, user_id: uuid.UUID, category: str, channel: str, opted_in: bool) -> NotificationPreference:

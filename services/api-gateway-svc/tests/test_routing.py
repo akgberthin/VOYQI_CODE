@@ -80,3 +80,12 @@ def test_landing_page_capture_is_public_but_listing_captures_is_not():
     route = resolve_route("/api/v1/marketing/public/lead-captures")
     assert is_public_path(route, "/api/v1/marketing/public/lead-captures") is True
     assert is_public_path(route, "/api/v1/marketing/lead-captures") is False
+
+
+def test_hosted_marketing_media_is_public_but_nothing_else_under_marketing():
+    from src.services.routing import is_public_path, resolve_route
+
+    media = "/api/v1/marketing/public/media/5b2e0c6a-3f7e-4b1d-9a51-7d1f0a3c9e11"
+    assert is_public_path(resolve_route(media), media)
+    for private in ("/api/v1/marketing/media", "/api/v1/marketing/campaigns", "/api/v1/marketing/public/media/../campaigns"):
+        assert not is_public_path(resolve_route(private), private)

@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +18,7 @@ class ScheduleSendRequest(BaseModel):
     content_draft_id: uuid.UUID
     channel: str
     scheduled_at: datetime
+    recurrence: Literal["none", "daily", "weekly", "3x_week"] = "none"
 
 
 class ScheduledSendOut(BaseModel):
@@ -29,6 +31,10 @@ class ScheduledSendOut(BaseModel):
     status: str
     recipients_targeted: int
     recipients_suppressed: int
+    recipients_failed: int
+    recipients_console: int
+    recurrence: str
+    failure_detail: str
     sent_at: datetime | None
 
 
@@ -37,7 +43,7 @@ async def schedule_send(body: ScheduleSendRequest, tenant_id: str = Depends(get_
     """Refuses (409) a draft that hasn't cleared the guardrail or a
     human review — APPROVED is the only status this accepts."""
     try:
-        return await send_engine.schedule_send(db, tenant_id, body.campaign_id, body.content_draft_id, body.channel, body.scheduled_at)
+        return await send_engine.schedule_send(db, tenant_id, body.campaign_id, body.content_draft_id, body.channel, body.scheduled_at, body.recurrence)
     except send_engine.DraftNotApprovedError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
@@ -50,7 +56,11 @@ async def list_scheduled_sends(campaign_id: uuid.UUID | None = None, tenant_id: 
 
 
 class ExecuteSendRequest(BaseModel):
-    recipient_contacts: list[str]
+    # Leave empty to send to the campaign's segment.
+    recipient_contacts: list[str] = []
+    # Voice only: the person sending confirms every listed recipient gave
+    # prior express consent to automated calls.
+    consent_confirmed: bool = False
 
 
 @router.post("/{send_id}/execute", response_model=ScheduledSendOut)
@@ -59,6 +69,10 @@ async def execute_send(send_id: uuid.UUID, body: ExecuteSendRequest, tenant_id: 
     counting them as sent — no bypass parameter anywhere in this
     request body."""
     try:
-        return await send_engine.execute_send(db, tenant_id, send_id, body.recipient_contacts)
+        return await send_engine.execute_send(db, tenant_id, send_id, body.recipient_contacts or None, consent_confirmed=body.consent_confirmed)
+    except (send_engine.AlreadyExecutedError, send_engine.OutsideCallingWindow) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except send_engine.ConsentRequired as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

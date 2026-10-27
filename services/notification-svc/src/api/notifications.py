@@ -1,8 +1,9 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
@@ -22,6 +23,16 @@ class SendIn(BaseModel):
     recipient: str
     variables: dict = {}
     category: str | None = None
+    user_id: uuid.UUID | None = None
+
+
+class DirectIn(BaseModel):
+    channel: str
+    recipient: str
+    body: str
+    subject: str | None = None
+    category: str = "marketing"
+    source: str = "direct"
     user_id: uuid.UUID | None = None
 
 
@@ -62,6 +73,27 @@ async def send(payload: SendIn, background_tasks: BackgroundTasks, tenant_id: st
     }
 
 
+@router.post("/send-direct", status_code=201)
+async def send_direct(payload: DirectIn, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Deliver content another service already wrote (e.g. a marketing
+    send) on email, sms, push or voice — no template involved."""
+    try:
+        notification = await notification_engine.send_direct(
+            db, tenant_id=tenant_id, channel=payload.channel, recipient=payload.recipient, body=payload.body,
+            subject=payload.subject, category=payload.category, user_id=payload.user_id, source=payload.source,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    background_tasks.add_task(
+        publish_event, "notification.delivery", DELIVERY_EVENT.get(notification.status, "notification.queued"), tenant_id,
+        {"notification_id": str(notification.id), "channel": payload.channel, "template": payload.source,
+         "category": payload.category, "status": notification.status, "error_message": notification.error_message},
+    )
+    return {"id": notification.id, "status": notification.status, "delivery_mode": notification.delivery_mode,
+            "provider_message_id": notification.provider_message_id, "error_message": notification.error_message}
+
+
 @router.get("/notifications")
 async def list_notifications(recipient: str | None = None, status: str | None = None, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     query = select(Notification).where(Notification.tenant_id == tenant_id).order_by(Notification.created_at.desc()).limit(200)
@@ -71,7 +103,26 @@ async def list_notifications(recipient: str | None = None, status: str | None = 
         query = query.where(Notification.status == status)
     result = await db.execute(query)
     rows = result.scalars().all()
-    return [{"id": r.id, "channel": r.channel, "template_key": r.template_key, "recipient": r.recipient, "status": r.status, "delivery_mode": r.delivery_mode, "created_at": r.created_at} for r in rows]
+    return [{"id": r.id, "channel": r.channel, "template_key": r.template_key, "recipient": r.recipient, "status": r.status,
+             "delivery_mode": r.delivery_mode, "error_message": r.error_message, "created_at": r.created_at} for r in rows]
+
+
+@router.get("/summary")
+async def delivery_summary(hours: int = 24, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Counts per channel over the last `hours`: really delivered, only
+    logged (no provider configured), failed, skipped (opted out)."""
+    since = datetime.now(timezone.utc) - timedelta(hours=max(1, min(hours, 24 * 90)))
+    rows = (await db.execute(
+        select(Notification.channel, Notification.status, Notification.delivery_mode, func.count())
+        .where(Notification.tenant_id == tenant_id, Notification.created_at >= since)
+        .group_by(Notification.channel, Notification.status, Notification.delivery_mode)
+    )).all()
+    out: dict[str, dict[str, int]] = {}
+    for channel, status, mode, n in rows:
+        bucket = out.setdefault(channel, {"delivered": 0, "console": 0, "failed": 0, "opted_out": 0})
+        key = "failed" if status == "failed" else "opted_out" if status == "skipped_opted_out" else "console" if mode == "console" else "delivered"
+        bucket[key] += n
+    return {"hours": hours, "channels": out}
 
 
 @router.post("/templates/seed-defaults")

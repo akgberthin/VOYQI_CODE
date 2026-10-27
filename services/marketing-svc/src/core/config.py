@@ -11,6 +11,22 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./marketing.db"
     kafka_bootstrap_servers: str = "kafka:9092"
     ai_orchestration_svc_base_url: str = "http://ai-orchestration-svc:8020"
+    # Delivery goes through notification-svc, which holds the channel
+    # providers (SMTP, Twilio, FCM) configured per tenant.
+    notification_svc_base_url: str = "http://notification-svc:8027"
+    # The scheduler executes sends whose time has come; 0 disables it.
+    scheduler_interval_seconds: float = 30.0
+    # Per-tenant credentials (super admin → Integrations) from rbac-svc.
+    rbac_base_url: str = "http://rbac-svc:8011"
+    internal_token: str = ""
+    integrations_cache_seconds: float = 60.0
+    # Public address media is served from (social platforms download
+    # images from it): the gateway's external URL in a deployment.
+    public_base_url: str = "http://localhost:8000"
+    max_upload_bytes: int = 8 * 1024 * 1024
+    # Listen to platform events that start automation journeys.
+    journey_events_enabled: bool = True
+    delivery_concurrency: int = 10
 
     # The one hard, structural gate in this entire service: a contact
     # on the suppression list (opted out, bounced, complained) can

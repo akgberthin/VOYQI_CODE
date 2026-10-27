@@ -1,0 +1,112 @@
+"""Providers with a tenant's integrations configured: the requests that
+actually leave for Twilio and FCM, and console mode without them."""
+import json
+from urllib.parse import parse_qs
+
+import httpx
+import pytest
+
+from src.core import integrations
+from src.services import providers
+from tests.conftest import TENANT_HEADERS
+
+TENANT = TENANT_HEADERS["X-Tenant-Id"]
+TWILIO = {"account_sid": "AC1", "auth_token": "tok", "from_number": "+15125550100", "voice": "Polly.Joanna"}
+
+
+@pytest.fixture
+def outbound(monkeypatch):
+    """Captures every outbound HTTP request and answers like the provider."""
+    sent = []
+    real_client = httpx.AsyncClient
+
+    def handler(request: httpx.Request):
+        sent.append(request)
+        if "oauth2.googleapis.com" in str(request.url):
+            return httpx.Response(200, json={"access_token": "ya29.test"})
+        if "fcm.googleapis.com" in str(request.url):
+            return httpx.Response(200, json={"name": "projects/p/messages/1"})
+        return httpx.Response(201, json={"sid": "SM123"})
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+    return sent
+
+
+@pytest.fixture
+def configured(monkeypatch):
+    configs = {}
+
+    async def fake_get(tenant_id, provider):
+        return configs.get(provider) if tenant_id == TENANT else None
+
+    monkeypatch.setattr(integrations, "get", fake_get)
+    return configs
+
+
+async def test_without_credentials_messages_are_only_logged(configured, outbound):
+    ok, mode, _id, _err = await providers.send_sms(recipient="+15125550101", body="hi", tenant_id=TENANT)
+    assert (ok, mode) == (True, "console") and outbound == []
+
+
+async def test_sms_goes_to_twilio_with_the_tenants_account(configured, outbound):
+    configured["twilio"] = TWILIO
+    ok, mode, sid, _err = await providers.send_sms(recipient="+15125550101", body="Your car is ready", tenant_id=TENANT)
+    assert (ok, mode, sid) == (True, "real_provider", "SM123")
+    [req] = outbound
+    assert str(req.url) == "https://api.twilio.com/2010-04-01/Accounts/AC1/Messages.json"
+    form = parse_qs(req.content.decode())
+    assert form == {"To": ["+15125550101"], "From": ["+15125550100"], "Body": ["Your car is ready"]}
+
+
+async def test_voice_calls_say_they_are_automated_and_escape_the_script(configured, outbound):
+    configured["twilio"] = TWILIO
+    await providers.send_voice(recipient="+15125550101", body="Offers <today> & tomorrow", tenant_id=TENANT)
+    twiml = parse_qs(outbound[0].content.decode())["Twiml"][0]
+    assert str(outbound[0].url).endswith("/Calls.json")
+    assert twiml.index("automated call") < twiml.index("Offers")
+    assert "&lt;today&gt; &amp; tomorrow" in twiml
+
+
+async def test_twilio_errors_are_reported_not_hidden(configured, monkeypatch):
+    configured["twilio"] = TWILIO
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(providers.httpx, "AsyncClient", lambda **kw: real_client(
+        transport=httpx.MockTransport(lambda r: httpx.Response(400, json={"message": "The 'To' number is not a valid phone number."})), **kw))
+    ok, _mode, _sid, err = await providers.send_sms(recipient="123", body="x", tenant_id=TENANT)
+    assert ok is False and "not a valid phone number" in err
+
+
+async def test_push_uses_a_service_account_token_for_fcm_v1(configured, outbound):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+    configured["fcm"] = {"service_account_json": json.dumps({"client_email": "svc@p.iam.gserviceaccount.com", "private_key": pem, "project_id": "voyqi-app"})}
+    ok, mode, name, _err = await providers.send_push(recipient="device-token", body="Car staged", subject="Ready", tenant_id=TENANT)
+    assert (ok, mode, name) == (True, "real_provider", "projects/p/messages/1")
+    token_req, send_req = outbound
+    assert "jwt-bearer" in token_req.content.decode()
+    assert str(send_req.url) == "https://fcm.googleapis.com/v1/projects/voyqi-app/messages:send"
+    assert send_req.headers["Authorization"] == "Bearer ya29.test"
+    assert json.loads(send_req.content)["message"] == {"token": "device-token", "notification": {"title": "Ready", "body": "Car staged"}}
+
+
+async def test_send_direct_api_delivers_content_on_each_channel(client, configured, outbound):
+    configured["twilio"] = TWILIO
+    resp = await client.post("/api/v1/notifications/send-direct", json={"channel": "sms", "recipient": "+15125550101", "body": "Spring offer", "source": "marketing:send-1"}, headers=TENANT_HEADERS)
+    assert resp.status_code == 201 and resp.json()["status"] == "sent" and resp.json()["provider_message_id"] == "SM123"
+    voice = await client.post("/api/v1/notifications/send-direct", json={"channel": "voice", "recipient": "+15125550101", "body": "Hello"}, headers=TENANT_HEADERS)
+    assert voice.json()["status"] == "sent"
+    bad = await client.post("/api/v1/notifications/send-direct", json={"channel": "fax", "recipient": "x", "body": "y"}, headers=TENANT_HEADERS)
+    assert bad.status_code == 400
+
+
+async def test_delivery_summary_separates_real_console_and_failed(client, configured, outbound):
+    await client.post("/api/v1/notifications/send-direct", json={"channel": "sms", "recipient": "+1", "body": "x"}, headers=TENANT_HEADERS)  # console
+    configured["twilio"] = TWILIO
+    await client.post("/api/v1/notifications/send-direct", json={"channel": "sms", "recipient": "+2", "body": "x"}, headers=TENANT_HEADERS)  # real
+    summary = (await client.get("/api/v1/notifications/summary?hours=1", headers=TENANT_HEADERS)).json()
+    assert summary["channels"]["sms"] == {"delivered": 1, "console": 1, "failed": 0, "opted_out": 0}
+    listed = (await client.get("/api/v1/notifications/notifications", headers=TENANT_HEADERS)).json()
+    assert {"error_message", "delivery_mode"} <= set(listed[0])

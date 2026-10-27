@@ -1,3 +1,9 @@
+import os
+
+# Integration credentials need an encryption key and the internal token.
+os.environ.setdefault("RBAC_INTEGRATIONS_KEY", "ZmFrZS10ZXN0LWtleS1mb3ItaW50ZWdyYXRpb25zLTE=")
+os.environ.setdefault("RBAC_INTERNAL_TOKEN", "test-internal-token")
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

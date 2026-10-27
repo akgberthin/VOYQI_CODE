@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     # exceptions. This is enforced in the engine, not just documented.
     deny_wins: bool = True
 
+    # Integrations: Fernet key (urlsafe base64, 32 bytes) that encrypts
+    # stored third-party credentials. Without it credentials can't be
+    # saved. Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    integrations_key: str = ""
+    # Shared secret other services present on /internal/ calls. The
+    # gateway doesn't route /internal/, so it's never reachable from
+    # outside; this guards against other pods in the namespace too.
+    internal_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

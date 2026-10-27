@@ -25,6 +25,8 @@ fallback that works with zero API key configured (a simple templated
 draft — functional, not creative), and a live Claude tool-use pass when
 ANTHROPIC_API_KEY is set. Both paths are logged identically.
 """
+import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -160,3 +162,116 @@ async def generate_content(
     await db.commit()
     await db.refresh(log)
     return ContentGenerationResult(decision_log=log, draft=draft)
+
+
+# ── AI studio: copy variants (no campaign, no draft — the person picks) ──
+
+COMPOSE_SYSTEM_PROMPT = """You are the Marketing Content Agent for VOYQI Mobility's AI Content \
+Studio, writing copy variants a marketer will choose between.
+
+Brand voice: premium, confident, never desperate. VOYQI sells Portable \
+Mobility(TM) — access, not ownership. Refer to members, not customers or \
+users. Never use absolute claims like "guaranteed," "risk-free," or \
+"best in the world". If you mention financing, APR, or credit, say it is \
+subject to credit approval. Channel limits: SMS under 160 characters and \
+end with "Reply STOP to opt out."; push under 120 characters; social under \
+260 characters with 2-3 hashtags; voice is a short spoken script; email \
+has a subject line under 70 characters.
+
+Answer with JSON only: {"subject": "...", "body": "..."} (subject empty \
+for channels other than email)."""
+
+CLASS_PRICES = {
+    "urban": 449, "family": 649, "executive": 859, "luxury": 1499, "performance": 2700,
+    "adventure": 549, "luxury_plus": 5800, "performance_plus": 5800,
+}
+TONES = ("premium", "personal", "urgent", "exclusive", "friendly")
+OBJECTIVES = {
+    "acquisition": "start a VOYQI membership", "upgrade": "move up a class", "retention": "keep your membership",
+    "referral": "invite a friend and earn GU", "winback": "come back to VOYQI", "term_conversion": "lock in a term membership",
+    "service_upgrade": "upgrade your service level", "travel_mode": "turn on Travel Mode",
+}
+
+
+def _class_label(mobility_class: str) -> str:
+    return mobility_class.replace("_", " ").title() if mobility_class else "VOYQI"
+
+
+def compose_fallback(channel: str, mobility_class: str, objective: str, tone: str, context: str) -> dict[str, str]:
+    """Deterministic, on-brand copy per tone — built only from safe
+    phrases, so it always clears the guardrail."""
+    cls = _class_label(mobility_class)
+    price = CLASS_PRICES.get(mobility_class)
+    price_text = f" from ${price:,}/month" if price else ""
+    ask = OBJECTIVES.get(objective, "explore Portable Mobility")
+    extra = f" {context.strip().rstrip('.')}." if context.strip() else ""
+    lines = {
+        "premium": (f"{cls} Class, on your terms", f"The {cls} Class is ready at every VOYQI hub{price_text}. Arrive, unlock and drive — no ownership, no rental counter.{extra} {ask[0].upper() + ask[1:]} today."),
+        "personal": (f"{{first_name}}, your {cls} Class is waiting", f"Hi {{first_name}}, we set aside a {cls} Class vehicle for you{price_text}.{extra} Whenever you're ready to {ask}, it's one tap away."),
+        "urgent": (f"This week only: {cls} Class{price_text}", f"Availability is limited this week: {cls} Class{price_text}.{extra} {ask[0].upper() + ask[1:]} before the weekend."),
+        "exclusive": (f"An invitation to the {cls} Class", f"You're invited to the {cls} Class{price_text} — reserved for members like you.{extra} {ask[0].upper() + ask[1:]} by invitation."),
+        "friendly": (f"Say hello to the {cls} Class", f"Meet the {cls} Class{price_text}: grab the keys at any hub and go.{extra} Ready to {ask}?"),
+    }
+    subject, body = lines.get(tone, lines["premium"])
+    if channel == "sms":
+        body = f"VOYQI: {cls} Class{price_text}. {ask[0].upper() + ask[1:]} in the app. Reply STOP to opt out."
+    elif channel == "push":
+        body = f"{cls} Class{price_text} — tap to {ask}."
+    elif channel == "social":
+        lead = f"{context.strip().rstrip('.')} — " if context.strip() else ""
+        body = f"{lead}{body.split('.')[0]}. #VOYQI #PortableMobility"
+        if len(body) > 260:
+            body = f"{lead}{cls} Class{price_text}. #VOYQI"[:260]
+    elif channel == "voice":
+        body = f"Hello, this is VOYQI. {body} To learn more, open the VOYQI app or reply to our message."
+    return {"subject": subject if channel == "email" else "", "body": body}
+
+
+def _parse_copy(text: str) -> dict[str, str] | None:
+    match = re.search(r"\{.*\}", text or "", re.S)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(0))
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or not str(data.get("body", "")).strip():
+        return None
+    return {"subject": str(data.get("subject", "")).strip(), "body": str(data["body"]).strip()}
+
+
+async def compose_variants(
+    db: AsyncSession, tenant_id: str, channel: str, mobility_class: str, objective: str, tones: list[str], context: str,
+    client: AnthropicAgentClient | None = None,
+) -> dict[str, Any]:
+    """One copy variant per tone. Live Claude when configured (falling back
+    per variant if a reply can't be used), the deterministic templates
+    otherwise. Nothing is saved as a draft here — the marketer chooses."""
+    status = await _agent_status(db, tenant_id)
+    if status != AgentStatus.ACTIVE:
+        return {"variants": [], "skipped_reason": status.value}
+    tones = [t for t in tones if t in TONES] or ["premium", "personal", "urgent"]
+    client = client or AnthropicAgentClient()
+    variants = []
+    for tone in tones:
+        copy, source = None, "fallback"
+        if client.is_configured:
+            user = (f"Channel: {channel}\nMobility class: {_class_label(mobility_class)}"
+                    f"{f' (${CLASS_PRICES[mobility_class]:,}/month)' if mobility_class in CLASS_PRICES else ''}\n"
+                    f"Objective: {OBJECTIVES.get(objective, objective)}\nTone: {tone}\nContext: {context or '-'}")
+            try:
+                copy = _parse_copy(client.complete(COMPOSE_SYSTEM_PROMPT, user, max_tokens=600))
+                source = "claude" if copy else "fallback"
+            except Exception:  # an API failure falls back to the template
+                copy = None
+        variants.append({"tone": tone, "source": source, **(copy or compose_fallback(channel, mobility_class, objective, tone, context))})
+    live = any(v["source"] == "claude" for v in variants)
+    db.add(DecisionLog(
+        tenant_id=tenant_id, agent_key=AGENT_KEY, trigger_event_type="marketing.compose_requested",
+        trigger_context={"channel": channel, "mobility_class": mobility_class, "objective": objective, "tones": tones},
+        reasoning=(f"Composed {len(variants)} {channel} variants ({', '.join(tones)}) with Claude." if live else
+                   f"[deterministic fallback — ANTHROPIC_API_KEY not configured] Composed {len(variants)} templated {channel} variants ({', '.join(tones)})."),
+        tools_called=[], action_taken="variants_composed", outcome="success",
+    ))
+    await db.commit()
+    return {"variants": variants, "skipped_reason": None}

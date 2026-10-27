@@ -1,0 +1,5 @@
+{
+  "name": "voyqi-frontend",
+  "private": true,
+  "workspaces": ["super-admin", "marketing"]
+}

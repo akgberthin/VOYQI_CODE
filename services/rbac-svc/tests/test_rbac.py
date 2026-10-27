@@ -95,3 +95,15 @@ async def test_list_all_permission_overrides_is_tenant_wide_not_user_scoped(clie
     all_overrides = (await client.get("/api/v1/rbac/permission-overrides", headers=TENANT_HEADERS)).json()
     user_ids = {o["user_id"] for o in all_overrides}
     assert user_a["id"] in user_ids and user_b["id"] in user_ids
+
+
+async def test_rbac_context_lists_assignments_so_a_role_can_be_revoked(client):
+    user, role = await _setup_user_and_role(client, permission_keys=["fleet.read"])
+    await client.post("/api/v1/rbac/role-assignments", json={"user_id": user["id"], "role_id": role["id"], "assigned_by": "super.admin"}, headers=TENANT_HEADERS)
+    context = (await client.get(f"/api/v1/rbac/users/{user['id']}/context", headers=TENANT_HEADERS)).json()
+    [assignment] = context["assignments"]
+    assert (assignment["role_id"], assignment["role_key"]) == (role["id"], role["key"])
+    revoked = await client.post(f"/api/v1/rbac/role-assignments/{assignment['id']}/revoke", json={"revoked_by": "super.admin"}, headers=TENANT_HEADERS)
+    assert revoked.status_code == 200
+    after = (await client.get(f"/api/v1/rbac/users/{user['id']}/context", headers=TENANT_HEADERS)).json()
+    assert after["assignments"] == [] and after["roles"] == []

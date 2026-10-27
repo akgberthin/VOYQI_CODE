@@ -22,7 +22,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base, GUID
@@ -147,6 +147,26 @@ class AudienceSegment(Base):
 # Suppression list — the ONE hard, structural gate in this service.
 # ══════════════════════════════════════════════════════════════════
 
+class SegmentMember(Base):
+    """A contact in a segment, with whatever channels they can be reached
+    on. Imported by the marketing team (or synced from CRM/membership)."""
+
+    __tablename__ = "segment_members"
+    __table_args__ = (UniqueConstraint("segment_id", "email", "phone", name="uq_segment_member_contact"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    segment_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("audience_segments.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    push_token: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    # Prior express written consent to automated (AI voice) calls — TCPA.
+    # Voice sends only ever reach members with it.
+    consent_voice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class SuppressionReason(str, enum.Enum):
     OPT_OUT = "opt_out"
     BOUNCE = "bounce"
@@ -195,6 +215,17 @@ class ScheduledSend(Base):
     status: Mapped[SendStatus] = mapped_column(Enum(SendStatus), nullable=False, default=SendStatus.SCHEDULED)
     recipients_targeted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     recipients_suppressed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Of the rest: how many the channel provider refused, and how many
+    # only went to the console because no provider is configured.
+    recipients_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recipients_console: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failure_detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Set when a scheduler replica takes the send, so no other replica
+    # executes it too.
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # none / daily / weekly / 3x_week (Mon, Wed, Fri): after it runs, the
+    # next occurrence is scheduled automatically.
+    recurrence: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -257,6 +288,14 @@ class SocialPost(Base):
     status: Mapped[SocialPostStatus] = mapped_column(Enum(SocialPostStatus), nullable=False, default=SocialPostStatus.SCHEDULED)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     platform_post_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # "real" when the platform's API accepted it, "console" when no
+    # integration is set up (nothing left VOYQI), "external" when another
+    # system reported the publish.
+    delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    error_detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recurrence: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -360,3 +399,115 @@ class LeadCapture(Base):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     consent_marketing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class MediaAsset(Base):
+    """An image VOYQI hosts: generated in the AI studio or uploaded. Served
+    publicly (social platforms fetch images by URL), so nothing private
+    belongs here."""
+
+    __tablename__ = "media_assets"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    content_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="upload")  # upload / openai
+    generation_request_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class AutopilotConfig(Base):
+    """Social autopilot for a tenant: the Marketing Content Agent plans the
+    coming week's posts for the chosen accounts. In "suggest" mode every
+    planned post waits for a person; "autopublish" schedules them directly."""
+
+    __tablename__ = "autopilot_configs"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False, default="suggest")  # suggest / autopublish
+    account_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    posts_per_week: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    post_hour_utc: Mapped[int] = mapped_column(Integer, nullable=False, default=16)
+    themes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    mobility_class: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    tone: Mapped[str] = mapped_column(String(16), nullable=False, default="premium")
+    include_images: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_planned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+
+class AutopilotSlot(Base):
+    """One planned post: when, where, the drafted copy and image."""
+
+    __tablename__ = "autopilot_slots"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    social_account_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("social_accounts.id"), nullable=False)
+    planned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    theme: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    content_draft_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    social_post_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    # proposed (waiting for a person) / held (guardrail flagged the copy) /
+    # scheduled / rejected
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="proposed")
+    decided_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class MarketingSettings(Base):
+    """Per-tenant channel rules. Voice calls only go out inside the calling
+    window (local time in `timezone`); outside it they wait for the next
+    window."""
+
+    __tablename__ = "marketing_settings"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Chicago")
+    voice_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
+    voice_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+
+class Journey(Base):
+    """An automation flow: when trigger_event happens for a contact (or they
+    are enrolled by hand), each step goes out after its delay."""
+
+    __tablename__ = "journeys"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    trigger_event: Mapped[str] = mapped_column(String(128), nullable=False, default="manual")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="paused")  # active / paused
+    # [{"delay_hours": 0, "channel": "email", "subject": "...", "body": "..."}]
+    steps: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class JourneyEnrollment(Base):
+    __tablename__ = "journey_enrollments"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    journey_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("journeys.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    push_token: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    consent_voice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    current_step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")  # active / completed / stopped
+    history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    source: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

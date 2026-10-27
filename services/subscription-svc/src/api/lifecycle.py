@@ -3,12 +3,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
-from src.models import SubscriptionStatus
+from src.models import MemberProfile, SubscriptionStatus
 from src.services import lifecycle_engine
 
 router = APIRouter(prefix="/api/v1/subscription", tags=["lifecycle"])
@@ -101,10 +102,19 @@ async def initiate_cancellation(subscription_id: uuid.UUID, body: CancelInitiate
 
 
 @router.post("/subscriptions/{subscription_id}/finalize-cancellation", response_model=SubscriptionOut)
-async def finalize_cancellation(subscription_id: uuid.UUID, body: CancelFinalizeRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def finalize_cancellation(subscription_id: uuid.UUID, body: CancelFinalizeRequest, background_tasks: BackgroundTasks,
+                                tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     sub = await lifecycle_engine.finalize_cancellation(db, tenant_id, subscription_id, body.reason, body.exit_survey)
     if sub is None:
         raise HTTPException(status_code=409, detail="Subscription not found or already cancelled")
+    member = (await db.execute(select(MemberProfile).where(MemberProfile.id == sub.member_profile_id))).scalar_one_or_none()
+    # Marketing's winback journeys start from this; the contact rides along
+    # so they don't have to look the member up.
+    background_tasks.add_task(
+        publish_event, "subscription.lifecycle", "subscription.cancelled", tenant_id,
+        {"subscription_id": str(sub.id), "member_profile_id": str(sub.member_profile_id), "reason": body.reason,
+         "full_name": member.full_name if member else "", "email": member.email if member else ""},
+    )
     return sub
 
 

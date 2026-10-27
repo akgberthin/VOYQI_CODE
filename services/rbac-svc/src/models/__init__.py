@@ -28,7 +28,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base, GUID
@@ -440,3 +440,28 @@ class AuditLogEntry(Base):
     resource: Mapped[str] = mapped_column(String(256), nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+# ══════════════════════════════════════════════════════════════════
+# Integrations — third-party credentials (Anthropic, SMTP, Twilio, FCM,
+# social platforms, image generation), set by the super admin per
+# tenant. The config is encrypted at rest; the API only ever returns it
+# masked, and services read it decrypted through /internal/ only.
+# ══════════════════════════════════════════════════════════════════
+
+class IntegrationCredential(Base):
+    __tablename__ = "integration_credentials"
+    __table_args__ = (UniqueConstraint("tenant_id", "provider", name="uq_integration_tenant_provider"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    config_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    test_status: Mapped[str] = mapped_column(String(16), nullable=False, default="untested")  # untested / ok / failed
+    test_detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )

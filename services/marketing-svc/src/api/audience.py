@@ -46,3 +46,46 @@ async def set_member_count(segment_id: uuid.UUID, body: MemberCountUpdate, tenan
     if segment is None:
         raise HTTPException(status_code=404, detail="Segment not found")
     return segment
+
+
+class MemberIn(BaseModel):
+    name: str = ""
+    email: str = ""
+    phone: str = ""
+    push_token: str = ""
+    consent_voice: bool = False
+
+
+class MemberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    email: str
+    phone: str
+    push_token: str
+    consent_voice: bool
+
+
+class MembersImport(BaseModel):
+    members: list[MemberIn]
+
+
+@router.post("/segments/{segment_id}/members")
+async def add_members(segment_id: uuid.UUID, body: MembersImport, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Bulk import contacts; ones already in the segment are skipped."""
+    try:
+        added = await audience_engine.add_members(db, tenant_id, segment_id, [m.model_dump() for m in body.members])
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"added": added, "skipped": len(body.members) - added}
+
+
+@router.get("/segments/{segment_id}/members", response_model=list[MemberOut])
+async def list_members(segment_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    return await audience_engine.list_members(db, tenant_id, segment_id)
+
+
+@router.delete("/segments/{segment_id}/members/{member_id}", status_code=204)
+async def remove_member(segment_id: uuid.UUID, member_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    if not await audience_engine.remove_member(db, tenant_id, segment_id, member_id):
+        raise HTTPException(status_code=404, detail="Member not found")

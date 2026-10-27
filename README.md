@@ -46,6 +46,66 @@ In deployed environments devices use mutual TLS with the VIN as the
 certificate Common Name, and the broker only lets a device publish under
 its own VIN (`infrastructure/mqtt/`, `docs/DEPLOYMENT.md`).
 
+## Super admin console
+
+`frontend/super-admin` (React + TypeScript) — the operator's control
+panel for the whole platform, signed in through the gateway as a user
+with the platform permission (`super.admin@voyqi.example` in the demo):
+
+- **Services & APIs** — health of every service, and every API each one
+  exposes, callable from forms generated from the service's OpenAPI
+  description (via `GET /api/v1/platform/services[/{name}/openapi]` on
+  the gateway).
+- **AI** — every agent with a per-tenant kill switch, the approval
+  queue, autonomy tiers, prompt versions (evaluate → promote), goals and
+  the decision log.
+- **Access & security** — users, roles, overrides, ABAC policies,
+  tenants, break-glass/impersonation sessions and the audit log.
+
+```bash
+docker compose up -d                    # serves it at http://localhost:3001
+# or, while developing: cd frontend && npm install && npm run dev -w super-admin   # :5180
+```
+
+## Marketing console
+
+`frontend/marketing` (:3002) — the Marketing Command Center, signed in
+as a user with marketing permissions (`marketing.manager@voyqi.example`):
+
+- **Campaigns & composers** — email, SMS, push and voice with live
+  preview; content through the brand/compliance guardrail; sends go to
+  the campaign's segment, personalised (`{first_name}`), suppression-
+  checked, and run automatically at their time (recurring if set).
+- **Real delivery** through the providers configured in super admin →
+  Integrations (SMTP, Twilio SMS/voice, FCM). Without a provider a
+  message is only logged ("console only") and never counted as reach.
+- **Social** — Facebook, Instagram, LinkedIn and X publishing through the
+  Meta/LinkedIn/X integrations; hosted images (uploaded or generated with
+  OpenAI); **autopilot** plans the week's posts (Suggest or Auto-publish;
+  guardrail-flagged copy always waits for a person).
+- **AI studio** — copy variants per tone for a class, channel and
+  objective from the Marketing Content Agent.
+- **Automation flows** — event-triggered journeys (sign-up, lead,
+  cancellation, new CRM contact) or segment enrolment, multi-step across
+  channels.
+- **Voice compliance** — calls reach only contacts with voice consent,
+  open by saying they're automated, and wait for the calling window
+  (set per tenant, within 08:00-21:00).
+- Audience segments with contacts, suppression list, A/B tests,
+  calendar, analytics, reports (CSV), leads.
+
+Dev inbox: emails sent by the platform appear in Mailpit at
+http://localhost:8125 once the SMTP integration points at host `mailpit`,
+port 1025, STARTTLS false.
+
+```bash
+docker compose up -d                    # http://localhost:3002
+# or: cd frontend && npm install && npm run dev -w marketing    # :5181
+```
+
+The consoles share `frontend/shared/` (API client, session, layout, UI
+kit) through npm workspaces.
+
 ## Demo console
 
 A browser console for showing the platform before the React apps exist —
@@ -140,6 +200,7 @@ pick up changes within a minute.
 | 8021 | crm-svc | 8035 | capital-finance-svc |
 | 9092 | Kafka | 8036 | originations-svc (also `/api/v1/org`) |
 | 6379 | Redis | 1883 | MQTT broker (Mosquitto) |
+| 3001 | Super admin console | 3002 | Marketing console |
 
 The Kubernetes service catalog uses the same names and ports.
 

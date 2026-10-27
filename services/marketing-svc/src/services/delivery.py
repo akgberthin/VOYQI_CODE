@@ -1,0 +1,21 @@
+"""Hands each marketing message to notification-svc, which delivers it
+through the tenant's configured provider (or logs it in console mode)."""
+import httpx
+
+from src.core.config import get_settings
+
+
+async def deliver(tenant_id: str, channel: str, recipient: str, body: str, subject: str, source: str) -> dict:
+    """Returns {"status": "sent"|"failed"|"skipped_opted_out", "delivery_mode", "error_message"}."""
+    settings = get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(f"{settings.notification_svc_base_url}/api/v1/notifications/send-direct",
+                                     headers={"X-Tenant-Id": tenant_id},
+                                     json={"channel": channel, "recipient": recipient, "body": body, "subject": subject or None,
+                                           "category": "marketing", "source": source})
+    except httpx.HTTPError as exc:
+        return {"status": "failed", "delivery_mode": None, "error_message": f"notification-svc unreachable ({type(exc).__name__})"}
+    if resp.status_code != 201:
+        return {"status": "failed", "delivery_mode": None, "error_message": f"notification-svc HTTP {resp.status_code}: {resp.text[:200]}"}
+    return resp.json()

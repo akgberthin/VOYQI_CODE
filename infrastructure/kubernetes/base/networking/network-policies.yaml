@@ -96,3 +96,66 @@ spec:
 #    log, the shared Redis checkpoint store, and Kafka, never a direct pod-
 #    to-pod call. No rule opens tier=realtime <-> tier=batch traffic; this
 #    is intentional and keeps the isolation real, not just nominal.
+---
+# 6. Service-to-service calls the code makes directly (not through the
+#    gateway), opened one destination at a time:
+#    - any platform service → the AI nucleus (synchronous "assess now" /
+#      AI-draft requests, e.g. marketing-svc → Marketing Content Agent);
+#    - marketing-svc → notification-svc (campaign delivery);
+#    - notification-svc and marketing-svc → rbac-svc (/internal/integrations —
+#      per-tenant provider credentials; also guarded by the internal token).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-services-to-ai-orchestration
+  namespace: voyqi
+spec:
+  podSelector:
+    matchLabels:
+      role: ai-orchestration
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: voyqi-layer
+                operator: In
+                values: ["0", "1", "2"]
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-marketing-to-notification
+  namespace: voyqi
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-svc
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: marketing-svc
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-notification-to-rbac
+  namespace: voyqi
+spec:
+  podSelector:
+    matchLabels:
+      app: rbac-svc
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: notification-svc
+        - podSelector:
+            matchLabels:
+              app: marketing-svc
+  policyTypes:
+    - Ingress

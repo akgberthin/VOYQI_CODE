@@ -9,7 +9,9 @@ from sqlalchemy.orm import DeclarativeBase
 from src.core.config import get_settings
 
 settings = get_settings()
-engine = create_async_engine(settings.database_url, echo=False, future=True)
+# pool_pre_ping: a connection the database closed (restart, failover,
+# idle timeout) is replaced instead of failing the next request.
+engine = create_async_engine(settings.database_url, echo=False, future=True, pool_pre_ping=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 

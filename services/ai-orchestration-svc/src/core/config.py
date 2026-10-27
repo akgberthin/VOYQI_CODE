@@ -21,7 +21,10 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-5"
+    anthropic_model: str = "claude-sonnet-5-5"
+    # Shared secret for rbac-svc /internal/integrations (per-tenant keys
+    # set in the super admin console, which override the env key above).
+    internal_token: str = ""
     anthropic_max_tokens: int = 1024
 
     # Downstream execution services this AI acts on. Only pricing-svc is
