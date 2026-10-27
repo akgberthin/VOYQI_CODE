@@ -52,10 +52,24 @@ services:
 
   # Super admin console (frontend/super-admin): http://localhost:3001
   super-admin:
-    build: ./frontend/super-admin
+    build:
+      context: ./frontend
+      dockerfile: super-admin/Dockerfile
     restart: unless-stopped
     ports:
       - "3001:80"
+    depends_on:
+      api-gateway-svc:
+        condition: service_started
+
+  # Marketing command center (frontend/marketing): http://localhost:3002
+  marketing-console:
+    build:
+      context: ./frontend
+      dockerfile: marketing/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3002:80"
     depends_on:
       api-gateway-svc:
         condition: service_started

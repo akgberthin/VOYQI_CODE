@@ -60,5 +60,7 @@ async def execute_send(send_id: uuid.UUID, body: ExecuteSendRequest, tenant_id: 
     request body."""
     try:
         return await send_engine.execute_send(db, tenant_id, send_id, body.recipient_contacts)
+    except send_engine.AlreadyExecutedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

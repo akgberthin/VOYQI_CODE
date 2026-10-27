@@ -35,6 +35,11 @@ class ABTestOut(BaseModel):
     concluded_at: datetime | None
 
 
+@router.get("", response_model=list[ABTestOut])
+async def list_ab_tests(campaign_id: uuid.UUID | None = None, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    return await ab_test_engine.list_ab_tests(db, tenant_id, campaign_id)
+
+
 @router.post("", response_model=ABTestOut, status_code=201)
 async def create_ab_test(body: ABTestCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     return await ab_test_engine.create_ab_test(db, tenant_id, body.campaign_id, body.variant_a_draft_id, body.variant_b_draft_id, body.metric)

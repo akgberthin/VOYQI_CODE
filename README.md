@@ -64,8 +64,27 @@ with the platform permission (`super.admin@voyqi.example` in the demo):
 
 ```bash
 docker compose up -d                    # serves it at http://localhost:3001
-# or, while developing: cd frontend/super-admin && npm install && npm run dev   # :5180
+# or, while developing: cd frontend && npm install && npm run dev -w super-admin   # :5180
 ```
+
+## Marketing console
+
+`frontend/marketing` — the Marketing Command Center (React prototype
+port), signed in as a user with marketing permissions
+(`marketing.manager@voyqi.example`): campaigns with their content, sends
+and results; per-channel composers (email, SMS, push, voice) with live
+preview; AI drafting through the Marketing Content Agent; the guardrail
+review queue; social accounts and posts; audience segments and the
+suppression list; A/B tests with significance; calendar; analytics;
+library; leads.
+
+```bash
+docker compose up -d                    # http://localhost:3002
+# or: cd frontend && npm install && npm run dev -w marketing    # :5181
+```
+
+The consoles share `frontend/shared/` (API client, session, layout, UI
+kit) through npm workspaces.
 
 ## Demo console
 
@@ -161,7 +180,7 @@ pick up changes within a minute.
 | 8021 | crm-svc | 8035 | capital-finance-svc |
 | 9092 | Kafka | 8036 | originations-svc (also `/api/v1/org`) |
 | 6379 | Redis | 1883 | MQTT broker (Mosquitto) |
-| 3001 | Super admin console | | |
+| 3001 | Super admin console | 3002 | Marketing console |
 
 The Kubernetes service catalog uses the same names and ports.
 

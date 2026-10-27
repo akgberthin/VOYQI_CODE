@@ -31,6 +31,13 @@ async def get_ab_test(db: AsyncSession, tenant_id: str, test_id: uuid.UUID) -> A
     return result.scalar_one_or_none()
 
 
+async def list_ab_tests(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID | None = None) -> list[ABTest]:
+    query = select(ABTest).where(ABTest.tenant_id == tenant_id)
+    if campaign_id:
+        query = query.where(ABTest.campaign_id == campaign_id)
+    return list((await db.execute(query)).scalars().all())
+
+
 async def record_result(db: AsyncSession, tenant_id: str, test_id: uuid.UUID, variant: str, sent_delta: int, converted_delta: int) -> ABTest | None:
     test = await get_ab_test(db, tenant_id, test_id)
     if test is None:

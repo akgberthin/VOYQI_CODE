@@ -19,7 +19,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 LOCAL = {
     "gateway": 8000, "subscription": 8003, "fleet": 8004, "rental": 8005, "hub": 8006, "marketing": 8007, "dms": 8008,
@@ -33,7 +33,8 @@ ROLES = {
     "fleet_manager": ("Fleet Manager", "employee", ["fleet.*", "hub.*", "rental.read", "ai.*"]),
     "dealer_gm": ("Dealer General Manager", "dealer", ["dms.*", "sales.*", "originations.*", "org.*", "crm.*", "pricing.read", "ai.*"]),
     "hr_manager": ("HR Manager", "employee", ["hrm.*", "user.read", "notifications.write", "ai.*"]),
-    "marketing_manager": ("Marketing Manager", "employee", ["marketing.*", "crm.*", "ai.*"]),
+    # AI drafting goes through marketing-svc, so marketing needs no AI admin rights.
+    "marketing_manager": ("Marketing Manager", "employee", ["marketing.*", "crm.*", "ai.read"]),
     "executive": ("Executive", "employee", [
         "executive.read", "management.read", "real-estate.read", "capital-finance.read", "insurance-risk.read", "ai.read",
     ]),
@@ -191,6 +192,72 @@ def seed_business_data(api: Api, accounts: dict) -> None:
     print(f"  executive     revenue rollups for {period_start:%B %Y} ({'existing' if rollups else 'created'})", flush=True)
 
 
+def seed_marketing(api: Api) -> None:
+    """A lived-in marketing workspace: segments, templates, campaigns with
+    content (one held by the guardrail), delivered sends with results, a
+    scheduled send, suppression entries, a social post, a concluded A/B
+    test and some leads. Runs once (skipped when segments exist)."""
+    M = "/api/v1/marketing"
+    if api.call("marketing", "GET", f"{M}/audience/segments")[1]:
+        print("  marketing     demo workspace already seeded", flush=True)
+        return
+    post = lambda path, body: api.call("marketing", "POST", f"{M}{path}", body)[1]
+    seg = {name: post("/audience/segments", {"name": name, "filter_criteria": crit, "created_by": "seed_demo"}) for name, crit in (
+        ("Austin renters, EV-curious", {"city": "Austin", "last_rental_days": "90", "vehicle_class": "urban"}),
+        ("Executive members", {"member_tier": "executive", "subscription_status": "active"}),
+        ("Lapsed subscribers", {"subscription_status": "cancelled", "channel_opt_in": "sms"}),
+    )}
+    for (name, _), count in zip(seg.items(), (4820, 1260, 930)):
+        api.call("marketing", "PATCH", f"{M}/audience/segments/{seg[name]['id']}/member-count", {"member_count": count})
+    for title, channel, body, tags in (
+        ("Welcome to VOYQI", "email", "Welcome to VOYQI, {first_name}\n\nYour first month is ready. Pick up at any hub — keys are in the app.", ["welcome"]),
+        ("EV subscription intro", "email", "Drive electric, month to month\n\nOne price covers the car, insurance and charging. Swap classes any time.", ["ev", "acquisition"]),
+        ("Pickup reminder", "sms", "VOYQI: your car is ready at {hub} from {time}. Reply STOP to opt out.", ["service"]),
+        ("Weekend luxury", "push", "This weekend: S-Class and Taycan available at your hub. Tap to reserve.", ["luxury"]),
+    ):
+        post("/library", {"title": title, "channel": channel, "body_text": body, "tags": tags, "created_by": "seed_demo"})
+    for contact, channel, reason in (("optout@example.com", "email", "opt_out"), ("+15125550199", "sms", "complaint"), ("bounce@example.com", "email", "bounce")):
+        post("/suppression", {"channel": channel, "contact_identifier": contact, "reason": reason})
+
+    def campaign(name, channel, objective, segment=None, status="active"):
+        c = post("/campaigns", {"name": name, "channel": channel, "objective": objective, "created_by": "marketing.manager@voyqi.example", "audience_segment_id": seg[segment]["id"] if segment else None})
+        if status != "draft":
+            api.call("marketing", "PATCH", f"{M}/campaigns/{c['id']}/status", {"status": status})
+        return c
+
+    def draft(c, body, subject=""):
+        return post("/content", {"campaign_id": c["id"], "channel": c["channel"], "subject_line": subject, "body_text": body, "created_by": "marketing.manager@voyqi.example"})
+
+    now = datetime.now(timezone.utc)
+    ev = campaign("Spring EV subscription push", "email", "Convert Austin renters to monthly EV subscriptions", "Austin renters, EV-curious")
+    a = draft(ev, "Your next car can be electric — with insurance and charging included, from $449/month. Swap any month.", "Go electric, month to month")
+    b = draft(ev, "Rented with us lately? Keep the keys: an EV subscription with everything included, from $449/month.", "Keep the keys this time")
+    draft(ev, "Guaranteed lowest price in Texas — risk-free, cancel any time!", "Guaranteed savings")  # held by the guardrail
+    send = post("/sends", {"campaign_id": ev["id"], "content_draft_id": a["id"], "channel": "email", "scheduled_at": (now - timedelta(days=3)).isoformat()})
+    post(f"/sends/{send['id']}/execute", {"recipient_contacts": [f"renter{i}@example.com" for i in range(1, 41)] + ["optout@example.com", "bounce@example.com"]})
+    post("/analytics/snapshots", {"campaign_id": ev["id"], "channel": "email", "sent_count": 4200, "open_count": 1890, "click_count": 512, "conversion_count": 63, "revenue_usd": 28350})
+    test = post("/ab-tests", {"campaign_id": ev["id"], "variant_a_draft_id": a["id"], "variant_b_draft_id": b["id"], "metric": "click_rate"})
+    post(f"/ab-tests/{test['id']}/record-result", {"variant": "a", "sent_delta": 1200, "converted_delta": 96})
+    post(f"/ab-tests/{test['id']}/record-result", {"variant": "b", "sent_delta": 1200, "converted_delta": 151})
+    post(f"/ab-tests/{test['id']}/evaluate", {})
+
+    lux = campaign("Weekend luxury rentals", "sms", "Fill weekend luxury inventory at Dallas and Houston", "Executive members")
+    sms = draft(lux, "VOYQI: S-Class & Taycan open this weekend at DFW and Galleria. Reserve in the app. Reply STOP to opt out.")
+    post("/sends", {"campaign_id": lux["id"], "content_draft_id": sms["id"], "channel": "sms", "scheduled_at": (now + timedelta(days=2)).replace(hour=15, minute=0, second=0, microsecond=0).isoformat()})
+    post("/analytics/snapshots", {"campaign_id": lux["id"], "channel": "sms", "sent_count": 1180, "open_count": 0, "click_count": 141, "conversion_count": 37, "revenue_usd": 16650})
+
+    win = campaign("Win-back: lapsed subscribers", "push", "Bring back cancelled subscribers with a first-month credit", "Lapsed subscribers", status="paused")
+    draft(win, "We kept your favourite class warm. Come back this month and your first week is on us.")
+    reel = campaign("Portable Mobility reel", "social", "Awareness for the Texas launch")
+    social = draft(reel, "One membership. Every class. Every hub in Texas. #VOYQI #PortableMobility")
+    account = post("/social/accounts", {"platform": "instagram", "handle": "@voyqi"})
+    post("/social/posts", {"social_account_id": account["id"], "content_draft_id": social["id"], "scheduled_at": (now + timedelta(days=1)).replace(hour=17, minute=0, second=0, microsecond=0).isoformat()})
+    post("/notes", {"author": "marketing.manager@voyqi.example", "body": "Variant B (\"Keep the keys\") is winning on clicks — use it for the Dallas wave.", "campaign_id": ev["id"]})
+    for name, email, page in (("Ava Patel", "ava.patel@example.com", "/ev-subscription"), ("Noah Kim", "noah.kim@example.com", "/ev-subscription"), ("Mia Garcia", "mia.garcia@example.com", "/luxury-rentals")):
+        api.call("gateway", "POST", f"{M}/public/lead-captures", {"name": name, "email": email, "landing_page": page, "campaign_id": ev["id"], "consent_marketing": True})
+    print("  marketing     demo workspace: segments, templates, 4 campaigns, sends, results, A/B test, social post, leads", flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--tenant", default="voyqi-demo")
@@ -204,6 +271,7 @@ def main() -> int:
     accounts = seed_users_and_roles(api, args.password, args.email_domain)
     print("sample business data")
     seed_business_data(api, accounts)
+    seed_marketing(api)
     print("done")
     return 0
 

@@ -8,7 +8,7 @@ from src.core.database import get_db
 from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.models import ContentStatus
-from src.services import content_engine
+from src.services import ai_drafting, campaign_engine, content_engine
 
 router = APIRouter(prefix="/api/v1/marketing/content", tags=["content"])
 
@@ -41,6 +41,28 @@ async def create_content_draft(body: ContentDraftCreate, tenant_id: str = Depend
     """Fully autonomous: the guardrail check and the resulting
     APPROVED/HELD_FOR_REVIEW status happen in this same call."""
     return await content_engine.create_content_draft(db, tenant_id, body.campaign_id, body.channel, body.body_text, body.created_by, body.subject_line, body.media_asset_ids)
+
+
+class AIDraftRequest(BaseModel):
+    campaign_id: uuid.UUID
+    brief: str = ""
+
+
+@router.post("/ai-draft")
+async def request_ai_draft(body: AIDraftRequest, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """'AI-draft this' for a campaign: the Marketing Content Agent writes a
+    draft for the campaign's channel; it lands as an ordinary content draft
+    (approved, or held if it fails the guardrail)."""
+    campaign = await campaign_engine.get_campaign(db, tenant_id, body.campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    try:
+        result = await ai_drafting.generate(tenant_id, str(campaign.id), campaign.name, campaign.channel.value if hasattr(campaign.channel, "value") else str(campaign.channel), body.brief or campaign.objective)
+    except ai_drafting.AIDraftUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if result.get("skipped_reason"):
+        raise HTTPException(status_code=409, detail=f"Marketing Content Agent is {result['skipped_reason']} — resume it in the super admin console")
+    return result
 
 
 @router.get("", response_model=list[ContentDraftOut])

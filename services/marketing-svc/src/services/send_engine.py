@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import CalendarEntry, ContentDraft, ContentStatus, ScheduledSend, SendStatus
+from src.models import AnalyticsSnapshot, CalendarEntry, ContentDraft, ContentStatus, ScheduledSend, SendStatus
 from src.services import suppression_engine
 
 
@@ -42,6 +42,10 @@ async def schedule_send(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID
     return send
 
 
+class AlreadyExecutedError(Exception):
+    pass
+
+
 async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid.UUID, recipient_contacts: list[str]) -> ScheduledSend:
     """Checks suppression for every single recipient before counting
     them as sent — no bypass parameter, no admin override anywhere in
@@ -52,6 +56,9 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
     send = result.scalar_one_or_none()
     if send is None:
         raise ValueError(f"scheduled send {scheduled_send_id} not found")
+    if send.status != SendStatus.SCHEDULED:
+        # Executing twice would message every recipient twice.
+        raise AlreadyExecutedError(f"send is already {send.status.value}")
 
     targeted = len(recipient_contacts)
     suppressed_count = 0
@@ -71,6 +78,10 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
         draft = draft_result.scalar_one_or_none()
         if draft:
             draft.status = ContentStatus.SENT
+        # What was actually delivered goes straight into the campaign's
+        # analytics; opens, clicks and conversions arrive later from the
+        # channel provider as further snapshots.
+        db.add(AnalyticsSnapshot(tenant_id=tenant_id, campaign_id=send.campaign_id, channel=send.channel, sent_count=targeted - suppressed_count))
 
     await db.commit()
     await db.refresh(send)
