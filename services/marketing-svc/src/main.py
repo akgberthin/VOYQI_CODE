@@ -19,6 +19,7 @@ from src.api import (
     media,
     media_generation,
     notes,
+    seo,
     sends,
     social,
     suppression,
@@ -26,6 +27,8 @@ from src.api import (
 from src.core.config import get_settings
 from src.core.database import AsyncSessionLocal, init_models
 from src.core import event_consumer
+from src.seo.common import SeoError
+from src.seo.rules import RuleError
 from src.services import scheduler
 
 
@@ -73,6 +76,10 @@ app.include_router(ab_tests.router)
 app.include_router(analytics.router)
 app.include_router(autopilot.router)
 app.include_router(media_generation.router)
+app.include_router(seo.router)
+app.include_router(seo.public_router)
+app.add_exception_handler(SeoError, seo.seo_error_handler)
+app.add_exception_handler(RuleError, seo.rule_error_handler)
 
 
 @app.get("/health")

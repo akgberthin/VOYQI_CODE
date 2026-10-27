@@ -511,3 +511,8 @@ class JourneyEnrollment(Base):
     history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     source: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+# Growth / SEO engine tables live with the engine; importing them here
+# registers them on Base.metadata for Alembic and create_all.
+from src.seo import models as seo_models  # noqa: E402,F401

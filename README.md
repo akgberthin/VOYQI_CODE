@@ -106,6 +106,56 @@ docker compose up -d                    # http://localhost:3002
 The consoles share `frontend/shared/` (API client, session, layout, UI
 kit) through npm workspaces.
 
+## Growth / SEO engine and agents
+
+The Growth module of the marketing command center: an SEO engine in
+marketing-svc (`services/marketing-svc/src/seo`, API under
+`/api/v1/marketing/seo`) and fourteen agents in ai-orchestration-svc
+(`services/ai-orchestration-svc/src/services/seo_agent.py`):
+
+| Agent | Does |
+|---|---|
+| SEO Strategy | strategy from real data, ordered by impact per effort, with its tasks |
+| Keyword Research | site and competitor keywords, gaps, questions, buying intent |
+| Search Intelligence | Google/Bing results, competitors, Reddit, news, YouTube |
+| SEO Content | briefs, articles and refreshes, scored and guardrail-checked, scheduled |
+| Technical SEO | crawl audits, Core Web Vitals, safe fixes (titles, descriptions, alt text, schema, redirects) |
+| GEO | brand mentions and citations in ChatGPT, Perplexity and Claude answers |
+| Link Building | prospects from competitors' links, compliant outreach, authority |
+| CRO | conversion reviews of key pages, A/B experiments (z-test) |
+| Programmatic SEO | template pages behind the thin-content / uniqueness gate |
+| Local SEO | Business Profile completeness, NAP consistency, local-pack ranks |
+| Reporting | daily / weekly / monthly reports, emailed to the site's recipients |
+| Integration | keeps Search Console, GA4, backlinks and profiles synced |
+| Autopilot | every 30 min per site: replans and runs what the plan allows |
+| Task Intake | turns emailed requests from authorised senders into tasks |
+
+**How autonomy works.** Each site has a mode — *off*, *assisted*
+(analysis runs unattended; anything that changes the site or sends
+messages waits for a person) or *autopilot* — plus per-task-type
+overrides and caps (publishes per week, programmatic pages and outreach
+per day, auto-fixes per day, tasks at once). Hard gates hold whatever the
+mode: only a person clears guardrail-held content or held programmatic
+pages, approves fixes outside the low-risk list, starts sponsored links
+or changes a location's name, address, phone or categories; link schemes
+are never pursued; outreach needs opt-out language and respects the
+suppression list; emailed requests that read like instructions to an AI
+wait for approval. Without an Anthropic key, agents use templates — and
+template-written content is held for a person, and live pages are never
+rewritten.
+
+**Connections** (per site, under the Growth module's setup; credentials
+in super admin → Integrations, category SEO): WordPress or a signed
+website webhook (publishing and fixes), Google Search Console + GA4
+(service account), DataForSEO (keywords, search results, local packs,
+backlinks), the built-in crawler with PageSpeed, OpenAI / Perplexity /
+Anthropic for AI-answer checks, Google Business Profile, Reddit, Google
+News, YouTube, and an inbound-mail webhook for requests
+(`/api/v1/marketing/public/seo/inbound/{site_id}?token=…`). For local
+demos, `MARKETING_SEO_SAMPLE_ADAPTERS=true` (the compose default) adds a
+labelled *sample* provider that serves demo data; keep it off anywhere
+real numbers are expected.
+
 ## Demo console
 
 A browser console for showing the platform before the React apps exist —

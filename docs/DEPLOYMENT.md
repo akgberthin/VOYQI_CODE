@@ -55,7 +55,7 @@ so a service is renamed in the code and the catalog together or not at all.
    | `marketing-svc-secrets` | `MARKETING_DATABASE_URL`, `MARKETING_INTERNAL_TOKEN` (same value), `MARKETING_PUBLIC_BASE_URL` (the gateway's public https URL — Instagram and Facebook download post images from it) |
    | `fleet-svc-secrets` | `FLEET_DATABASE_URL`, `FLEET_MQTT_PASSWORD` (the `fleet-svc` user in `mqtt-broker-passwords`) |
    | `payment-svc-secrets` | `PAYMENT_STRIPE_API_KEY`, `PAYMENT_STRIPE_WEBHOOK_SECRET` |
-   | (provider credentials) | SMTP, Twilio, FCM, Meta, LinkedIn, X, OpenAI, Stripe and per-tenant Anthropic keys are entered in the super admin console → Integrations, encrypted with `RBAC_INTEGRATIONS_KEY`. `NOTIF_SMTP_*` env settings remain as a platform-wide email fallback. |
+   | (provider credentials) | SMTP, Twilio, FCM, Meta, LinkedIn, X, OpenAI, Stripe, per-tenant Anthropic keys and the SEO providers (Google Search Console & Analytics, DataForSEO, WordPress or a website webhook, Business Profile, Perplexity, YouTube, Reddit, the SEO task inbox token) are entered in the super admin console → Integrations, encrypted with `RBAC_INTEGRATIONS_KEY`. Leave `MARKETING_SEO_SAMPLE_ADAPTERS` unset (off) in every real deployment. `NOTIF_SMTP_*` env settings remain as a platform-wide email fallback. |
 
    Prefixes: `AUTH_` auth-svc · `USER_` user-svc · `SUBSCRIPTION_` · `FLEET_` ·
    `RENTAL_` · `PAYMENT_` · `MARKETING_` · `SALES_` sales-service · `PRICING_` ·

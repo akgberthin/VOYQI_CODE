@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     # avoid autonomous over-messaging.
     min_hours_between_sends_same_segment: int = 20
 
+    # Growth / SEO engine. Sample adapters serve labelled demo data and
+    # must stay off wherever real numbers are expected.
+    seo_sample_adapters: bool = False
+    # How often the SEO autopilot cycle runs for each site (0 = never).
+    seo_cycle_minutes: float = 30.0
+    # Agent calls back into this service as the AI service sees it.
+    seo_cycle_timeout_seconds: float = 900.0
+
 
 @lru_cache
 def get_settings() -> Settings:

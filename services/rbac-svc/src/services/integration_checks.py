@@ -115,8 +115,100 @@ async def stripe(c: dict) -> tuple[bool, str]:
     return _verdict(resp, "Key accepted" + (" (test mode)" if c["api_key"].startswith(("sk_test", "rk_test")) else ""))
 
 
+async def _google_token(service_account_json: str, scope: str) -> str:
+    import jwt  # PyJWT with the cryptography backend
+
+    account = json.loads(service_account_json)
+    now = int(time.time())
+    uri = account.get("token_uri", "https://oauth2.googleapis.com/token")
+    assertion = jwt.encode({"iss": account["client_email"], "scope": scope, "aud": uri, "iat": now, "exp": now + 3600},
+                           account["private_key"], algorithm="RS256")
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post(uri, data={"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": assertion})
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+async def google_seo(c: dict) -> tuple[bool, str]:
+    try:
+        token = await _google_token(c["service_account_json"], "https://www.googleapis.com/auth/webmasters.readonly")
+    except (ValueError, KeyError) as exc:
+        return False, f"Service account JSON is not valid: {exc}"
+    except httpx.HTTPError as exc:
+        return False, f"Google refused the service account: {exc}"
+    resp = await _get("https://www.googleapis.com/webmasters/v3/sites", headers={"Authorization": f"Bearer {token}"})
+    if resp.status_code == 200:
+        sites = [s.get("siteUrl") for s in resp.json().get("siteEntry", [])]
+        return True, f"Search Console properties: {', '.join(sites) or 'none yet — add the service account as a user'}"
+    return _verdict(resp, "")
+
+
+async def dataforseo(c: dict) -> tuple[bool, str]:
+    resp = await _get("https://api.dataforseo.com/v3/appendix/user_data", auth=(c["login"], c["password"]))
+    if resp.status_code == 200 and resp.json().get("status_code") == 20000:
+        money = ((resp.json().get("tasks") or [{}])[0].get("result") or [{}])[0].get("money") or {}
+        return True, f"Account reachable (balance ${money.get('balance', '?')})"
+    return _verdict(resp, "") if resp.status_code != 200 else (False, resp.json().get("status_message", "refused"))
+
+
+async def wordpress(c: dict) -> tuple[bool, str]:
+    resp = await _get(f"{c['base_url'].rstrip('/')}/wp-json/wp/v2/users/me", auth=(c["username"], c["app_password"]), params={"context": "edit"})
+    if resp.status_code == 200 and not (resp.json().get("capabilities") or {}).get("publish_posts"):
+        return False, "Signed in, but this user cannot publish posts"
+    return _verdict(resp, f"Signed in as {resp.json().get('name', '') if resp.status_code == 200 else ''}")
+
+
+async def cms_webhook(c: dict) -> tuple[bool, str]:
+    import hashlib
+    import hmac
+
+    body = json.dumps({"event": "ping"}).encode()
+    signature = "sha256=" + hmac.new(c["signing_secret"].encode(), body, hashlib.sha256).hexdigest()
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post(c["url"], content=body, headers={"Content-Type": "application/json", "X-VOYQI-Signature": signature})
+    return (True, "The website answered the signed ping") if resp.status_code < 300 else _verdict(resp, "")
+
+
+async def google_business_profile(c: dict) -> tuple[bool, str]:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        token = await client.post("https://oauth2.googleapis.com/token", data={
+            "grant_type": "refresh_token", "client_id": c["client_id"], "client_secret": c["client_secret"], "refresh_token": c["refresh_token"]})
+    if token.status_code != 200:
+        return _verdict(token, "")
+    resp = await _get("https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
+                      headers={"Authorization": f"Bearer {token.json()['access_token']}"})
+    return _verdict(resp, f"{len(resp.json().get('accounts', [])) if resp.status_code == 200 else 0} account(s) reachable")
+
+
+async def perplexity(c: dict) -> tuple[bool, str]:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post("https://api.perplexity.ai/chat/completions", headers={"Authorization": f"Bearer {c['api_key']}"},
+                                 json={"model": "sonar", "max_tokens": 1, "messages": [{"role": "user", "content": "ping"}]})
+    return _verdict(resp, "Key works")
+
+
+async def youtube(c: dict) -> tuple[bool, str]:
+    resp = await _get("https://www.googleapis.com/youtube/v3/search", params={"part": "snippet", "q": "test", "maxResults": 1, "key": c["api_key"]})
+    return _verdict(resp, "Key works")
+
+
+async def reddit(c: dict) -> tuple[bool, str]:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post("https://www.reddit.com/api/v1/access_token", auth=(c["client_id"], c["client_secret"]),
+                                 data={"grant_type": "client_credentials"}, headers={"User-Agent": "VOYQI-SEO-Research/1.0"})
+    return _verdict(resp, "App credentials accepted") if resp.status_code != 200 or "access_token" in resp.json() else (False, "no token issued")
+
+
+async def seo_inbox(c: dict) -> tuple[bool, str]:
+    if len(c.get("token", "")) < 24:
+        return False, "Use a token of at least 24 random characters"
+    return True, "Token set — the inbound webhook will accept requests carrying it"
+
+
 CHECKS = {"anthropic": anthropic, "openai": openai, "smtp": smtp, "twilio": twilio, "fcm": fcm,
-          "meta": meta, "linkedin": linkedin, "x": x, "stripe": stripe}
+          "meta": meta, "linkedin": linkedin, "x": x, "stripe": stripe, "google_seo": google_seo, "dataforseo": dataforseo,
+          "wordpress": wordpress, "cms_webhook": cms_webhook, "google_business_profile": google_business_profile,
+          "perplexity": perplexity, "youtube": youtube, "reddit": reddit, "seo_inbox": seo_inbox}
 
 
 async def run(provider: str, config: dict) -> tuple[bool, str]:

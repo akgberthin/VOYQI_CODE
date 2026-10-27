@@ -30,6 +30,7 @@ from src.services import (
     portfolio_intelligence_agent,
     pricing_intelligence_agent,
     revenue_agent,
+    seo_agent,
     talent_agent,
 )
 
@@ -142,6 +143,8 @@ EVENT_ROUTING: dict[str, list[tuple[str, AgentHandler]]] = {
     "hrm.email_draft_requested": [(talent_agent.AGENT_KEY_COMMUNICATION, talent_agent.handle_email_draft_requested)],
     "hrm.course_draft_requested": [(talent_agent.AGENT_KEY_ACADEMY, talent_agent.handle_course_draft_requested)],
 }
+# The Growth / SEO agents (marketing command center).
+EVENT_ROUTING.update(seo_agent.event_routes())
 
 
 async def _agent_status(db: AsyncSession, tenant_id: str, agent_key: str) -> AgentStatus:

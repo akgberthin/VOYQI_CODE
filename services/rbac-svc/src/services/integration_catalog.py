@@ -73,6 +73,77 @@ CATALOG: dict[str, dict] = {
             {"key": "access_token", "label": "OAuth 2.0 user access token", "secret": True, "required": True},
         ],
     },
+    "google_seo": {
+        "label": "Google Search Console & Analytics", "category": "SEO",
+        "used_for": "SEO agents: Search Console clicks, rankings and pages; GA4 traffic and conversions; PageSpeed Core Web Vitals.",
+        "fields": [
+            {"key": "service_account_json", "label": "Service account JSON", "secret": True, "required": True, "multiline": True,
+             "hint": "Add the service account's email as a user on the Search Console property and the GA4 property"},
+            {"key": "pagespeed_api_key", "label": "PageSpeed Insights API key", "secret": True, "hint": "Optional: raises the PageSpeed quota"},
+        ],
+    },
+    "dataforseo": {
+        "label": "DataForSEO", "category": "SEO",
+        "used_for": "SEO agents: keyword data, competitor gaps, search results, local-pack ranks and the backlink index.",
+        "fields": [
+            {"key": "login", "label": "API login", "required": True},
+            {"key": "password", "label": "API password", "secret": True, "required": True},
+        ],
+    },
+    "wordpress": {
+        "label": "WordPress", "category": "SEO",
+        "used_for": "SEO agents publish articles and landing pages and apply safe fixes (titles, descriptions, alt text, redirects).",
+        "fields": [
+            {"key": "base_url", "label": "Site URL", "required": True, "hint": "https://voyqi.com"},
+            {"key": "username", "label": "Username", "required": True, "hint": "An Editor or Administrator"},
+            {"key": "app_password", "label": "Application password", "secret": True, "required": True,
+             "hint": "Users → Profile → Application Passwords. Redirects need the Redirection plugin."},
+        ],
+    },
+    "cms_webhook": {
+        "label": "Website webhook", "category": "SEO",
+        "used_for": "For any other CMS or website builder: VOYQI posts signed publish and fix requests your site applies.",
+        "fields": [
+            {"key": "url", "label": "Webhook URL", "required": True},
+            {"key": "signing_secret", "label": "Signing secret", "secret": True, "required": True,
+             "hint": "Requests carry X-VOYQI-Signature: sha256=HMAC(body)"},
+        ],
+    },
+    "google_business_profile": {
+        "label": "Google Business Profile", "category": "SEO",
+        "used_for": "Local SEO agent: reads profiles and publishes descriptions and update posts.",
+        "fields": [
+            {"key": "client_id", "label": "OAuth client ID", "required": True},
+            {"key": "client_secret", "label": "OAuth client secret", "secret": True, "required": True},
+            {"key": "refresh_token", "label": "Refresh token", "secret": True, "required": True,
+             "hint": "From an OAuth consent with the business.manage scope"},
+            {"key": "account_id", "label": "Account ID", "hint": "accounts/123… (needed for update posts)"},
+        ],
+    },
+    "perplexity": {
+        "label": "Perplexity", "category": "AI",
+        "used_for": "GEO agent: checks how the brand appears in Perplexity answers.",
+        "fields": [{"key": "api_key", "label": "API key", "secret": True, "required": True}],
+    },
+    "youtube": {
+        "label": "YouTube Data API", "category": "SEO",
+        "used_for": "Search intelligence agent: video research.",
+        "fields": [{"key": "api_key", "label": "API key", "secret": True, "required": True}],
+    },
+    "reddit": {
+        "label": "Reddit", "category": "SEO",
+        "used_for": "Search intelligence agent: community research (optional — public search works without it, at lower reliability).",
+        "fields": [
+            {"key": "client_id", "label": "App client ID", "required": True},
+            {"key": "client_secret", "label": "App secret", "secret": True, "required": True},
+        ],
+    },
+    "seo_inbox": {
+        "label": "SEO task inbox", "category": "SEO",
+        "used_for": "Task intake agent: emailed requests forwarded by your mail provider's inbound webhook.",
+        "fields": [{"key": "token", "label": "Webhook token", "secret": True, "required": True,
+                    "hint": "Any long random string; put it in the inbound webhook URL as ?token=…"}],
+    },
     "stripe": {
         "label": "Stripe", "category": "Payments",
         "used_for": "Subscription and rental payments.",

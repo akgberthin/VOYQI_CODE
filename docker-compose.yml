@@ -213,6 +213,9 @@ services:
       # https URL for Instagram/Facebook to fetch them; localhost is fine
       # for console-mode demos.
       MARKETING_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      # Local demo only: lets an SEO integration use the labelled "sample"
+      # provider when no real account is connected yet.
+      MARKETING_SEO_SAMPLE_ADAPTERS: ${SEO_SAMPLE_ADAPTERS:-true}
       MARKETING_DATABASE_URL: postgresql+asyncpg://marketing_svc:${MARKETING_DB_PASSWORD:-devpassword}@marketing-db:5432/marketing
       MARKETING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:

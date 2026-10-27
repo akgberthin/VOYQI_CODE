@@ -41,7 +41,9 @@ ROUTE_TABLE: list[RouteConfig] = [
         prefix="/api/v1/marketing",
         target_base_url="http://marketing-svc:8007",
         public_paths=frozenset({"/api/v1/marketing/public/lead-captures"}),
-        public_prefixes=("/api/v1/marketing/public/media/",),
+        # Media social platforms download, and the SEO task inbox's
+        # inbound mail webhook (checked against its own token).
+        public_prefixes=("/api/v1/marketing/public/media/", "/api/v1/marketing/public/seo/inbound/"),
     ),
     RouteConfig(prefix="/api/v1/dms", target_base_url="http://dms-svc:8008"),
     RouteConfig(prefix="/api/v1/pricing", target_base_url="http://pricing-svc:8010"),
