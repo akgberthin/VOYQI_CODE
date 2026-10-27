@@ -80,6 +80,13 @@ export const mk = {
   addNote: (body: { author: string; body: string; campaign_id?: string }) => must(post(`${M}/notes`, body)),
   deleteNote: (id: string) => must(del(`${M}/notes/${id}`)),
 
+  compose: (body: { channel: string; mobility_class: string; objective: string; tones: string[]; context: string }) => must<{ variants: { tone: string; source: string; subject: string; body: string }[] }>(post(`${M}/content/compose`, body)),
+  autopilot: () => must<any>(get(`${M}/autopilot`)),
+  saveAutopilot: (body: any) => must<any>(api("PUT", `${M}/autopilot`, body)),
+  planNow: () => must<{ planned: number }>(post(`${M}/autopilot/plan-now`, {})),
+  slots: () => must<any[]>(get(`${M}/autopilot/slots`)),
+  approveSlot: (id: string) => must(post(`${M}/autopilot/slots/${id}/approve`, {})),
+  rejectSlot: (id: string) => must(post(`${M}/autopilot/slots/${id}/reject`, {})),
   leads: (campaign_id?: string) => must<any[]>(get(`${M}/lead-captures${q({ campaign_id })}`)),
 };
 
@@ -100,3 +107,13 @@ export function fileToBase64(file: File): Promise<string> {
     r.readAsDataURL(file);
   });
 }
+
+export const CLASSES: [string, string][] = [
+  ["urban", "Urban ($449)"], ["family", "Family ($649)"], ["executive", "Executive ($859)"], ["luxury", "Luxury ($1,499)"],
+  ["performance", "Performance ($2,700)"], ["adventure", "Adventure ($549)"], ["luxury_plus", "Luxury Plus ($5,800)"], ["performance_plus", "Performance Plus ($5,800)"],
+];
+export const OBJECTIVES: [string, string][] = [
+  ["acquisition", "Acquisition"], ["upgrade", "Upgrade class"], ["retention", "Retention"], ["referral", "Referral — earn GU"],
+  ["winback", "Reactivation / winback"], ["term_conversion", "Term membership conversion"], ["service_upgrade", "Service level upgrade"], ["travel_mode", "Travel mode activation"],
+];
+export const TONES: [string, string][] = [["premium", "Premium & aspirational"], ["personal", "Warm & personal"], ["urgent", "Urgent & action-focused"], ["exclusive", "Exclusive & invitation-only"], ["friendly", "Friendly & accessible"]];

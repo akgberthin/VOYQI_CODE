@@ -62,6 +62,16 @@ class AnthropicAgentClient:
     def is_configured(self) -> bool:
         return self._client is not None
 
+    def complete(self, system_prompt: str, user_message: str, max_tokens: int | None = None) -> str:
+        """One message, no tools — for pure generation (copy variants)."""
+        if not self._client:
+            raise AnthropicNotConfiguredError("ANTHROPIC_API_KEY is not set for ai-orchestration-svc.")
+        response = self._client.messages.create(
+            model=self._model, max_tokens=max_tokens or self._settings.anthropic_max_tokens,
+            system=prompts.resolve(system_prompt), messages=[{"role": "user", "content": user_message}],
+        )
+        return "".join(block.text for block in response.content if block.type == "text")
+
     def run_agent_turn(
         self,
         system_prompt: str,

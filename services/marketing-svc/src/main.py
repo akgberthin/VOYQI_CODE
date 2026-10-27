@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api import (
     ab_tests,
     analytics,
+    autopilot,
     audience,
     calendar,
     campaigns,
@@ -62,6 +63,7 @@ app.include_router(social.router)
 app.include_router(calendar.router)
 app.include_router(ab_tests.router)
 app.include_router(analytics.router)
+app.include_router(autopilot.router)
 app.include_router(media_generation.router)
 
 

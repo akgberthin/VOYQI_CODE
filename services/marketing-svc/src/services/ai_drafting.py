@@ -24,3 +24,16 @@ async def generate(tenant_id: str, campaign_id: str, campaign_name: str, channel
     if resp.status_code != 200:
         raise AIDraftUnavailable(f"Marketing Content Agent returned HTTP {resp.status_code}")
     return resp.json()
+
+
+async def compose(tenant_id: str, payload: dict) -> dict:
+    """Copy variants from the Marketing Content Agent (AI studio)."""
+    url = f"{get_settings().ai_orchestration_svc_base_url}/api/v1/ai/marketing/compose"
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, headers={"X-Tenant-Id": tenant_id}, json=payload)
+    except httpx.HTTPError as exc:
+        raise AIDraftUnavailable(f"Marketing Content Agent unreachable ({type(exc).__name__})") from exc
+    if resp.status_code != 200:
+        raise AIDraftUnavailable(f"Marketing Content Agent returned HTTP {resp.status_code}")
+    return resp.json()

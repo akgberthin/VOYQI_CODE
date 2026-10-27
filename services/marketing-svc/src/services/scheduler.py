@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from src.core.config import get_settings
-from src.services import send_engine, social_engine
+from src.services import autopilot, send_engine, social_engine
 
 logger = logging.getLogger("marketing-svc.scheduler")
 
@@ -23,6 +23,15 @@ async def run_once(session_factory) -> int:
                 ran += 1
             except Exception:
                 logger.exception("scheduled send %s failed", send_id)
+    async with session_factory() as db:
+        planning = await autopilot.due_configs(db)
+    for tenant_id in planning:
+        async with session_factory() as db:
+            try:
+                planned = await autopilot.plan(db, tenant_id)
+                logger.info("autopilot planned %d posts for %s", planned, tenant_id)
+            except Exception:
+                logger.exception("autopilot planning for %s failed", tenant_id)
     async with session_factory() as db:
         posts = [(p.tenant_id, p.id) for p in await social_engine.due_posts(db)]
     for tenant_id, post_id in posts:

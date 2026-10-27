@@ -65,6 +65,27 @@ async def request_ai_draft(body: AIDraftRequest, tenant_id: str = Depends(get_te
     return result
 
 
+class ComposeIn(BaseModel):
+    channel: str
+    mobility_class: str = ""
+    objective: str = "acquisition"
+    tones: list[str] = ["premium", "personal", "urgent"]
+    context: str = ""
+
+
+@router.post("/compose")
+async def compose(body: ComposeIn, tenant_id: str = Depends(get_tenant_id)):
+    """AI studio: copy variants (one per tone) from the Marketing Content
+    Agent to choose from — nothing is drafted until one is used."""
+    try:
+        result = await ai_drafting.compose(tenant_id, body.model_dump())
+    except ai_drafting.AIDraftUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if result.get("skipped_reason"):
+        raise HTTPException(status_code=409, detail=f"Marketing Content Agent is {result['skipped_reason']} — resume it in the super admin console")
+    return result
+
+
 @router.get("", response_model=list[ContentDraftOut])
 async def list_content_drafts(campaign_id: uuid.UUID | None = None, status: str | None = None, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     return await content_engine.list_content_drafts(db, tenant_id, campaign_id, status)

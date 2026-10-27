@@ -112,6 +112,7 @@ DECISION_ACTIONS: dict[tuple[str, str], tuple[str, str]] = {
     ("compliance_audit_agent", "*"): ("compliance-risk-intelligence", "audit.flag_anomaly"),
     ("concierge_agent", "crm.message_received"): ("relationship-intelligence", "inbox.assess_draft_escalate"),
     ("marketing_content_agent", "content.draft_requested"): ("marketing-content", "content.draft_generate"),
+    ("marketing_content_agent", "marketing.compose_requested"): ("marketing-content", "content.draft_generate"),
     ("pricing_intelligence_agent", "rental.booked"): ("pricing-intelligence", "pricing.adjust_within_band"),
     ("pricing_intelligence_agent", "trade_appraisal.valuation_requested"): ("pricing-intelligence", "trade.valuation_apply"),
     ("pricing_intelligence_agent", "retail_pricing.recommendation_requested"): ("pricing-intelligence", "retail.price_apply"),

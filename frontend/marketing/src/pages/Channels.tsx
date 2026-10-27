@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useSession } from "@shared/session";
 import { Empty, ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useAction, useLoad } from "@shared/ui";
 import { Ch, DraftCard } from "../bits";
-import { CHANNELS, CHANNEL_LABEL, fileToBase64, inHours, mk, toIso } from "../mk";
+import { CHANNELS, CHANNEL_LABEL, CLASSES, OBJECTIVES, TONES, fileToBase64, inHours, mk, toIso } from "../mk";
 
 const PLATFORMS = ["instagram", "facebook", "linkedin", "twitter", "tiktok"];
 
@@ -103,6 +103,7 @@ export function Studio() {
         <label className="btn ghost" style={{ cursor: "pointer" }}>Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
         <button className="ghost" onClick={reloadAll}>Refresh</button>
       </PageHead>
+      <Generator />
       <div className="card mb">
         <h3>Generate an image</h3>
         <div className="row mt">
@@ -132,6 +133,54 @@ export function Studio() {
         </table></div>
       )}
     </>
+  );
+}
+
+function Generator() {
+  const run = useAction();
+  const { me } = useSession();
+  const campaigns = useLoad(() => mk.campaigns());
+  const [f, setF] = useState({ channel: "email", mobility_class: "luxury", objective: "acquisition", context: "", tones: ["premium", "personal", "urgent"] });
+  const [variants, setVariants] = useState<{ tone: string; source: string; subject: string; body: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [target, setTarget] = useState<Record<number, string>>({});
+  const generate = async () => {
+    setBusy(true);
+    await run("Variants ready", async () => setVariants((await mk.compose(f)).variants));
+    setBusy(false);
+  };
+  const toggleTone = (t: string) => setF({ ...f, tones: f.tones.includes(t) ? f.tones.filter((x) => x !== t) : [...f.tones, t] });
+  const options = (campaigns.data || []).filter((c) => c.channel === f.channel);
+  return (
+    <div className="card mb">
+      <h3>✦ Generate campaign content</h3>
+      <div className="sub">Copy variants from the Marketing Content Agent, one per tone — pick one, put it on a campaign or save it as a template.</div>
+      <div className="form mt">
+        <label className="field">Target class<select value={f.mobility_class} onChange={(e) => setF({ ...f, mobility_class: e.target.value })}>{CLASSES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label className="field">Channel<select value={f.channel} onChange={(e) => { setF({ ...f, channel: e.target.value }); setVariants([]); }}>{["email", "sms", "push", "voice", "social"].map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}</select></label>
+        <label className="field">Objective<select value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })}>{OBJECTIVES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label className="field" style={{ gridColumn: "1 / -1" }}>Additional context<input value={f.context} placeholder="e.g. Brickell hub opens 1 November" onChange={(e) => setF({ ...f, context: e.target.value })} /></label>
+      </div>
+      <div className="row mt">{TONES.map(([k, l]) => <label key={k} className="badge" style={{ cursor: "pointer" }}><input type="checkbox" checked={f.tones.includes(k)} onChange={() => toggleTone(k)} /> {l}</label>)}</div>
+      <button className="mt" disabled={busy || !f.tones.length} onClick={generate}>{busy ? "Generating…" : variants.length ? "Regenerate" : "Generate"}</button>
+      {variants.length > 0 && (
+        <div className="grid cols-3 mt">{variants.map((v, i) => (
+          <div key={v.tone + i} className="card" style={{ background: "var(--panel-2)" }}>
+            <div className="row between"><b>{TONES.find(([k]) => k === v.tone)?.[1] || v.tone}</b><span className={`badge ${v.source === "claude" ? "ai" : ""}`}>{v.source === "claude" ? "Claude" : "template"}</span></div>
+            {v.subject && <div className="mt"><b>{v.subject}</b></div>}
+            <div className="mt" style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{v.body}</div>
+            <div className="row mt">
+              <select value={target[i] || ""} onChange={(e) => setTarget({ ...target, [i]: e.target.value })}><option value="">{options.length ? "campaign…" : `no ${f.channel} campaigns`}</option>{options.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <button className="sm" disabled={!target[i]} onClick={() => run("Added to the campaign — guardrail checked", () => mk.createDraft({ campaign_id: target[i], channel: f.channel as any, subject_line: v.subject, body_text: v.body, created_by: me?.email || "marketing" } as any))}>Use</button>
+            </div>
+            <div className="row mt">
+              <button className="sm ghost" onClick={() => run("Saved to library", () => mk.saveToLibrary({ title: v.subject || `${v.tone} ${f.channel}`, channel: f.channel, body_text: v.subject ? `${v.subject}\n\n${v.body}` : v.body, tags: [v.tone, f.objective], created_by: me?.email || "marketing" }))}>Save to library</button>
+              <button className="sm ghost" onClick={() => navigator.clipboard?.writeText(v.subject ? `${v.subject}\n\n${v.body}` : v.body)}>Copy</button>
+            </div>
+          </div>
+        ))}</div>
+      )}
+    </div>
   );
 }
 

@@ -410,3 +410,45 @@ class MediaAsset(Base):
     generation_request_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class AutopilotConfig(Base):
+    """Social autopilot for a tenant: the Marketing Content Agent plans the
+    coming week's posts for the chosen accounts. In "suggest" mode every
+    planned post waits for a person; "autopublish" schedules them directly."""
+
+    __tablename__ = "autopilot_configs"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False, default="suggest")  # suggest / autopublish
+    account_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    posts_per_week: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    post_hour_utc: Mapped[int] = mapped_column(Integer, nullable=False, default=16)
+    themes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    mobility_class: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    tone: Mapped[str] = mapped_column(String(16), nullable=False, default="premium")
+    include_images: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_planned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+
+class AutopilotSlot(Base):
+    """One planned post: when, where, the drafted copy and image."""
+
+    __tablename__ = "autopilot_slots"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    social_account_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("social_accounts.id"), nullable=False)
+    planned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    theme: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    content_draft_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    social_post_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    # proposed (waiting for a person) / held (guardrail flagged the copy) /
+    # scheduled / rejected
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="proposed")
+    decided_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
