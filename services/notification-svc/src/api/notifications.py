@@ -1,8 +1,9 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
@@ -102,7 +103,26 @@ async def list_notifications(recipient: str | None = None, status: str | None = 
         query = query.where(Notification.status == status)
     result = await db.execute(query)
     rows = result.scalars().all()
-    return [{"id": r.id, "channel": r.channel, "template_key": r.template_key, "recipient": r.recipient, "status": r.status, "delivery_mode": r.delivery_mode, "created_at": r.created_at} for r in rows]
+    return [{"id": r.id, "channel": r.channel, "template_key": r.template_key, "recipient": r.recipient, "status": r.status,
+             "delivery_mode": r.delivery_mode, "error_message": r.error_message, "created_at": r.created_at} for r in rows]
+
+
+@router.get("/summary")
+async def delivery_summary(hours: int = 24, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Counts per channel over the last `hours`: really delivered, only
+    logged (no provider configured), failed, skipped (opted out)."""
+    since = datetime.now(timezone.utc) - timedelta(hours=max(1, min(hours, 24 * 90)))
+    rows = (await db.execute(
+        select(Notification.channel, Notification.status, Notification.delivery_mode, func.count())
+        .where(Notification.tenant_id == tenant_id, Notification.created_at >= since)
+        .group_by(Notification.channel, Notification.status, Notification.delivery_mode)
+    )).all()
+    out: dict[str, dict[str, int]] = {}
+    for channel, status, mode, n in rows:
+        bucket = out.setdefault(channel, {"delivered": 0, "console": 0, "failed": 0, "opted_out": 0})
+        key = "failed" if status == "failed" else "opted_out" if status == "skipped_opted_out" else "console" if mode == "console" else "delivered"
+        bucket[key] += n
+    return {"hours": hours, "channels": out}
 
 
 @router.post("/templates/seed-defaults")

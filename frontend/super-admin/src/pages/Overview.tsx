@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { get, must } from "../api";
 import { Badge, ErrorNote, Loading, PageHead, fmtTime, pretty, useLoad } from "../components/ui";
+import { readiness } from "./Messaging";
 import { loadServices } from "./Services";
 
 export default function Overview() {
@@ -8,14 +9,15 @@ export default function Overview() {
   // loads on its own and the rest of the page doesn't wait for it.
   const health = useLoad(loadServices);
   const { data, error, loading, reload } = useLoad(async () => {
-    const [agents, pending, decisions, policy, users] = await Promise.all([
+    const [agents, pending, decisions, policy, users, integrations] = await Promise.all([
       must<any[]>(get("/api/v1/ai/agents/registry")),
       must<any[]>(get("/api/v1/ai/recommendations?status=pending")),
       must<any[]>(get("/api/v1/ai/decision-log?limit=12")),
       must<any>(get("/api/v1/ai/tier-policy")),
       must<any[]>(get("/api/v1/rbac/users")),
+      must<any[]>(get("/api/v1/rbac/integrations")).catch(() => []),
     ]);
-    return { agents, pending, decisions, policy, users };
+    return { agents, pending, decisions, policy, users, integrations };
   });
   if (loading && !data) return <Loading what="Reading the whole platform" />;
   if (!data) return <ErrorNote error={error} />;
@@ -39,6 +41,13 @@ export default function Overview() {
       {down.length > 0 && <div className="notice bad mb">Down: {down.map((s) => s.name).join(", ")}</div>}
       {slow.length > 0 && <div className="notice warn mb">Slow to answer (overloaded, not necessarily down): {slow.map((s) => s.name).join(", ")}</div>}
       {stopped.length > 0 && <div className="notice warn mb">Not running: {stopped.map((a) => `${a.display_name} (${a.status})`).join(", ")}</div>}
+      <Link to="/messaging" className="card mb" style={{ display: "block", textDecoration: "none", color: "inherit" }}>
+        <div className="row between"><b>Outward channels</b><span className="muted">Messaging & automation →</span></div>
+        <div className="row mt">{([["AI", "anthropic"], ["Email", "smtp"], ["SMS & voice", "twilio"], ["Push", "fcm"], ["Meta", "meta"], ["LinkedIn", "linkedin"], ["X", "x"], ["Images", "openai"]] as [string, string][]).map(([label, provider]) => {
+          const [kind, text] = readiness(data.integrations, provider);
+          return <Badge key={provider} kind={kind}>{label}: {text.split(" — ")[0]}</Badge>;
+        })}</div>
+      </Link>
       <div className="notice info mb">AI reasoning: {fallback ? "rule-based fallback — no Claude API key with credits configured" : "live Claude"}. Autonomy: {tiers[0]} actions autonomous · {tiers[1]} need approval · {tiers[2]} need a named person.</div>
       <div className="grid cols-2">
         <div className="card">

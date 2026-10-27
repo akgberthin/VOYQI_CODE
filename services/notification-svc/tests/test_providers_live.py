@@ -100,3 +100,13 @@ async def test_send_direct_api_delivers_content_on_each_channel(client, configur
     assert voice.json()["status"] == "sent"
     bad = await client.post("/api/v1/notifications/send-direct", json={"channel": "fax", "recipient": "x", "body": "y"}, headers=TENANT_HEADERS)
     assert bad.status_code == 400
+
+
+async def test_delivery_summary_separates_real_console_and_failed(client, configured, outbound):
+    await client.post("/api/v1/notifications/send-direct", json={"channel": "sms", "recipient": "+1", "body": "x"}, headers=TENANT_HEADERS)  # console
+    configured["twilio"] = TWILIO
+    await client.post("/api/v1/notifications/send-direct", json={"channel": "sms", "recipient": "+2", "body": "x"}, headers=TENANT_HEADERS)  # real
+    summary = (await client.get("/api/v1/notifications/summary?hours=1", headers=TENANT_HEADERS)).json()
+    assert summary["channels"]["sms"] == {"delivered": 1, "console": 1, "failed": 0, "opted_out": 0}
+    listed = (await client.get("/api/v1/notifications/notifications", headers=TENANT_HEADERS)).json()
+    assert {"error_message", "delivery_mode"} <= set(listed[0])

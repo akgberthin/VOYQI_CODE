@@ -24,7 +24,7 @@ CATALOG: dict[str, dict] = {
         "label": "Email (SMTP)", "category": "Messaging",
         "used_for": "Marketing and system email.",
         "fields": [
-            {"key": "host", "label": "Host", "required": True, "hint": "smtp.sendgrid.net"},
+            {"key": "host", "label": "Host", "required": True, "hint": "smtp.sendgrid.net (local dev inbox: mailpit, port 1025, STARTTLS false)"},
             {"key": "port", "label": "Port", "default": "587"},
             {"key": "username", "label": "Username"},
             {"key": "password", "label": "Password", "secret": True},
