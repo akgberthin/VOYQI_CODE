@@ -1,12 +1,12 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_db
+from src.core.database import get_db, get_session_factory
 from src.core.security import get_tenant_id
-from src.services import media_generation_engine
+from src.services import media_engine, media_generation_engine
 
 router = APIRouter(prefix="/api/v1/marketing/media-generation", tags=["media-generation"])
 
@@ -31,12 +31,20 @@ class RequestOut(BaseModel):
 
 
 @router.post("", response_model=RequestOut, status_code=201)
-async def create_request(body: RequestCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    """Pluggable — this endpoint records the request; fulfillment
-    goes through whichever image/video generation MCP App is
-    connected for this tenant, selected via the platform's own
-    connector directory, not a vendor hardcoded here."""
-    return await media_generation_engine.create_request(db, tenant_id, body.prompt, body.media_type, body.requested_by, body.provider)
+async def create_request(body: RequestCreate, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id),
+                         db: AsyncSession = Depends(get_db), session_factory=Depends(get_session_factory)):
+    """Records the request and, when the tenant has an OpenAI integration,
+    generates the image in the background (the request moves to
+    generating, then completed with a hosted URL, or failed with the
+    reason). Without an integration it stays pending."""
+    req = await media_generation_engine.create_request(db, tenant_id, body.prompt, body.media_type, body.requested_by, body.provider)
+
+    async def fulfil():
+        async with session_factory() as session:
+            await media_engine.generate(session, tenant_id, req.id)
+
+    background_tasks.add_task(fulfil)
+    return req
 
 
 @router.get("", response_model=list[RequestOut])

@@ -22,7 +22,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base, GUID
@@ -282,6 +282,13 @@ class SocialPost(Base):
     status: Mapped[SocialPostStatus] = mapped_column(Enum(SocialPostStatus), nullable=False, default=SocialPostStatus.SCHEDULED)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     platform_post_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # "real" when the platform's API accepted it, "console" when no
+    # integration is set up (nothing left VOYQI), "external" when another
+    # system reported the publish.
+    delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    error_detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -384,4 +391,22 @@ class LeadCapture(Base):
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     consent_marketing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class MediaAsset(Base):
+    """An image VOYQI hosts: generated in the AI studio or uploaded. Served
+    publicly (social platforms fetch images by URL), so nothing private
+    belongs here."""
+
+    __tablename__ = "media_assets"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    content_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="upload")  # upload / openai
+    generation_request_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

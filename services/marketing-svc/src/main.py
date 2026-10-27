@@ -14,6 +14,7 @@ from src.api import (
     content,
     lead_captures,
     library,
+    media,
     media_generation,
     notes,
     sends,
@@ -52,6 +53,7 @@ app.include_router(campaigns.router)
 app.include_router(lead_captures.router)
 app.include_router(content.router)
 app.include_router(library.router)
+app.include_router(media.router)
 app.include_router(notes.router)
 app.include_router(audience.router)
 app.include_router(suppression.router)

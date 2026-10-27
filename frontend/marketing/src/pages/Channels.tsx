@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useSession } from "@shared/session";
 import { Empty, ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useAction, useLoad } from "@shared/ui";
 import { Ch, DraftCard } from "../bits";
-import { CHANNELS, CHANNEL_LABEL, inHours, mk, toIso } from "../mk";
+import { CHANNELS, CHANNEL_LABEL, fileToBase64, inHours, mk, toIso } from "../mk";
 
 const PLATFORMS = ["instagram", "facebook", "linkedin", "twitter", "tiktok"];
 
@@ -12,13 +12,14 @@ export function Social() {
   const accounts = useLoad(() => mk.accounts());
   const posts = useLoad(() => mk.posts());
   const drafts = useLoad(async () => (await mk.drafts(undefined, "approved")).filter((d) => d.channel === "social"));
+  const assets = useLoad(() => mk.assets());
   const [acct, setAcct] = useState({ platform: "instagram", handle: "" });
-  const [post, setPost] = useState({ social_account_id: "", content_draft_id: "", at: inHours(4) });
+  const [post, setPost] = useState({ social_account_id: "", content_draft_id: "", media_asset_id: "", at: inHours(4) });
   const reloadAll = () => { accounts.reload(); posts.reload(); drafts.reload(); };
   const handle = (id: string) => (accounts.data || []).find((a) => a.id === id);
   return (
     <>
-      <PageHead title="◎ Social" text="Connected accounts and scheduled posts. A post can only be scheduled from approved social content — write it on a social campaign first." />
+      <PageHead title="◎ Social" text="Connected accounts and scheduled posts. Posts publish automatically at their time through each platform's API (set up under super admin → Integrations: Meta for Facebook and Instagram, LinkedIn, X); without an integration they're recorded in console mode, not posted." />
       <div className="split mb">
         <div className="card">
           <h3>Accounts</h3>
@@ -39,10 +40,13 @@ export function Social() {
             <div className="form mt">
               <label className="field">Account<select value={post.social_account_id} onChange={(e) => setPost({ ...post, social_account_id: e.target.value })}><option value="">— choose —</option>{(accounts.data || []).filter((a) => a.connected).map((a) => <option key={a.id} value={a.id}>{a.platform} {a.handle}</option>)}</select></label>
               <label className="field">Content<select value={post.content_draft_id} onChange={(e) => setPost({ ...post, content_draft_id: e.target.value })}><option value="">— choose —</option>{(drafts.data || []).map((d) => <option key={d.id} value={d.id}>{d.body_text.slice(0, 50)}</option>)}</select></label>
+              <label className="field">Image<select value={post.media_asset_id} onChange={(e) => setPost({ ...post, media_asset_id: e.target.value })}><option value="">none</option>{(assets.data || []).map((a) => <option key={a.id} value={a.id}>{a.title.slice(0, 50) || a.id.slice(0, 8)} ({a.source})</option>)}</select></label>
               <label className="field">When<input type="datetime-local" value={post.at} onChange={(e) => setPost({ ...post, at: e.target.value })} /></label>
             </div>
           )}
-          <button className="mt" disabled={!post.social_account_id || !post.content_draft_id} onClick={() => run("Post scheduled", () => mk.schedulePost({ social_account_id: post.social_account_id, content_draft_id: post.content_draft_id, scheduled_at: toIso(post.at) })).then(reloadAll)}>Schedule post</button>
+          {post.media_asset_id && <img src={(assets.data || []).find((a) => a.id === post.media_asset_id)?.url} alt="" style={{ maxWidth: 220, borderRadius: 8, marginTop: 10 }} />}
+          {(accounts.data || []).find((a) => a.id === post.social_account_id)?.platform === "instagram" && !post.media_asset_id && <div className="notice warn mt">Instagram only publishes posts with an image.</div>}
+          <button className="mt" disabled={!post.social_account_id || !post.content_draft_id} onClick={() => run("Post scheduled — it publishes automatically at that time", () => mk.schedulePost({ social_account_id: post.social_account_id, content_draft_id: post.content_draft_id, media_asset_id: post.media_asset_id || null, scheduled_at: toIso(post.at) })).then(reloadAll)}>Schedule post</button>
         </div>
       </div>
       <h3>Posts</h3>
@@ -52,7 +56,7 @@ export function Social() {
           <tbody>{(posts.data || []).map((p) => {
             const a = handle(p.social_account_id);
             return (
-              <tr key={p.id}><td>{a ? `${a.platform} ${a.handle}` : "—"}</td><td>{fmtTime(p.scheduled_at)}</td><td><StatusBadge value={p.status} /></td><td className="mono muted">{p.platform_post_id || "—"}{p.published_at && <div>{fmtTime(p.published_at)}</div>}</td>
+              <tr key={p.id}><td>{a ? `${a.platform} ${a.handle}` : "—"}</td><td>{fmtTime(p.scheduled_at)}</td><td><StatusBadge value={p.status} /></td><td className="mono muted">{p.delivery_mode === "console" ? <span title="No integration for this platform — recorded, not posted">console only</span> : p.platform_post_id || "—"}{p.published_at && <div>{fmtTime(p.published_at)}</div>}{p.error_detail && <div style={{ color: "var(--bad)", maxWidth: 320, whiteSpace: "normal" }}>{p.error_detail}</div>}</td>
                 <td>{p.status === "scheduled" && <button className="sm" onClick={() => run("Published", () => mk.publishPost(p.id)).then(posts.reload)}>Publish now</button>}</td></tr>
             );
           })}</tbody>
@@ -88,29 +92,44 @@ export function Studio() {
   const run = useAction();
   const { me } = useSession();
   const media = useLoad(() => mk.media());
+  const assets = useLoad(() => mk.assets());
   const [f, setF] = useState({ prompt: "", media_type: "image" });
+  const pending = (media.data || []).some((m) => m.status === "generating");
+  const reloadAll = () => { media.reload(); assets.reload(); };
+  const upload = async (file: File) => run("Image uploaded", async () => mk.uploadAsset({ title: file.name, content_type: file.type, data_base64: await fileToBase64(file), created_by: me?.email || "marketing" })).then(assets.reload);
   return (
     <>
-      <PageHead title="✦ AI studio" text="Generated images and video for campaigns. Copy is drafted on each campaign and in the composer." />
+      <PageHead title="✦ AI studio" text="Images for campaigns and social posts — generated from a prompt (OpenAI, set up under super admin → Integrations) or uploaded. They're hosted by VOYQI so social platforms can fetch them. Copy is drafted on each campaign and in the composer.">
+        <label className="btn ghost" style={{ cursor: "pointer" }}>Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+        <button className="ghost" onClick={reloadAll}>Refresh</button>
+      </PageHead>
       <div className="card mb">
-        <h3>Request media</h3>
+        <h3>Generate an image</h3>
         <div className="row mt">
           <select value={f.media_type} onChange={(e) => setF({ ...f, media_type: e.target.value })}><option value="image">image</option><option value="video">video</option></select>
           <input style={{ flex: 1 }} placeholder="A silver Model Y at golden hour on a Texas highway, cinematic" value={f.prompt} onChange={(e) => setF({ ...f, prompt: e.target.value })} />
-          <button disabled={!f.prompt} onClick={() => run("Requested", () => mk.requestMedia({ ...f, requested_by: me?.email || "marketing" })).then(() => { setF({ ...f, prompt: "" }); media.reload(); })}>Request</button>
+          <button disabled={!f.prompt} onClick={() => run("Requested — generating", () => mk.requestMedia({ ...f, requested_by: me?.email || "marketing" })).then(() => { setF({ ...f, prompt: "" }); reloadAll(); })}>Generate</button>
         </div>
-        <div className="notice info mt">No image/video generation provider is connected yet, so requests wait as <b>pending</b>. When one is configured it picks them up; until then you can attach a finished asset's URL by hand.</div>
+        {pending && <div className="notice info mt"><span className="spin" /> Generating… refresh in a minute.</div>}
       </div>
-      {media.loading ? <Loading /> : !(media.data || []).length ? <Empty>No media requests.</Empty> : (
-        <div className="grid cols-3">{(media.data || []).map((m) => (
-          <div key={m.id} className="card">
-            <div className="row between"><span className="badge">{m.media_type}</span><StatusBadge value={m.status} /></div>
-            {m.result_url && m.media_type === "image" && <img src={m.result_url} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 10 }} />}
-            <div className="mt">{m.prompt}</div>
-            {m.error_detail && <div className="notice bad mt">{m.error_detail}</div>}
-            {m.status === "pending" && <button className="sm ghost mt" onClick={() => { const url = prompt("URL of the finished asset"); if (url) run("Attached", () => mk.completeMedia(m.id, url)).then(media.reload); }}>Attach result</button>}
+      <h3>Image library</h3>
+      {assets.loading ? <Loading /> : !(assets.data || []).length ? <Empty>No images yet — generate or upload one.</Empty> : (
+        <div className="grid cols-4 mb" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>{(assets.data || []).map((a) => (
+          <div key={a.id} className="card" style={{ padding: 10 }}>
+            <img src={a.url} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, background: "var(--panel-2)" }} />
+            <div className="row between mt"><span className="clip" title={a.title} style={{ maxWidth: 140 }}>{a.title || "untitled"}</span><span className="badge">{a.source}</span></div>
           </div>
         ))}</div>
+      )}
+      <h3>Requests</h3>
+      {media.loading ? <Loading /> : !(media.data || []).length ? <Empty>No generation requests.</Empty> : (
+        <div className="card table-wrap"><table>
+          <thead><tr><th>Prompt</th><th>Type</th><th>Status</th><th>Result</th></tr></thead>
+          <tbody>{(media.data || []).map((m) => (
+            <tr key={m.id}><td style={{ maxWidth: 420 }}>{m.prompt}</td><td>{m.media_type}</td><td><StatusBadge value={m.status} /></td>
+              <td>{m.result_url ? <a href={m.result_url} target="_blank" rel="noreferrer">open</a> : m.error_detail ? <span style={{ color: "var(--bad)" }}>{m.error_detail}</span> : m.status === "pending" ? <span className="muted">waiting for an image provider (Integrations → OpenAI)</span> : "—"}</td></tr>
+          ))}</tbody>
+        </table></div>
       )}
     </>
   );

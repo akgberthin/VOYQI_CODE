@@ -16,6 +16,9 @@ class RouteConfig:
     # registration, refresh, password reset, and health checks. Every
     # other path under the prefix requires a valid access token.
     public_paths: frozenset[str] = field(default_factory=frozenset)
+    # Path prefixes under which everything is public (hosted media that
+    # social platforms download by URL).
+    public_prefixes: tuple[str, ...] = ()
 
 
 ROUTE_TABLE: list[RouteConfig] = [
@@ -38,6 +41,7 @@ ROUTE_TABLE: list[RouteConfig] = [
         prefix="/api/v1/marketing",
         target_base_url="http://marketing-svc:8007",
         public_paths=frozenset({"/api/v1/marketing/public/lead-captures"}),
+        public_prefixes=("/api/v1/marketing/public/media/",),
     ),
     RouteConfig(prefix="/api/v1/dms", target_base_url="http://dms-svc:8008"),
     RouteConfig(prefix="/api/v1/pricing", target_base_url="http://pricing-svc:8010"),
@@ -75,4 +79,4 @@ def resolve_route(path: str) -> RouteConfig | None:
 
 
 def is_public_path(route: RouteConfig, path: str) -> bool:
-    return path in route.public_paths
+    return path in route.public_paths or (bool(route.public_prefixes) and path.startswith(route.public_prefixes) and ".." not in path)

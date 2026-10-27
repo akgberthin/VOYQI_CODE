@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from src.core.database import Base, get_db
+from src.core.database import Base, get_db, get_session_factory
 from src.main import app
 
 TEST_DATABASE_URL = "sqlite+aiosqlite://"
@@ -38,6 +38,7 @@ async def client(db_engine):
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: session_maker
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

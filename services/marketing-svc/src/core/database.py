@@ -69,3 +69,9 @@ async def init_models() -> None:
         return
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+def get_session_factory():
+    """Session factory for work that outlives the request (background
+    generation); tests override it with their own database."""
+    return AsyncSessionLocal

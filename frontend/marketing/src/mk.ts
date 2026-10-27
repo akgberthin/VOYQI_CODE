@@ -62,7 +62,9 @@ export const mk = {
   connectAccount: (body: { platform: string; handle: string }) => must(post(`${M}/social/accounts`, body)),
   disconnectAccount: (id: string) => must(post(`${M}/social/accounts/${id}/disconnect`)),
   posts: () => must<any[]>(get(`${M}/social/posts`)),
-  schedulePost: (body: { social_account_id: string; content_draft_id: string; scheduled_at: string }) => must(post(`${M}/social/posts`, body)),
+  schedulePost: (body: { social_account_id: string; content_draft_id: string; scheduled_at: string; media_asset_id?: string | null }) => must(post(`${M}/social/posts`, body)),
+  assets: () => must<{ id: string; title: string; content_type: string; source: string; url: string; created_at: string }[]>(get(`${M}/media`)),
+  uploadAsset: (body: { title: string; content_type: string; data_base64: string; created_by: string }) => must<{ id: string; url: string }>(post(`${M}/media`, body)),
   publishPost: (id: string) => must(post(`${M}/social/posts/${id}/publish`, {})),
 
   abTests: (campaign_id?: string) => must<any[]>(get(`${M}/ab-tests${q({ campaign_id })}`)),
@@ -88,3 +90,13 @@ export const money = (n: number) => "$" + Number(n || 0).toLocaleString("en-US",
 /** datetime-local input value → ISO string in UTC. */
 export const toIso = (local: string) => new Date(local).toISOString();
 export const inHours = (h: number) => { const d = new Date(Date.now() + h * 3600e3); d.setMinutes(0, 0, 0); return new Date(d.getTime() - d.getTimezoneOffset() * 60e3).toISOString().slice(0, 16); };
+
+/** File → base64 (without the data: prefix) for upload. */
+export function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",", 2)[1] || "");
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}

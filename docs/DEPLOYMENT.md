@@ -52,6 +52,7 @@ so a service is renamed in the code and the catalog together or not at all.
    | `ai-orchestration-batch-secrets` | `AI_ORCH_DATABASE_URL`, `AI_ORCH_ANTHROPIC_API_KEY` (batch Workspace key), `AI_ORCH_INTERNAL_TOKEN` |
    | `rbac-svc-secrets` | `RBAC_DATABASE_URL`, `RBAC_INTEGRATIONS_KEY` (Fernet key that encrypts the credentials entered under super admin → Integrations; losing it makes them unreadable), `RBAC_INTERNAL_TOKEN` |
    | `notification-svc-secrets` | `NOTIF_DATABASE_URL`, `NOTIF_INTERNAL_TOKEN` (same value as `RBAC_INTERNAL_TOKEN`) |
+   | `marketing-svc-secrets` | `MARKETING_DATABASE_URL`, `MARKETING_INTERNAL_TOKEN` (same value), `MARKETING_PUBLIC_BASE_URL` (the gateway's public https URL — Instagram and Facebook download post images from it) |
    | `fleet-svc-secrets` | `FLEET_DATABASE_URL`, `FLEET_MQTT_PASSWORD` (the `fleet-svc` user in `mqtt-broker-passwords`) |
    | `payment-svc-secrets` | `PAYMENT_STRIPE_API_KEY`, `PAYMENT_STRIPE_WEBHOOK_SECRET` |
    | (provider credentials) | SMTP, Twilio, FCM, Meta, LinkedIn, X, OpenAI, Stripe and per-tenant Anthropic keys are entered in the super admin console → Integrations, encrypted with `RBAC_INTEGRATIONS_KEY`. `NOTIF_SMTP_*` env settings remain as a platform-wide email fallback. |

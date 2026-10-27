@@ -48,6 +48,7 @@ class PostSchedule(BaseModel):
     social_account_id: uuid.UUID
     content_draft_id: uuid.UUID
     scheduled_at: datetime
+    media_asset_id: uuid.UUID | None = None
 
 
 class PostOut(BaseModel):
@@ -59,12 +60,15 @@ class PostOut(BaseModel):
     status: str
     published_at: datetime | None
     platform_post_id: str | None
+    delivery_mode: str
+    error_detail: str
+    media_asset_id: uuid.UUID | None
 
 
 @router.post("/posts", response_model=PostOut, status_code=201)
 async def schedule_post(body: PostSchedule, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     try:
-        return await social_engine.schedule_post(db, tenant_id, body.social_account_id, body.content_draft_id, body.scheduled_at)
+        return await social_engine.schedule_post(db, tenant_id, body.social_account_id, body.content_draft_id, body.scheduled_at, body.media_asset_id)
     except social_engine.DraftNotApprovedError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
@@ -86,5 +90,7 @@ async def publish_post(post_id: uuid.UUID, body: PublishRequest, tenant_id: str 
     requires no further click."""
     try:
         return await social_engine.publish_post(db, tenant_id, post_id, body.platform_post_id)
+    except social_engine.AlreadyPublishedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
