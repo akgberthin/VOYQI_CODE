@@ -14,6 +14,16 @@ from src.seo.models import SeoLocalRank, SeoLocation, SeoSite
 
 AGENT_ITEMS = {i["item"] for i in GBP_CHECKLIST if i["agent_can_do"]}
 LOCATION_FIELDS = ("name", "address", "phone", "website", "categories", "services", "hours", "gbp_location_id", "citations", "local_keywords")
+_FIELD_TYPES = {"address": dict, "hours": dict, "profile": dict, "categories": list, "services": list, "citations": list,
+                "local_keywords": list, "phone": str, "website": str}
+
+
+def _check_types(body: dict) -> None:
+    """A 422 for a wrongly shaped field (e.g. the address as one string
+    instead of {street, city, …}) rather than a crash while scoring it."""
+    for field, kind in _FIELD_TYPES.items():
+        if body.get(field) is not None and not isinstance(body[field], kind):
+            raise invalid(f"{field} must be {'an object' if kind is dict else 'a list' if kind is list else 'text'}")
 
 
 def checklist() -> list[dict]:
@@ -28,6 +38,7 @@ async def create_location(db: AsyncSession, tenant_id: str, site_id: str, body: 
     site = await get_site(db, tenant_id, site_id)
     if not str(body.get("name") or "").strip():
         raise invalid("name is required")
+    _check_types(body)
     loc = SeoLocation(tenant_id=tenant_id, site_id=site.id, name=body["name"].strip()[:256], profile=body.get("profile") or {},
                       **{f: body[f] for f in LOCATION_FIELDS if f in body and f != "name"})
     loc.gbp_score, loc.gbp_missing = rules.gbp_score(loc)
@@ -40,6 +51,7 @@ async def create_location(db: AsyncSession, tenant_id: str, site_id: str, body: 
 async def update_location(db: AsyncSession, tenant_id: str, location_id: str, body: dict, actor: str) -> SeoLocation:
     if is_agent(actor):
         raise hard_gate("a location's name, address, phone, hours and categories are changed by a person; agents use the profile changes")
+    _check_types(body)
     loc = await get_owned(db, SeoLocation, tenant_id, location_id, "location")
     for f in LOCATION_FIELDS:
         if f in body:

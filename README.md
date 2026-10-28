@@ -15,6 +15,7 @@ and a database per service.
 | `scripts/` | Demo seed, guided demo walkthrough, role smoke test, telematics simulator, manifest generator |
 | `docs/` | Architecture, service inventory, port registry, autonomy tiering, AI scaling |
 | `docs/implementation-guides/` | Per-module implementation and installation guides |
+| `frontend/` | The console: one Next.js app with the super admin (`/admin`) and marketing (`/marketing`) consoles |
 | `prototypes/` | Single-file HTML UI prototypes (design reference, not the production frontend) |
 
 ## Run locally
@@ -46,11 +47,32 @@ In deployed environments devices use mutual TLS with the VIN as the
 certificate Common Name, and the broker only lets a device publish under
 its own VIN (`infrastructure/mqtt/`, `docs/DEPLOYMENT.md`).
 
+## Console (Next.js)
+
+`frontend/` is one Next.js (App Router, TypeScript) app holding both
+consoles behind a single sign-in. After login it checks with the gateway
+which consoles the account may use and shows only those; an account with
+both gets a switcher in the top bar.
+
+```bash
+docker compose up -d                    # http://localhost:3001
+# or, while developing:
+cd frontend && npm install
+VOYQI_GATEWAY_URL=http://localhost:8000 npm run dev    # http://localhost:3000
+```
+
+The browser only talks to the console's own origin: `/api/*` is
+forwarded to the gateway by `src/app/api/[...path]/route.ts` (target from
+`VOYQI_GATEWAY_URL`, read at request time), so the HttpOnly session
+cookie stays same-origin. Layout: `src/app/` routes, `src/features/admin`
+and `src/features/marketing` pages, `src/lib` (API client, session, UI
+kit), `src/components` (shell, login).
+
 ## Super admin console
 
-`frontend/super-admin` (React + TypeScript) — the operator's control
-panel for the whole platform, signed in through the gateway as a user
-with the platform permission (`super.admin@voyqi.example` in the demo):
+`/admin` — the operator's control panel for the whole platform, for a
+user with the platform permission (`super.admin@voyqi.example` in the
+demo):
 
 - **Services & APIs** — health of every service, and every API each one
   exposes, callable from forms generated from the service's OpenAPI
@@ -62,15 +84,10 @@ with the platform permission (`super.admin@voyqi.example` in the demo):
 - **Access & security** — users, roles, overrides, ABAC policies,
   tenants, break-glass/impersonation sessions and the audit log.
 
-```bash
-docker compose up -d                    # serves it at http://localhost:3001
-# or, while developing: cd frontend && npm install && npm run dev -w super-admin   # :5180
-```
-
 ## Marketing console
 
-`frontend/marketing` (:3002) — the Marketing Command Center, signed in
-as a user with marketing permissions (`marketing.manager@voyqi.example`):
+`/marketing` — the Marketing Command Center, for a user with marketing
+permissions (`marketing.manager@voyqi.example`):
 
 - **Campaigns & composers** — email, SMS, push and voice with live
   preview; content through the brand/compliance guardrail; sends go to
@@ -97,14 +114,6 @@ as a user with marketing permissions (`marketing.manager@voyqi.example`):
 Dev inbox: emails sent by the platform appear in Mailpit at
 http://localhost:8125 once the SMTP integration points at host `mailpit`,
 port 1025, STARTTLS false.
-
-```bash
-docker compose up -d                    # http://localhost:3002
-# or: cd frontend && npm install && npm run dev -w marketing    # :5181
-```
-
-The consoles share `frontend/shared/` (API client, session, layout, UI
-kit) through npm workspaces.
 
 ## Growth / SEO engine and agents
 
@@ -250,7 +259,7 @@ pick up changes within a minute.
 | 8021 | crm-svc | 8035 | capital-finance-svc |
 | 9092 | Kafka | 8036 | originations-svc (also `/api/v1/org`) |
 | 6379 | Redis | 1883 | MQTT broker (Mosquitto) |
-| 3001 | Super admin console | 3002 | Marketing console |
+| 3001 | Console (`/admin`, `/marketing`) | | |
 
 The Kubernetes service catalog uses the same names and ports.
 

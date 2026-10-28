@@ -319,3 +319,13 @@ async def test_email_intake(client, monkeypatch):
     assert tasks[sneaky["task_ids"][0]]["status"] == "awaiting_approval"
     r = await client.post(f"/api/v1/marketing/public/seo/inbound/{sid}?token=wrong", json={"sender": "marketing@voyqi.com"})
     assert r.status_code == 404
+
+
+async def test_location_with_wrongly_shaped_fields_is_refused_not_crashed(client):
+    site = await make_site(client, kinds=())
+    r = await client.post(f"{P}/sites/{site['id']}/local/locations", json={"name": "Hub", "address": "1 Brickell Ave, Miami"}, headers=PERSON)
+    assert r.status_code == 422 and "address must be an object" in r.json()["detail"]
+    loc = (await client.post(f"{P}/sites/{site['id']}/local/locations", json={"name": "Hub", "address": {"street": "1 Brickell Ave", "city": "Miami"}},
+                             headers=PERSON)).json()
+    r = await client.patch(f"{P}/local/locations/{loc['id']}", json={"categories": "Car rental"}, headers=PERSON)
+    assert r.status_code == 422 and "categories must be a list" in r.json()["detail"]

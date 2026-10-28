@@ -50,26 +50,16 @@ services:
       retries: 20
 
 
-  # Super admin console (frontend/super-admin): http://localhost:3001
-  super-admin:
+  # The console (frontend/, Next.js): super admin at
+  # http://localhost:3001/admin, marketing at http://localhost:3001/marketing
+  console:
     build:
       context: ./frontend
-      dockerfile: super-admin/Dockerfile
     restart: unless-stopped
+    environment:
+      VOYQI_GATEWAY_URL: http://api-gateway-svc:8000
     ports:
-      - "3001:80"
-    depends_on:
-      api-gateway-svc:
-        condition: service_started
-
-  # Marketing command center (frontend/marketing): http://localhost:3002
-  marketing-console:
-    build:
-      context: ./frontend
-      dockerfile: marketing/Dockerfile
-    restart: unless-stopped
-    ports:
-      - "3002:80"
+      - "3001:3000"
     depends_on:
       api-gateway-svc:
         condition: service_started
