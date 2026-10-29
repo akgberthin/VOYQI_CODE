@@ -16,7 +16,25 @@ export function Social() {
   const drafts = useLoad(async () => (await mk.drafts(undefined, "approved")).filter((d) => d.channel === "social"));
   const assets = useLoad(() => mk.assets());
   const [acct, setAcct] = useState({ platform: "instagram", handle: "" });
-  const [post, setPost] = useState({ social_account_id: "", content_draft_id: "", media_asset_id: "", at: inHours(4), recurrence: "none" });
+  const [post, setPost] = useState({ account_ids: [] as string[], content_draft_id: "", media_asset_id: "", hashtags: "", at: inHours(4), recurrence: "none" });
+  const { me } = useSession();
+  const chosen = (drafts.data || []).find((d) => d.id === post.content_draft_id);
+  const tags = post.hashtags.split(/[\s,]+/).filter(Boolean).map((t) => (t.startsWith("#") ? t : `#${t}`)).join(" ");
+  const copy = chosen ? (tags ? `${chosen.body_text}\n\n${tags}` : chosen.body_text) : "";
+  const onX = post.account_ids.some((id) => (accounts.data || []).find((a) => a.id === id)?.platform === "twitter");
+  const schedule = () => run(`Scheduled on ${post.account_ids.length} account(s) — publishes automatically`, async () => {
+    // A draft backs exactly one post, so every account after the first (and
+    // any copy with hashtags) gets its own guardrail-checked draft.
+    for (const [i, id] of post.account_ids.entries()) {
+      let draftId = post.content_draft_id;
+      if ((tags || i > 0) && chosen) {
+        const d = await mk.createDraft({ campaign_id: chosen.campaign_id, channel: "social", body_text: copy, created_by: me?.email || "marketing" } as any);
+        if (d.status !== "approved") throw new Error("The copy was held by the guardrail — review it under Content review.");
+        draftId = d.id;
+      }
+      await mk.schedulePost({ social_account_id: id, content_draft_id: draftId, media_asset_id: post.media_asset_id || null, scheduled_at: toIso(post.at), recurrence: post.recurrence });
+    }
+  }).then((ok) => { if (ok) { setPost({ ...post, account_ids: [], hashtags: "" }); reloadAll(); } });
   const reloadAll = () => { accounts.reload(); posts.reload(); drafts.reload(); };
   const handle = (id: string) => (accounts.data || []).find((a) => a.id === id);
   return (
@@ -40,16 +58,28 @@ export function Social() {
           <h3>Schedule a post</h3>
           {!(drafts.data || []).length ? <div className="sub mt">No approved social content. <Link href="/marketing/campaigns">Create a social campaign</Link> and draft a post.</div> : (
             <div className="form mt">
-              <label className="field">Account<select value={post.social_account_id} onChange={(e) => setPost({ ...post, social_account_id: e.target.value })}><option value="">— choose —</option>{(accounts.data || []).filter((a) => a.connected).map((a) => <option key={a.id} value={a.id}>{a.platform} {a.handle}</option>)}</select></label>
+              <div className="field" style={{ gridColumn: "1 / -1" }}>Target platforms
+                <div className="row">{(accounts.data || []).filter((a) => a.connected).map((a) => (
+                  <label key={a.id} className="badge" style={{ cursor: "pointer" }}><input type="checkbox" checked={post.account_ids.includes(a.id)} onChange={(e) => setPost({ ...post, account_ids: e.target.checked ? [...post.account_ids, a.id] : post.account_ids.filter((x) => x !== a.id) })} /> {a.platform} {a.handle}</label>
+                ))}</div>
+              </div>
               <label className="field">Content<select value={post.content_draft_id} onChange={(e) => setPost({ ...post, content_draft_id: e.target.value })}><option value="">— choose —</option>{(drafts.data || []).map((d) => <option key={d.id} value={d.id}>{d.body_text.slice(0, 50)}</option>)}</select></label>
               <label className="field">Image<select value={post.media_asset_id} onChange={(e) => setPost({ ...post, media_asset_id: e.target.value })}><option value="">none</option>{(assets.data || []).map((a) => <option key={a.id} value={a.id}>{a.title.slice(0, 50) || a.id.slice(0, 8)} ({a.source})</option>)}</select></label>
+              <label className="field">Hashtags<input value={post.hashtags} placeholder="#VOYQI #PortableMobility" onChange={(e) => setPost({ ...post, hashtags: e.target.value })} /></label>
               <label className="field">When<input type="datetime-local" value={post.at} onChange={(e) => setPost({ ...post, at: e.target.value })} /></label>
               <label className="field">Repeat<select value={post.recurrence} onChange={(e) => setPost({ ...post, recurrence: e.target.value })}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
             </div>
           )}
-          {post.media_asset_id && <img src={(assets.data || []).find((a) => a.id === post.media_asset_id)?.url} alt="" style={{ maxWidth: 220, borderRadius: 8, marginTop: 10 }} />}
-          {(accounts.data || []).find((a) => a.id === post.social_account_id)?.platform === "instagram" && !post.media_asset_id && <div className="notice warn mt">Instagram only publishes posts with an image.</div>}
-          <button className="mt" disabled={!post.social_account_id || !post.content_draft_id} onClick={() => run("Post scheduled — it publishes automatically at that time", () => mk.schedulePost({ social_account_id: post.social_account_id, content_draft_id: post.content_draft_id, media_asset_id: post.media_asset_id || null, scheduled_at: toIso(post.at), recurrence: post.recurrence })).then(reloadAll)}>Schedule post</button>
+          {post.account_ids.some((id) => (accounts.data || []).find((a) => a.id === id)?.platform === "instagram") && !post.media_asset_id && <div className="notice warn mt">Instagram only publishes posts with an image.</div>}
+          {chosen && (
+            <div className="card mt" style={{ background: "var(--panel-2)" }}>
+              <div className="row"><span className="avatar" style={{ width: 26, height: 26, fontSize: 11 }}>V</span><b>VOYQI Mobility</b><span className="muted">@voyqimobility</span></div>
+              {post.media_asset_id && <img src={(assets.data || []).find((a) => a.id === post.media_asset_id)?.url} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 8 }} />}
+              <div className="mt" style={{ whiteSpace: "pre-wrap" }}>{copy}</div>
+              <div className={`counter ${onX && copy.length > 280 ? "over" : ""}`}>{copy.length}{onX ? " / 280 (X)" : ""} characters</div>
+            </div>
+          )}
+          <button className="mt" disabled={!post.account_ids.length || !post.content_draft_id || (onX && copy.length > 280)} onClick={schedule}>Schedule post{post.account_ids.length > 1 ? ` on ${post.account_ids.length} accounts` : ""}</button>
         </div>
       </div>
       <h3>Posts</h3>

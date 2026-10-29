@@ -237,3 +237,19 @@ def build_tool_dispatch(tenant_id: str, agent_key: str) -> dict:
         "publish_social_post": lambda inp: publish_social_post(tenant_id, inp["post_id"]),
         "evaluate_ab_test": lambda inp: evaluate_ab_test(tenant_id, inp["test_id"]),
     }
+
+
+def sync_contact_attributes(tenant_id: str, member_profile_id: str, attributes: dict[str, Any], email: str | None = None, phone: str | None = None) -> dict[str, Any]:
+    """Shares a member's computed attributes (churn_risk, upgrade_ready, …)
+    with marketing, where they target audiences and start the churn /
+    upgrade journeys. Best effort: marketing being unreachable never stops
+    the agent's own decision."""
+    settings = get_settings()
+    body = {"contacts": [{"member_profile_id": member_profile_id, "email": email, "phone": phone, "attributes": attributes}], "source": "member_experience_agent"}
+    try:
+        with httpx.Client(base_url=settings.marketing_svc_base_url, timeout=5.0) as client:
+            resp = client.post("/api/v1/marketing/audience/contacts/sync", json=body, headers=_headers(tenant_id))
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPError as exc:
+        return {"error": f"marketing unreachable ({type(exc).__name__})"}

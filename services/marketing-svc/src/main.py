@@ -23,6 +23,7 @@ from src.api import (
     sends,
     social,
     suppression,
+    tracking,
 )
 from src.core.config import get_settings
 from src.core.database import AsyncSessionLocal, init_models
@@ -78,6 +79,8 @@ app.include_router(autopilot.router)
 app.include_router(media_generation.router)
 app.include_router(seo.router)
 app.include_router(seo.public_router)
+app.include_router(tracking.router)
+app.include_router(tracking.public_router)
 app.add_exception_handler(SeoError, seo.seo_error_handler)
 app.add_exception_handler(RuleError, seo.rule_error_handler)
 

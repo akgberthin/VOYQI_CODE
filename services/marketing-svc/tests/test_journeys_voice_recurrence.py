@@ -63,7 +63,7 @@ async def _advance(db_engine, journey_id):
 
 async def test_templates_and_validation(client):
     templates = (await client.get(f"{M}/journeys/templates", headers=H)).json()
-    assert {t["key"] for t in templates} == {"welcome", "lead_nurture", "winback", "churn_prevention"}
+    assert {t["key"] for t in templates} == {"welcome", "lead_nurture", "winback", "churn_prevention", "upgrade_readiness"}
     bad = await client.post(f"{M}/journeys", json={"name": "x", "steps": [{"channel": "fax", "body": "x"}]}, headers=H)
     assert bad.status_code == 422 and "channel" in bad.json()["detail"]
     assert (await client.post(f"{M}/journeys", json={"name": "x", "steps": []}, headers=H)).status_code == 422

@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,6 +53,29 @@ async def estimate(body: EstimateIn, tenant_id: str = Depends(get_tenant_id), db
         return await audience_engine.estimate(db, tenant_id, body.filter_criteria)
     except audience_engine.InvalidCriteria as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+class ContactSync(BaseModel):
+    member_profile_id: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    name: str | None = None
+    attributes: dict = {}
+
+
+class ContactsSyncIn(BaseModel):
+    contacts: list[ContactSync]
+    source: str = "sync"
+
+
+@router.post("/contacts/sync")
+async def sync_contacts(body: ContactsSyncIn, tenant_id: str = Depends(get_tenant_id), x_ai_initiated: str | None = Header(default=None),
+                        db: AsyncSession = Depends(get_db)):
+    """Attributes computed elsewhere (churn_risk, upgrade_ready, …) for
+    contacts matched by member_profile_id, email or phone. Crossing into
+    high churn risk or becoming upgrade-ready starts the matching journeys."""
+    source = f"ai:{x_ai_initiated}" if x_ai_initiated else body.source
+    return await audience_engine.sync_contacts(db, tenant_id, [c.model_dump() for c in body.contacts], source)
 
 
 @router.get("/attributes")

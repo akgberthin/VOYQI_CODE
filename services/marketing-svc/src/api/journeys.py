@@ -134,6 +134,8 @@ class SettingsIn(BaseModel):
     timezone: str | None = None
     voice_window_start: int | None = None
     voice_window_end: int | None = None
+    sms_window_start: int | None = None
+    sms_window_end: int | None = None
     report_frequency: str | None = None
     report_recipients: list[str] | None = None
 
@@ -143,6 +145,7 @@ async def get_settings_(tenant_id: str = Depends(get_tenant_id), db: AsyncSessio
     s = await channel_policy.get(db, tenant_id)
     return {"timezone": s.timezone, "voice_window_start": s.voice_window_start, "voice_window_end": s.voice_window_end,
             "voice_window_open_now": channel_policy.in_voice_window(s), "updated_by": s.updated_by,
+            "sms_window_start": s.sms_window_start, "sms_window_end": s.sms_window_end, "sms_window_open_now": channel_policy.in_sms_window(s),
             "report_frequency": s.report_frequency, "report_recipients": s.report_recipients or [],
             "report_last_sent_at": s.report_last_sent_at}
 

@@ -17,7 +17,8 @@ const HINT: Record<string, string> = {
 };
 const LIMIT: Record<string, number> = { sms: 320, push: 120 };
 const STOP_LINE = "Reply STOP to opt out.";
-const EMPTY = { from_name: "", reply_to: "", preview_text: "", append_stop: true, deep_link: "", notification_type: "promotional", voice: "Polly.Joanna" };
+const EMPTY = { from_name: "", reply_to: "", preview_text: "", append_stop: true, sender_id: "", media_url: "", deep_link: "", notification_type: "promotional", platforms: [] as string[], voice: "Polly.Joanna" };
+const PLATFORMS: [string, string][] = [["ios", "iOS (APNs)"], ["android", "Android (FCM)"], ["web", "Web push"]];
 
 export default function Compose() {
   const { channel = "email" } = useParams<{ channel: string }>();
@@ -26,6 +27,8 @@ export default function Compose() {
   const actor = me?.email || "marketing";
   const campaigns = useLoad(() => mk.campaigns(channel), [channel]);
   const library = useLoad(() => mk.library(channel), [channel]);
+  const assets = useLoad(() => (channel === "sms" ? mk.assets() : Promise.resolve([])), [channel]);
+  const policy = useLoad(() => mk.settings());
   const [campaignId, setCampaignId] = useState("");
   const [newName, setNewName] = useState("");
   const [subject, setSubject] = useState("");
@@ -46,8 +49,8 @@ export default function Compose() {
   /** The options this channel sends with every delivery. */
   const options = (): Record<string, unknown> => {
     if (channel === "email") return { from_name: o.from_name, reply_to: o.reply_to, preview_text: o.preview_text };
-    if (channel === "sms") return { append_stop: o.append_stop };
-    if (channel === "push") return { deep_link: o.deep_link, notification_type: o.notification_type };
+    if (channel === "sms") return { append_stop: o.append_stop, sender_id: o.sender_id, media_url: o.media_url };
+    if (channel === "push") return { deep_link: o.deep_link, notification_type: o.notification_type, ...(o.platforms.length && o.platforms.length < 3 ? { platforms: o.platforms } : {}) };
     if (channel === "voice") return { voice: o.voice, language: VOICES.find(([k]) => k === o.voice)?.[2] };
     return {};
   };
@@ -131,11 +134,25 @@ export default function Compose() {
               <label className="field">Preview text<input value={o.preview_text} placeholder="The line inboxes show after the subject" onChange={(e) => setO({ ...o, preview_text: e.target.value })} /><span className={o.preview_text.length > 140 ? "counter over" : "counter"}>{o.preview_text.length}/140</span></label>
             </>
           )}
+          {channel === "sms" && (
+            <>
+              <div className="form mt">
+                <label className="field">Sender ID (optional)<input value={o.sender_id} maxLength={16} placeholder="VOYQI — or leave blank for your number" onChange={(e) => setO({ ...o, sender_id: e.target.value })} /></label>
+                <label className="field">MMS image<select value={o.media_url} onChange={(e) => setO({ ...o, media_url: e.target.value })}><option value="">No — SMS only</option>{(assets.data || []).filter((a) => a.url.startsWith("https://")).map((a) => <option key={a.id} value={a.url}>{a.title || a.id.slice(0, 8)}</option>)}</select></label>
+              </div>
+              <div className="muted" style={{ fontSize: 12 }}>Alphanumeric sender IDs aren&apos;t allowed by US carriers. MMS images must be publicly reachable over https (images uploaded in AI studio are).
+                {policy.data && <> Texts go out {policy.data.sms_window_start}:00–{policy.data.sms_window_end}:00 {policy.data.timezone} — outside that they wait (quiet hours, set under Audience).</>}</div>
+            </>
+          )}
           {channel === "push" && (
             <div className="form mt">
               <label className="field">Title<input value={subject} maxLength={65} onChange={(e) => setSubject(e.target.value)} /><span className={subject.length > 50 ? "counter over" : "counter"}>{subject.length}/50</span></label>
               <label className="field">Opens<select value={o.deep_link} onChange={(e) => setO({ ...o, deep_link: e.target.value })}>{DEEP_LINKS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
               <label className="field">Type<select value={o.notification_type} onChange={(e) => setO({ ...o, notification_type: e.target.value })}><option value="promotional">Promotional</option><option value="transactional">Transactional</option><option value="ai_proactive">AI proactive</option></select></label>
+              <div className="field" style={{ gridColumn: "1 / -1" }}>Platforms
+                <div className="row">{PLATFORMS.map(([k, l]) => <label key={k} className="badge" style={{ cursor: "pointer" }}><input type="checkbox" checked={!o.platforms.length || o.platforms.includes(k)} onChange={(e) => { const cur = o.platforms.length ? o.platforms : PLATFORMS.map(([x]) => x); setO({ ...o, platforms: e.target.checked ? [...cur, k] : cur.filter((x) => x !== k) }); }} /> {l}</label>)}</div>
+                <span className="muted" style={{ fontSize: 11 }}>Narrowing reaches only contacts whose <span className="mono">platform</span> attribute matches.</span>
+              </div>
             </div>
           )}
           {channel === "voice" && (
@@ -186,7 +203,7 @@ export default function Compose() {
                 <div className="phone"><div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>📞 {VOICES.find(([k]) => k === o.voice)?.[1]}</div>
                   <div className="bubble"><span className="muted">This is an automated call from VOYQI. </span>{sample(body) || "Your script…"}</div></div>
               ) : (
-                <div className="phone"><div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>💬 VOYQI</div><div className="bubble">{sample(smsOut) || "Your message…"}</div></div>
+                <div className="phone"><div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>💬 {o.sender_id || "VOYQI"}</div>{o.media_url && <img src={o.media_url} alt="" style={{ width: "100%", borderRadius: 10, marginBottom: 6 }} />}<div className="bubble">{sample(smsOut) || "Your message…"}</div></div>
               )}
             </div>
           </div>

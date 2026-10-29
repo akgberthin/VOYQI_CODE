@@ -115,3 +115,21 @@ async def test_report_schedule_and_email(client, notif, db_engine):  # noqa: F81
 async def test_report_send_needs_someone_to_send_to(client):
     r = await client.post(f"{M}/reports/send", json={}, headers=H)
     assert r.status_code == 422 and "recipients" in r.json()["detail"]
+
+
+def test_sms_and_push_options_are_checked():
+    assert channel_options.validate("sms", {"sender_id": "VOYQI", "media_url": "https://cdn.voyqi.com/a.jpg"}) == {"sender_id": "VOYQI", "media_url": "https://cdn.voyqi.com/a.jpg"}
+    for bad in ({"sender_id": "TOO-LONG-NAME!"}, {"sender_id": "12345"}, {"media_url": "http://x/a.jpg"}):
+        try:
+            channel_options.validate("sms", bad)
+            raise AssertionError(f"accepted {bad}")
+        except channel_options.InvalidOptions:
+            pass
+    assert channel_options.validate("push", {"platforms": ["ios", "ios", "android"]}) == {"platforms": ["android", "ios"]}
+
+
+async def test_push_only_reaches_the_chosen_platforms(client, notif):  # noqa: F811
+    seg = await _segment(client, [{"push_token": "tok-ios", "attributes": {"platform": "ios"}}, {"push_token": "tok-and", "attributes": {"platform": "android"}},
+                                  {"push_token": "tok-web", "attributes": {"platform": "web"}}])
+    r = await _send(client, "push", seg["id"], "Car ready", "Ready", {"platforms": ["ios", "web"]})
+    assert sorted(c["recipient"] for c in notif["calls"]) == ["tok-ios", "tok-web"] and r["recipients_targeted"] == 2

@@ -89,3 +89,12 @@ def test_hosted_marketing_media_is_public_but_nothing_else_under_marketing():
     assert is_public_path(resolve_route(media), media)
     for private in ("/api/v1/marketing/media", "/api/v1/marketing/campaigns", "/api/v1/marketing/public/media/../campaigns"):
         assert not is_public_path(resolve_route(private), private)
+
+
+def test_open_pixel_and_tracked_links_are_public():
+    from src.services.routing import is_public_path, resolve_route
+
+    for path in ("/api/v1/marketing/public/t/o/abc.def.gif", "/api/v1/marketing/public/t/c/abc.def"):
+        assert is_public_path(resolve_route(path), path)
+    for private in ("/api/v1/marketing/analytics/send-times", "/api/v1/marketing/public/t/../campaigns"):
+        assert not is_public_path(resolve_route(private), private)

@@ -180,14 +180,16 @@ function CallingWindow() {
   if (!f) return null;
   return (
     <div className="card mb">
-      <div className="row between"><h3>Calling window</h3><span className={`badge ${data?.voice_window_open_now ? "ok" : "warn"}`}>{data?.voice_window_open_now ? "open now" : "closed now"}</span></div>
-      <div className="sub">AI voice calls are placed only between these hours (local time); outside them, scheduled calls wait for the next window. 08:00-21:00 is the legal limit.</div>
+      <div className="row between"><h3>Calling window & SMS quiet hours</h3><div className="row"><span className={`badge ${data?.voice_window_open_now ? "ok" : "warn"}`}>calls {data?.voice_window_open_now ? "open" : "closed"}</span><span className={`badge ${data?.sms_window_open_now ? "ok" : "warn"}`}>texts {data?.sms_window_open_now ? "open" : "closed"}</span></div></div>
+      <div className="sub">AI voice calls and marketing texts go out only between these hours (local time); outside them, scheduled sends wait for the next window. 08:00-21:00 is the legal limit.</div>
       <div className="form mt">
         <label className="field">Timezone<input value={f.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} /></label>
         <label className="field">From (hour)<input type="number" min={8} max={21} value={f.voice_window_start} onChange={(e) => setF({ ...f, voice_window_start: Number(e.target.value) })} /></label>
         <label className="field">Until (hour)<input type="number" min={8} max={21} value={f.voice_window_end} onChange={(e) => setF({ ...f, voice_window_end: Number(e.target.value) })} /></label>
+        <label className="field">Texts from (hour)<input type="number" min={8} max={21} value={f.sms_window_start} onChange={(e) => setF({ ...f, sms_window_start: Number(e.target.value) })} /></label>
+        <label className="field">Texts until (hour)<input type="number" min={8} max={21} value={f.sms_window_end} onChange={(e) => setF({ ...f, sms_window_end: Number(e.target.value) })} /></label>
       </div>
-      <button className="mt" onClick={() => run("Calling window saved", () => mk.saveSettings({ timezone: f.timezone, voice_window_start: f.voice_window_start, voice_window_end: f.voice_window_end })).then(reload)}>Save</button>
+      <button className="mt" onClick={() => run("Windows saved", () => mk.saveSettings({ timezone: f.timezone, voice_window_start: f.voice_window_start, voice_window_end: f.voice_window_end, sms_window_start: f.sms_window_start, sms_window_end: f.sms_window_end })).then(reload)}>Save</button>
     </div>
   );
 }
@@ -262,7 +264,7 @@ export function AbTests() {
   };
   return (
     <>
-      <PageHead title="A/B tests" text="Two drafts of the same campaign compete. A test concludes only when the difference is statistically significant (p < 0.05, ≥100 per arm) — otherwise it reports insufficient data and keeps running." />
+      <PageHead title="A/B tests" text="Two drafts of the same campaign compete. Sending variant A splits the campaign's audience 50/50 automatically; opens and clicks are tracked per message and the test concludes itself once the difference is statistically significant (p < 0.05, ≥100 per arm). Results can still be entered by hand for channels without tracking." />
       <div className="card mb">
         <h3>New test</h3>
         <div className="form mt">

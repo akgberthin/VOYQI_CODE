@@ -146,3 +146,12 @@ async def test_push_carries_the_deep_link_and_voice_the_chosen_voice(client, con
     assert 'voice="Polly.Lupe" language="es-US"' in twiml
     ok, _mode, _id, _err = await providers.send_push(recipient="tok", body="x", subject="t", tenant_id="other-tenant", data={"deep_link": "voyqi://unlock"})
     assert ok
+
+
+async def test_sms_sender_id_and_mms_image(configured, outbound):
+    configured["twilio"] = TWILIO
+    await providers.send_sms(recipient="+15125550101", body="Your car", tenant_id=TENANT, sender_id="VOYQI", media_url="https://cdn.voyqi.com/car.jpg")
+    form = parse_qs(outbound[-1].content.decode())
+    assert form["From"] == ["VOYQI"] and form["MediaUrl"] == ["https://cdn.voyqi.com/car.jpg"]
+    await providers.send_sms(recipient="+15125550101", body="x", tenant_id=TENANT, media_url="http://insecure.example/a.jpg")
+    assert "MediaUrl" not in parse_qs(outbound[-1].content.decode())

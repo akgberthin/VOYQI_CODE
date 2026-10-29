@@ -107,7 +107,8 @@ async def _deliver(db: AsyncSession, *, tenant_id: str, channel: str, template_k
             recipient=recipient, subject=subject or "", body=body, tenant_id=tenant_id,
             from_name=o.get("from_name"), reply_to=o.get("reply_to"), preview_text=o.get("preview_text"))
     elif channel == Channel.SMS.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_sms(recipient=recipient, body=body, tenant_id=tenant_id)
+        success, delivery_mode, provider_message_id, error = await providers.send_sms(
+            recipient=recipient, body=body, tenant_id=tenant_id, sender_id=o.get("sender_id"), media_url=o.get("media_url"))
     elif channel == Channel.PUSH.value:
         success, delivery_mode, provider_message_id, error = await providers.send_push(
             recipient=recipient, body=body, subject=subject or "", tenant_id=tenant_id,
@@ -136,7 +137,7 @@ async def send_direct(
 ) -> Notification:
     """Already-written content (a marketing send) rather than a template.
     Opt-out preferences still apply. `options` carries channel settings:
-    email from_name / reply_to / preview_text, push deep_link /
+    email from_name / reply_to / preview_text, sms sender_id / media_url, push deep_link /
     notification_type, voice voice / language."""
     if await _is_opted_out(db, tenant_id=tenant_id, user_id=user_id, category=category, channel=channel):
         notification = Notification(

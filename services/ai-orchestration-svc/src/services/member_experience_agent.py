@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core import action_gate
 from src.core.anthropic_client import AnthropicAgentClient
 from src.models import Agent, AgentStatus, DecisionLog
-from src.services import subscription_tools
+from src.services import marketing_tools, subscription_tools
 
 AGENT_KEY = "member_experience_agent"
 
@@ -169,6 +169,9 @@ async def evaluate_churn_risk(
             reasoning += f" Risk score at or above the {CHURN_INTERVENTION_THRESHOLD} intervention threshold — {RETENTION_SAVE_GU_BONUS} GU retention-save bonus queued for approval (tier {gated.tier})."
             action_taken = "churn_score_computed_and_retention_bonus_queued"
 
+    synced = marketing_tools.sync_contact_attributes(
+        tenant_id, member_profile_id, {"churn_risk": round(risk_score)}, email=context.get("email"), phone=context.get("phone"))
+    tools_called.append({"tool": "sync_contact_attributes", "input": {"member_profile_id": member_profile_id, "churn_risk": round(risk_score)}, "result": synced})
     log = await _log_and_count(
         db, tenant_id, "churn_risk.evaluation_requested", {"member_profile_id": member_profile_id, **context},
         reasoning, tools_called, action_taken, "success",
@@ -253,6 +256,10 @@ async def evaluate_upgrade_pattern(
         else:
             reasoning = f"[deterministic fallback — ANTHROPIC_API_KEY not configured] {pattern.get('reasoning', 'no pattern detected')}"
 
+    if case_created:
+        synced = marketing_tools.sync_contact_attributes(tenant_id, member_profile_id, {"upgrade_ready": True, "class": current_class,
+                                                                                         "recommended_class": pattern.get("recommended_class")})
+        tools_called.append({"tool": "sync_contact_attributes", "input": {"member_profile_id": member_profile_id, "upgrade_ready": True}, "result": synced})
     log = await _log_and_count(
         db, tenant_id, "subscription.above_class_request_recorded", {"member_profile_id": member_profile_id, "subscription_id": subscription_id, "current_class": current_class},
         reasoning, tools_called, "upgrade_case_offered" if case_created else "no_pattern_detected", "success",

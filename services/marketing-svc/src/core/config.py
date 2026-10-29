@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     # Public address media is served from (social platforms download
     # images from it): the gateway's external URL in a deployment.
     public_base_url: str = "http://localhost:8000"
+    # Signs open/click tracking links so they can't be forged or turned
+    # into an open redirect. Falls back to internal_token; set it in
+    # production.
+    tracking_secret: str = ""
+    # Track email opens (pixel) and clicks (rewritten links) on marketing sends.
+    tracking_enabled: bool = True
     max_upload_bytes: int = 8 * 1024 * 1024
     # Listen to platform events that start automation journeys.
     journey_events_enabled: bool = True

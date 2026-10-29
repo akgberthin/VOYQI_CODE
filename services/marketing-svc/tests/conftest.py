@@ -62,3 +62,14 @@ def _no_real_delivery(monkeypatch):
         return {"status": "sent", "delivery_mode": "console", "error_message": None}
 
     monkeypatch.setattr(delivery, "deliver", console)
+
+
+@pytest.fixture(autouse=True)
+def _tracking_off_and_sms_window_open(monkeypatch):
+    """Tests see message bodies as written (no tracking pixel or rewritten
+    links) and can text at any hour. Tests about either switch them back."""
+    from src.core.config import get_settings
+    from src.services import channel_policy
+
+    monkeypatch.setattr(get_settings(), "tracking_enabled", False)
+    monkeypatch.setattr(channel_policy, "in_sms_window", lambda settings, now=None: True)

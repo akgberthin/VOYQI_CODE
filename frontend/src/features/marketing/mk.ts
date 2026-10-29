@@ -100,6 +100,7 @@ export const mk = {
   settings: () => must<any>(get(`${M}/settings`)),
   saveSettings: (body: any) => must<any>(api("PUT", `${M}/settings`, body)),
   report: (days: number) => must<any>(get(`${M}/reports?days=${days}`)),
+  sendTimes: () => must<{ timezone: string; cells: { weekday: number; hour: number; sent: number; opened: number; open_rate: number }[]; best: { weekday: number; hour: number; open_rate: number; sent: number }[]; messages: number; note: string | null }>(get(`${M}/analytics/send-times`)),
   sendReport: (days: number, recipients?: string[]) => must<{ sent: number; console: number; failed: string[] }>(post(`${M}/reports/send`, { days, recipients })),
   leads: (campaign_id?: string) => must<any[]>(get(`${M}/lead-captures${q({ campaign_id })}`)),
 };
@@ -136,6 +137,7 @@ export const RECURRENCE: [string, string][] = [["none", "One-time"], ["daily", "
 export const TRIGGERS: [string, string][] = [
   ["manual", "Manual / segment enrolment"], ["user.created", "New user signs up"], ["lead.captured", "Website lead captured"],
   ["crm.person_profile_created", "New CRM contact"], ["subscription.cancelled", "Subscription cancelled"],
+  ["member.churn_risk_high", "Churn risk turns high (Member Experience Agent)"], ["member.upgrade_ready", "Member is ready to upgrade"],
 ];
 
 /** Personalisation tokens a message may use; filled from each contact. */

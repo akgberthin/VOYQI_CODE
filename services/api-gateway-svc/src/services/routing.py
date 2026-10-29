@@ -43,7 +43,9 @@ ROUTE_TABLE: list[RouteConfig] = [
         public_paths=frozenset({"/api/v1/marketing/public/lead-captures"}),
         # Media social platforms download, and the SEO task inbox's
         # inbound mail webhook (checked against its own token).
-        public_prefixes=("/api/v1/marketing/public/media/", "/api/v1/marketing/public/seo/inbound/"),
+        public_prefixes=("/api/v1/marketing/public/media/", "/api/v1/marketing/public/seo/inbound/",
+                         # Open pixel and tracked links, opened from inboxes and phones.
+                         "/api/v1/marketing/public/t/"),
     ),
     RouteConfig(prefix="/api/v1/dms", target_base_url="http://dms-svc:8008"),
     RouteConfig(prefix="/api/v1/pricing", target_base_url="http://pricing-svc:8010"),

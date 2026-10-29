@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useLoad } from "@/lib/ui";
 import { Ch } from "../bits";
 import { CHANNELS, money, mk, pct } from "../mk";
+import { seo } from "../seo/seo";
 
 export default function Overview() {
   const { data, error, loading, reload } = useLoad(async () => {
@@ -32,6 +33,7 @@ export default function Overview() {
         <div className="card kpi"><div className="l">Conversions</div><div className="n">{sum("conversion_count").toLocaleString()}</div><div className="d">{money(sum("revenue_usd"))} revenue</div></div>
         <div className="card kpi"><div className="l">Campaigns</div><div className="n">{active} active</div><div className="d">{data.campaigns.length} total</div></div>
       </div>
+      <SeoStrip />
       <LiveCampaigns campaigns={data.campaigns} snapshots={data.snapshots} sends={data.sends} />
       {data.held.length > 0 && <div className="notice warn mb">{data.held.length} draft{data.held.length > 1 ? "s" : ""} held by the brand/compliance guardrail — <Link href="/marketing/review">review them</Link>.</div>}
       <div className="split mb">
@@ -48,6 +50,7 @@ export default function Overview() {
           ))}</div>
         </div>
       </div>
+      <div className="mb"><SendTimes /></div>
       <div className="split">
         <div className="card">
           <div className="row between"><h3>Campaigns</h3><Link href="/marketing/campaigns">All</Link></div>
@@ -85,5 +88,60 @@ function LiveCampaigns({ campaigns, snapshots, sends }: { campaigns: any[]; snap
         ))}</div>
       </Link>
     ))}</div>
+  );
+}
+
+/** Growth at a glance for the first site, as on the reference dashboard. */
+function SeoStrip() {
+  const { data } = useLoad(async () => {
+    const sites = await seo.get<any[]>("/sites").catch(() => []);
+    return sites.length ? { site: sites[0], dash: await seo.get(`/sites/${sites[0].id}/dashboard`).catch(() => null) } : null;
+  });
+  if (!data?.dash) return null;
+  const d = data.dash;
+  const tiles: [string, string, string][] = [
+    ["Organic clicks · 28d", d.organic.has_data ? d.organic.clicks.toLocaleString() : "—", d.organic.has_data ? `${d.organic.clicks_growth_pct > 0 ? "+" : ""}${d.organic.clicks_growth_pct}%` : "not connected"],
+    ["Top-10 keywords", d.rankings.has_data ? `${d.rankings.top_10}/${d.rankings.tracked}` : "—", ""],
+    ["AI-answer visibility", d.ai_visibility.has_data ? String(d.ai_visibility.overall.score) : "—", ""],
+    ["Authority", d.authority.has_data ? String(d.authority.latest?.authority_score ?? "—") : "—", ""],
+    ["Technical health", d.technical.has_data ? String(d.technical.health_score) : "—", d.technical.has_data ? `${d.technical.open_issues?.critical || 0} critical` : "crawler not connected"],
+  ];
+  return (
+    <div className="card mb">
+      <div className="row between"><h3>SEO & GEO growth · {data.site.domain}</h3><Link href="/marketing/seo"><button className="sm ghost">Open growth overview</button></Link></div>
+      <div className="grid mt" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>{tiles.map(([l, v, sub]) => (
+        <div key={l} className="kpi" style={{ background: "var(--panel-2)", borderRadius: 8, padding: "10px 12px" }}><div className="l">{l}</div><div className="n" style={{ fontSize: 20 }}>{v}</div><div className="d">{sub}</div></div>
+      ))}</div>
+    </div>
+  );
+}
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Email open rate by weekday × hour sent — from tracked opens of real deliveries. */
+export function SendTimes() {
+  const { data } = useLoad(() => mk.sendTimes());
+  if (!data) return null;
+  const cell = (d: number, h: number) => data.cells.find((c) => c.weekday === d && c.hour === h);
+  const max = Math.max(0.01, ...data.cells.map((c) => c.open_rate));
+  return (
+    <div className="card">
+      <div className="row between"><h3>Best send times</h3><span className="muted" style={{ fontSize: 12 }}>email open rate · {data.timezone}</span></div>
+      {data.note ? <div className="empty">{data.note}</div> : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "34px repeat(24, minmax(0, 1fr))", gap: 2, marginTop: 10, fontSize: 10 }}>
+            <span />{Array.from({ length: 24 }, (_, h) => <span key={h} className="muted" style={{ textAlign: "center" }}>{h % 6 === 0 ? h : ""}</span>)}
+            {DAYS.map((day, d) => [
+              <span key={day} className="muted">{day}</span>,
+              ...Array.from({ length: 24 }, (_, h) => {
+                const c = cell(d, h);
+                return <span key={`${d}-${h}`} title={c ? `${day} ${h}:00 — ${Math.round(c.open_rate * 100)}% of ${c.sent}` : `${day} ${h}:00 — no sends`} style={{ height: 14, borderRadius: 2, background: c ? `rgba(214,169,58,${0.15 + 0.85 * (c.open_rate / max)})` : "var(--panel-2)" }} />;
+              }),
+            ])}
+          </div>
+          <div className="muted mt" style={{ fontSize: 12 }}>{data.best.length ? `Best: ${data.best.map((b) => `${DAYS[b.weekday]} ${b.hour}:00 (${Math.round(b.open_rate * 100)}%)`).join(" · ")}` : "Best slots need at least 20 sends in a slot."} · {data.messages.toLocaleString()} tracked emails</div>
+        </>
+      )}
+    </div>
   );
 }

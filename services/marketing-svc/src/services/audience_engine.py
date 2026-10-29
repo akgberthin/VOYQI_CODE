@@ -142,6 +142,64 @@ async def populate(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID, crit
     return await add_members(db, tenant_id, segment_id, hits)
 
 
+# ── Attributes from other services (the Member Experience Agent) ────────
+SYNCED_SEGMENT = "Members (synced)"
+CHURN_HIGH = 50  # same line as the agent's retention intervention threshold
+EVENT_CHURN_HIGH, EVENT_UPGRADE_READY = "member.churn_risk_high", "member.upgrade_ready"
+
+
+def _truthy(v) -> bool:
+    return str(v).strip().lower() in ("1", "true", "yes", "ready")
+
+
+async def sync_contacts(db: AsyncSession, tenant_id: str, items: list[dict], source: str) -> dict:
+    """Merges attributes into every membership of the matching contact
+    (by member_profile_id attribute, email or phone); a contact not known
+    yet is added to the "Members (synced)" segment. A contact crossing
+    into high churn risk, or becoming upgrade-ready, starts the journeys
+    triggered by member.churn_risk_high / member.upgrade_ready."""
+    from src.models import SegmentMember
+    from src.services import journeys
+
+    rows = list((await db.execute(select(SegmentMember).where(SegmentMember.tenant_id == tenant_id))).scalars())
+    updated = added = triggered = 0
+    for item in items:
+        attrs = {k: v for k, v in (item.get("attributes") or {}).items() if v is not None}
+        if item.get("member_profile_id"):
+            attrs["member_profile_id"] = str(item["member_profile_id"])
+        email, phone = (item.get("email") or "").strip().lower(), (item.get("phone") or "").strip()
+        mpid = attrs.get("member_profile_id")
+        mine = [r for r in rows if (mpid and (r.attributes or {}).get("member_profile_id") == mpid) or (email and r.email == email) or (phone and r.phone == phone)]
+        before = {**(mine[0].attributes or {})} if mine else {}
+        if mine:
+            for r in mine:
+                r.attributes = {**(r.attributes or {}), **attrs}
+            updated += 1
+            contact = {"name": mine[0].name, "email": mine[0].email, "phone": mine[0].phone, "push_token": mine[0].push_token, "consent_voice": mine[0].consent_voice}
+        elif email or phone:
+            seg = (await db.execute(select(AudienceSegment).where(AudienceSegment.tenant_id == tenant_id, AudienceSegment.name == SYNCED_SEGMENT))).scalar_one_or_none()
+            if seg is None:
+                seg = AudienceSegment(tenant_id=tenant_id, name=SYNCED_SEGMENT, filter_criteria={}, created_by=source)
+                db.add(seg)
+                await db.flush()
+            row = SegmentMember(tenant_id=tenant_id, segment_id=seg.id, name=(item.get("name") or "").strip(), email=email, phone=phone, attributes=attrs)
+            db.add(row)
+            rows.append(row)
+            seg.member_count += 1
+            added += 1
+            contact = {"name": row.name, "email": email, "phone": phone}
+        else:
+            continue  # nothing to match or reach them by
+        await db.commit()
+        after = {**before, **attrs}
+        churn_now, churn_was = _num(after.get("churn_risk")), _num(before.get("churn_risk"))
+        if churn_now is not None and churn_now >= CHURN_HIGH and (churn_was is None or churn_was < CHURN_HIGH):
+            triggered += await journeys.on_event(db, tenant_id, EVENT_CHURN_HIGH, contact)
+        if _truthy(after.get("upgrade_ready")) and not _truthy(before.get("upgrade_ready")):
+            triggered += await journeys.on_event(db, tenant_id, EVENT_UPGRADE_READY, contact)
+    return {"updated": updated, "added": added, "journeys_started": triggered}
+
+
 async def add_members(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID, members: list[dict]) -> int:
     """Adds contacts, skipping ones already in the segment (same email or
     phone). Keeps member_count equal to the real number of contacts."""
@@ -151,16 +209,16 @@ async def add_members(db: AsyncSession, tenant_id: str, segment_id: uuid.UUID, m
     if segment is None:
         raise ValueError("segment not found")
     existing = (await db.execute(select(SegmentMember).where(SegmentMember.segment_id == segment_id))).scalars().all()
-    seen = {m.email.lower() for m in existing if m.email} | {m.phone for m in existing if m.phone}
+    seen = {m.email.lower() for m in existing if m.email} | {m.phone for m in existing if m.phone} | {m.push_token for m in existing if m.push_token}
     added = 0
     for m in members:
-        email, phone = (m.get("email") or "").strip().lower(), (m.get("phone") or "").strip()
-        if not (email or phone or m.get("push_token")) or (email and email in seen) or (phone and phone in seen):
+        email, phone, token = (m.get("email") or "").strip().lower(), (m.get("phone") or "").strip(), (m.get("push_token") or "").strip()
+        if not (email or phone or token) or (email and email in seen) or (phone and phone in seen) or (not (email or phone) and token in seen):
             continue
         attrs = {str(k).strip(): v for k, v in (m.get("attributes") or {}).items() if str(k).strip() and v not in (None, "")}
         db.add(SegmentMember(tenant_id=tenant_id, segment_id=segment_id, name=(m.get("name") or "").strip(), email=email, phone=phone,
                              push_token=(m.get("push_token") or "").strip(), consent_voice=bool(m.get("consent_voice")), attributes=attrs))
-        seen |= {x for x in (email, phone) if x}
+        seen |= {x for x in (email, phone, token) if x}
         added += 1
     await db.flush()
     segment.member_count = len(existing) + added

@@ -4,14 +4,18 @@ a message may use.
 
 email  preview_text, from_name, reply_to
 sms    append_stop (default true: "Reply STOP to opt out." is added unless
-       the message already says STOP — TCPA/CTIA)
-push   deep_link, notification_type
+       the message already says STOP — TCPA/CTIA), sender_id (alphanumeric
+       sender, where the carrier allows it), media_url (MMS image, https)
+push   deep_link, notification_type, platforms (ios / android / web: only
+       contacts whose `platform` attribute is one of them)
 voice  voice, language
 """
 import re
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PUSH_TYPES = ("promotional", "transactional", "ai_proactive")
+PUSH_PLATFORMS = ("ios", "android", "web")
+SENDER_RE = re.compile(r"^(?=.*[A-Za-z])[A-Za-z0-9 ]{1,11}$|^\+[1-9]\d{7,14}$")
 # Amazon Polly voices Twilio <Say> supports, by the language they speak.
 VOICES = {
     "Polly.Joanna": "en-US", "Polly.Matthew": "en-US", "Polly.Amy": "en-GB", "Polly.Brian": "en-GB",
@@ -32,7 +36,7 @@ class InvalidOptions(ValueError):
 def validate(channel: str, options: dict | None) -> dict:
     """The options this channel accepts, cleaned — or InvalidOptions."""
     o = dict(options or {})
-    allowed = {"email": {"preview_text", "from_name", "reply_to"}, "sms": {"append_stop"}, "push": {"deep_link", "notification_type"},
+    allowed = {"email": {"preview_text", "from_name", "reply_to"}, "sms": {"append_stop", "sender_id", "media_url"}, "push": {"deep_link", "notification_type", "platforms"},
                "voice": {"voice", "language"}}.get(channel, set())
     unknown = set(o) - allowed
     if unknown:
@@ -40,6 +44,11 @@ def validate(channel: str, options: dict | None) -> dict:
     out: dict = {}
     for key, value in o.items():
         if value in (None, ""):
+            continue
+        if key == "platforms":
+            if not isinstance(value, list) or not value or any(p not in PUSH_PLATFORMS for p in value):
+                raise InvalidOptions(f"platforms must be a list of {', '.join(PUSH_PLATFORMS)}")
+            out[key] = sorted(set(value))
             continue
         if key == "append_stop":
             if not isinstance(value, bool):
@@ -49,9 +58,13 @@ def validate(channel: str, options: dict | None) -> dict:
         if not isinstance(value, str):
             raise InvalidOptions(f"{key} must be text")
         value = " ".join(value.split())
-        limits = {"preview_text": 200, "from_name": 80, "reply_to": 320, "deep_link": 512}
+        limits = {"preview_text": 200, "from_name": 80, "reply_to": 320, "deep_link": 512, "media_url": 1024}
         if key in limits and len(value) > limits[key]:
             raise InvalidOptions(f"{key} is longer than {limits[key]} characters")
+        if key == "sender_id" and not SENDER_RE.match(value):
+            raise InvalidOptions("sender_id must be 1-11 letters/digits (with at least one letter) or a +E.164 number")
+        if key == "media_url" and not value.startswith("https://"):
+            raise InvalidOptions("media_url must be an https:// address the carrier can download")
         if key == "reply_to" and not EMAIL_RE.match(value):
             raise InvalidOptions("reply_to must be an email address")
         if key == "notification_type" and value not in PUSH_TYPES:

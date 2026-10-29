@@ -154,7 +154,8 @@ class SegmentMember(Base):
     on. Imported by the marketing team (or synced from CRM/membership)."""
 
     __tablename__ = "segment_members"
-    __table_args__ = (UniqueConstraint("segment_id", "email", "phone", name="uq_segment_member_contact"),)
+    # push_token too: contacts reachable only by push have no email or phone.
+    __table_args__ = (UniqueConstraint("segment_id", "email", "phone", "push_token", name="uq_segment_member_contact"),)
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -478,6 +479,9 @@ class MarketingSettings(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Chicago")
     voice_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
     voice_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    # SMS quiet hours: marketing texts only go out between these (local) hours.
+    sms_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
+    sms_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=21)
     # Emailed performance report: off / weekly / monthly, to these people.
     report_frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="off")
     report_recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
@@ -525,3 +529,28 @@ class JourneyEnrollment(Base):
 # Growth / SEO engine tables live with the engine; importing them here
 # registers them on Base.metadata for Alembic and create_all.
 from src.seo import models as seo_models  # noqa: E402,F401
+
+
+class MessageRecipient(Base):
+    """One message delivered to one contact by a send — what opens and
+    clicks are recorded against (tracking pixel, tracked links), and which
+    A/B arm the contact got."""
+
+    __tablename__ = "message_recipients"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    send_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False, index=True)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False, index=True)
+    content_draft_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    ab_test_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    variant: Mapped[str] = mapped_column(String(1), nullable=False, default="")
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)
+    contact: Mapped[str] = mapped_column(String(512), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    delivery_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    clicks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

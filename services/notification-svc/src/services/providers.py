@@ -94,12 +94,18 @@ async def _twilio(c: dict, resource: str, data: dict) -> Result:
     return _failed(f"Twilio HTTP {resp.status_code}: {message}")
 
 
-async def send_sms(*, recipient: str, body: str, tenant_id: str | None = None) -> Result:
+async def send_sms(*, recipient: str, body: str, tenant_id: str | None = None, sender_id: str | None = None, media_url: str | None = None) -> Result:
+    """`sender_id` replaces the integration's number as the sender (an
+    alphanumeric ID only works where carriers allow it — not the US);
+    `media_url` makes it an MMS with that image."""
     c = await integrations.get(tenant_id, "twilio")
     if not c:
-        return _console("SMS", recipient, body)
+        return _console("SMS", recipient, body + (f" [media {media_url}]" if media_url else ""))
+    data = {"To": recipient, "From": _header(sender_id) or c["from_number"], "Body": body}
+    if media_url and str(media_url).startswith("https://"):
+        data["MediaUrl"] = media_url
     try:
-        return await _twilio(c, "Messages", {"To": recipient, "From": c["from_number"], "Body": body})
+        return await _twilio(c, "Messages", data)
     except httpx.HTTPError as exc:
         return _failed(f"Twilio unreachable: {type(exc).__name__}")
 
