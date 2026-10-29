@@ -1,5 +1,6 @@
 """Per-tenant channel rules: the voice calling window (TCPA-style quiet
 hours, in the tenant's local time) and recurrence arithmetic."""
+import re
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -9,6 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import MarketingSettings
 
 RECURRENCES = ("none", "daily", "weekly", "3x_week")
+
+
+REPORT_FREQUENCIES = ("off", "weekly", "monthly")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class PolicyError(Exception):
@@ -38,6 +43,19 @@ async def save(db: AsyncSession, tenant_id: str, values: dict, actor: str) -> Ma
     if start < 8 or end > 21:
         raise PolicyError("calls are only allowed between 08:00 and 21:00 local time (TCPA)")
     row.timezone, row.voice_window_start, row.voice_window_end, row.updated_by = tz, start, end, actor
+    if "report_frequency" in values:
+        if values["report_frequency"] not in REPORT_FREQUENCIES:
+            raise PolicyError(f"report_frequency must be one of {', '.join(REPORT_FREQUENCIES)}")
+        row.report_frequency = values["report_frequency"]
+    if "report_recipients" in values:
+        emails = []
+        for raw in values["report_recipients"] or []:
+            email = str(raw).strip().lower()
+            if not EMAIL_RE.match(email):
+                raise PolicyError(f"{email!r} is not an email address")
+            if email not in emails:
+                emails.append(email)
+        row.report_recipients = emails
     await db.commit()
     await db.refresh(row)
     return row

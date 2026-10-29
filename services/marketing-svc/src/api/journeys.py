@@ -134,13 +134,17 @@ class SettingsIn(BaseModel):
     timezone: str | None = None
     voice_window_start: int | None = None
     voice_window_end: int | None = None
+    report_frequency: str | None = None
+    report_recipients: list[str] | None = None
 
 
 @router.get("/settings")
 async def get_settings_(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     s = await channel_policy.get(db, tenant_id)
     return {"timezone": s.timezone, "voice_window_start": s.voice_window_start, "voice_window_end": s.voice_window_end,
-            "voice_window_open_now": channel_policy.in_voice_window(s), "updated_by": s.updated_by}
+            "voice_window_open_now": channel_policy.in_voice_window(s), "updated_by": s.updated_by,
+            "report_frequency": s.report_frequency, "report_recipients": s.report_recipients or [],
+            "report_last_sent_at": s.report_last_sent_at}
 
 
 @router.put("/settings")
@@ -155,6 +159,23 @@ async def save_settings(body: SettingsIn, tenant_id: str = Depends(get_tenant_id
 @router.get("/reports")
 async def report(days: int = 30, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     return await reports.build(db, tenant_id, max(1, min(days, 365)))
+
+
+class ReportSendIn(BaseModel):
+    days: int = 30
+    recipients: list[str] | None = None
+
+
+@router.post("/reports/send")
+async def send_report(body: ReportSendIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Emails the report now — to the given people, or the saved recipients."""
+    recipients = body.recipients or (await channel_policy.get(db, tenant_id)).report_recipients or []
+    if not recipients:
+        raise HTTPException(status_code=422, detail="Nobody to send it to: add report recipients first.")
+    bad = [r for r in recipients if not channel_policy.EMAIL_RE.match(str(r).strip())]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"Not an email address: {', '.join(bad)}")
+    return await reports.send(db, tenant_id, max(1, min(body.days, 365)), [str(r).strip().lower() for r in recipients])
 
 
 @router.get("/reports.csv")

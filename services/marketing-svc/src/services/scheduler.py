@@ -9,7 +9,7 @@ from src.seo import agents_bridge
 from src.seo import content as seo_content
 from src.seo import tasks as seo_tasks
 from src.seo.common import SeoError
-from src.services import autopilot, journeys, send_engine, social_engine
+from src.services import autopilot, journeys, reports, send_engine, social_engine
 
 logger = logging.getLogger("marketing-svc.scheduler")
 _cycles: set[asyncio.Task] = set()
@@ -97,6 +97,10 @@ async def run_once(session_factory) -> int:
                 ran += 1
             except Exception:
                 logger.exception("scheduled post %s failed", post_id)
+    try:
+        ran += await reports.send_due(session_factory)
+    except Exception:
+        logger.exception("scheduled report email failed")
     try:
         ran += await run_seo(session_factory)
     except Exception:

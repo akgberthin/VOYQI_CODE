@@ -7,10 +7,11 @@ export const CHANNEL_LABEL: Record<string, string> = { email: "Email", sms: "SMS
 export const CHANNEL_ICON: Record<string, string> = { email: "✉", sms: "💬", push: "🔔", voice: "📞", social: "◎" };
 
 export type Campaign = { id: string; name: string; channel: Channel; objective: string; status: string; audience_segment_id: string | null; created_by: string };
-export type Draft = { id: string; campaign_id: string; channel: Channel; subject_line: string; body_text: string; media_asset_ids: string[]; status: string; guardrail_findings: string[]; reviewed_by: string | null; created_by: string };
+export type Draft = { id: string; campaign_id: string; channel: Channel; subject_line: string; body_text: string; media_asset_ids: string[]; options: Record<string, any>; status: string; guardrail_findings: string[]; reviewed_by: string | null; created_by: string };
 export type Send = { id: string; campaign_id: string; content_draft_id: string; channel: Channel; scheduled_at: string; status: string; recipients_targeted: number; recipients_suppressed: number; recipients_failed: number; recipients_console: number; failure_detail: string; recurrence: string; sent_at: string | null };
 export type Segment = { id: string; name: string; filter_criteria: Record<string, unknown>; member_count: number; created_by: string };
-export type Snapshot = { id: string; campaign_id: string; channel: Channel; sent_count: number; open_count: number; click_count: number; conversion_count: number; revenue_usd: number };
+export type Snapshot = { id: string; campaign_id: string; channel: Channel; sent_count: number; open_count: number; click_count: number; conversion_count: number; revenue_usd: number; snapshot_at: string | null };
+export type Estimate = { total: number; of: number; reachable: Record<"email" | "sms" | "push" | "voice", number> };
 export type CalendarEntry = { id: string; channel: Channel; title: string; scheduled_at: string; reference_id: string; reference_type: string };
 
 const M = "/api/v1/marketing";
@@ -36,9 +37,11 @@ export const mk = {
   executeSend: (id: string, recipient_contacts: string[] = [], consent_confirmed = false) => must<Send>(post(`${M}/sends/${id}/execute`, { recipient_contacts, consent_confirmed })),
 
   segments: () => must<Segment[]>(get(`${M}/audience/segments`)),
-  createSegment: (body: Partial<Segment>) => must<Segment>(post(`${M}/audience/segments`, body)),
+  createSegment: (body: Partial<Segment> & { populate?: boolean }) => must<Segment>(post(`${M}/audience/segments`, body)),
+  estimate: (filter_criteria: Record<string, unknown>) => must<Estimate>(post(`${M}/audience/estimate`, { filter_criteria })),
+  attributes: () => must<Record<string, string[]>>(get(`${M}/audience/attributes`)),
   members: (id: string) => must<any[]>(get(`${M}/audience/segments/${id}/members`)),
-  addMembers: (id: string, members: { name?: string; email?: string; phone?: string; push_token?: string; consent_voice?: boolean }[]) => must<{ added: number; skipped: number }>(post(`${M}/audience/segments/${id}/members`, { members })),
+  addMembers: (id: string, members: { name?: string; email?: string; phone?: string; push_token?: string; consent_voice?: boolean; attributes?: Record<string, unknown> }[]) => must<{ added: number; skipped: number }>(post(`${M}/audience/segments/${id}/members`, { members })),
   removeMember: (id: string, memberId: string) => must(del(`${M}/audience/segments/${id}/members/${memberId}`)),
   setMemberCount: (id: string, member_count: number) => must<Segment>(api_patch(`${M}/audience/segments/${id}/member-count`, { member_count })),
 
@@ -97,6 +100,7 @@ export const mk = {
   settings: () => must<any>(get(`${M}/settings`)),
   saveSettings: (body: any) => must<any>(api("PUT", `${M}/settings`, body)),
   report: (days: number) => must<any>(get(`${M}/reports?days=${days}`)),
+  sendReport: (days: number, recipients?: string[]) => must<{ sent: number; console: number; failed: string[] }>(post(`${M}/reports/send`, { days, recipients })),
   leads: (campaign_id?: string) => must<any[]>(get(`${M}/lead-captures${q({ campaign_id })}`)),
 };
 
@@ -133,3 +137,20 @@ export const TRIGGERS: [string, string][] = [
   ["manual", "Manual / segment enrolment"], ["user.created", "New user signs up"], ["lead.captured", "Website lead captured"],
   ["crm.person_profile_created", "New CRM contact"], ["subscription.cancelled", "Subscription cancelled"],
 ];
+
+/** Personalisation tokens a message may use; filled from each contact. */
+export const TOKENS: [string, string][] = [["first_name", "First name"], ["name", "Full name"], ["city", "City"], ["class", "Mobility class"], ["hub", "Home hub"], ["vehicle", "Vehicle"], ["gu_balance", "GU balance"]];
+export const VOICES: [string, string, string][] = [
+  ["Polly.Joanna", "Joanna — US English, female", "en-US"], ["Polly.Matthew", "Matthew — US English, male", "en-US"], ["Polly.Amy", "Amy — British English, female", "en-GB"],
+  ["Polly.Brian", "Brian — British English, male", "en-GB"], ["Polly.Lupe", "Lupe — US Spanish, female", "es-US"], ["Polly.Miguel", "Miguel — US Spanish, male", "es-US"],
+  ["Polly.Lea", "Léa — French, female", "fr-FR"], ["Polly.Mathieu", "Mathieu — French, male", "fr-FR"], ["Polly.Zeina", "Zeina — Arabic, female", "arb"],
+];
+export const DEEP_LINKS: [string, string][] = [["", "Open the app"], ["voyqi://vehicle/unlock", "Vehicle unlock screen"], ["voyqi://hubs", "Hub map"], ["voyqi://concierge", "Concierge chat"], ["voyqi://membership", "Membership"], ["voyqi://travel", "Travel mode"]];
+
+/** SMS segments: 160 characters (GSM-7) or 70 (Unicode) for one; 153 / 67 per part after that. */
+export function smsParts(text: string): { parts: number; unicode: boolean; perPart: number } {
+  // Anything outside the GSM-7 alphabet forces UCS-2 encoding.
+  const unicode = /[^\n\r\x20-\x7E£¥èéùìòÇØøÅå_ÆæßÉ¡ÄÖÑÜ§¿äöñüà€]/.test(text);
+  const single = unicode ? 70 : 160, multi = unicode ? 67 : 153;
+  return { parts: text.length <= single ? (text ? 1 : 0) : Math.ceil(text.length / multi), unicode, perPart: text.length <= single ? single : multi };
+}

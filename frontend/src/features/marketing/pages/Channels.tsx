@@ -191,13 +191,21 @@ export function Library() {
   const run = useAction();
   const { me } = useSession();
   const [channel, setChannel] = useState("");
-  const { data, loading, reload } = useLoad(() => mk.library(channel || undefined), [channel]);
+  const [q, setQ] = useState("");
+  const { data: all, loading, reload } = useLoad(() => mk.library(), []);
+  const data = (all || []).filter((t) => (!channel || t.channel === channel) && (!q || `${t.title} ${t.body_text} ${t.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const [f, setF] = useState({ title: "", channel: "email", body_text: "", tags: "" });
   return (
     <>
       <PageHead title="Library" text="Reusable templates per channel. Load one in the composer to start a message from it.">
+        <input placeholder="Search title, text or tag…" value={q} onChange={(e) => setQ(e.target.value)} />
         <select value={channel} onChange={(e) => setChannel(e.target.value)}><option value="">all channels</option>{CHANNELS.map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}</select>
       </PageHead>
+      <div className="grid cols-4 mb" style={{ gridTemplateColumns: "repeat(5, minmax(0,1fr))" }}>{CHANNELS.map((c) => (
+        <button key={c} className="card kpi" style={{ textAlign: "left", background: channel === c ? "var(--panel-2)" : undefined, borderColor: channel === c ? "var(--gold)" : undefined, color: "inherit" }} onClick={() => setChannel(channel === c ? "" : c)}>
+          <div className="l"><Ch c={c} /></div><div className="n">{(all || []).filter((t) => t.channel === c).length}</div><div className="d">templates</div>
+        </button>
+      ))}</div>
       <div className="card mb">
         <div className="form">
           <label className="field">Title<input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></label>
@@ -207,8 +215,8 @@ export function Library() {
         <textarea className="mt" style={{ fontFamily: "inherit" }} placeholder="For email, put the subject on the first line, then a blank line, then the body." value={f.body_text} onChange={(e) => setF({ ...f, body_text: e.target.value })} />
         <button className="mt" disabled={!f.title || !f.body_text} onClick={() => run("Template saved", () => mk.saveToLibrary({ ...f, tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean), created_by: me?.email || "marketing" })).then(() => { setF({ ...f, title: "", body_text: "", tags: "" }); reload(); })}>Save template</button>
       </div>
-      {loading ? <Loading /> : !(data || []).length ? <Empty>No templates.</Empty> : (
-        <div className="grid cols-3">{(data || []).map((t) => (
+      {loading ? <Loading /> : !data.length ? <Empty>{q || channel ? "Nothing matches." : "No templates."}</Empty> : (
+        <div className="grid cols-3">{data.map((t) => (
           <div key={t.id} className="card">
             <div className="row between"><b>{t.title}</b><Ch c={t.channel} /></div>
             <div className="mt muted" style={{ whiteSpace: "pre-wrap", maxHeight: 140, overflow: "hidden" }}>{t.body_text}</div>

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import get_settings
 from src.models import ContentDraft, ContentStatus
+from src.services import channel_options
 
 
 def evaluate_guardrail(channel: str, subject_line: str, body_text: str) -> list[str]:
@@ -44,16 +45,19 @@ def evaluate_guardrail(channel: str, subject_line: str, body_text: str) -> list[
 
 async def create_content_draft(
     db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID, channel: str, body_text: str,
-    created_by: str, subject_line: str = "", media_asset_ids: list[str] | None = None,
+    created_by: str, subject_line: str = "", media_asset_ids: list[str] | None = None, options: dict | None = None,
 ) -> ContentDraft:
     """Fully autonomous: the guardrail check and the resulting
     status — APPROVED or HELD_FOR_REVIEW — happen in the same call
     the draft is created in, not a separate step a caller has to
     remember to trigger."""
+    options = channel_options.validate(channel, options)
     findings = evaluate_guardrail(channel, subject_line, body_text)
+    if options.get("preview_text"):
+        findings += [f"preview text: {f}" for f in evaluate_guardrail(channel, "", options["preview_text"]) if "empty" not in f]
     draft = ContentDraft(
         tenant_id=tenant_id, campaign_id=campaign_id, channel=channel, subject_line=subject_line,
-        body_text=body_text, media_asset_ids=media_asset_ids or [], created_by=created_by,
+        body_text=body_text, media_asset_ids=media_asset_ids or [], options=options, created_by=created_by,
         guardrail_findings=findings, status=ContentStatus.HELD_FOR_REVIEW if findings else ContentStatus.APPROVED,
     )
     db.add(draft)

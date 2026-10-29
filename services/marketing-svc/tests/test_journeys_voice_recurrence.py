@@ -26,7 +26,7 @@ WELCOME = [
 def sent(monkeypatch):
     calls = []
 
-    async def fake(tenant_id, channel, recipient, body, subject, source):
+    async def fake(tenant_id, channel, recipient, body, subject, source, options=None):
         calls.append({"channel": channel, "recipient": recipient, "body": body, "subject": subject, "source": source})
         return {"status": "sent", "delivery_mode": "real_provider", "error_message": None}
 

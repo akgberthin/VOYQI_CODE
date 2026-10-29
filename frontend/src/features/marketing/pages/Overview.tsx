@@ -32,6 +32,7 @@ export default function Overview() {
         <div className="card kpi"><div className="l">Conversions</div><div className="n">{sum("conversion_count").toLocaleString()}</div><div className="d">{money(sum("revenue_usd"))} revenue</div></div>
         <div className="card kpi"><div className="l">Campaigns</div><div className="n">{active} active</div><div className="d">{data.campaigns.length} total</div></div>
       </div>
+      <LiveCampaigns campaigns={data.campaigns} snapshots={data.snapshots} sends={data.sends} />
       {data.held.length > 0 && <div className="notice warn mb">{data.held.length} draft{data.held.length > 1 ? "s" : ""} held by the brand/compliance guardrail — <Link href="/marketing/review">review them</Link>.</div>}
       <div className="split mb">
         <div className="card">
@@ -62,5 +63,27 @@ export default function Overview() {
         </div>
       </div>
     </>
+  );
+}
+
+/** The active campaigns with their latest numbers, like the reference dashboard's live cards. */
+function LiveCampaigns({ campaigns, snapshots, sends }: { campaigns: any[]; snapshots: any[]; sends: any[] }) {
+  const live = campaigns.filter((c) => c.status === "active").map((c) => {
+    const s = snapshots.filter((x) => x.campaign_id === c.id);
+    const sum = (k: string) => s.reduce((a, x) => a + (x[k] || 0), 0);
+    const next = sends.filter((x) => x.campaign_id === c.id && x.status === "scheduled").sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))[0];
+    return { c, sent: sum("sent_count"), open: sum("open_count"), click: sum("click_count"), conv: sum("conversion_count"), next };
+  }).sort((a, b) => b.sent - a.sent).slice(0, 3);
+  if (!live.length) return null;
+  return (
+    <div className="grid cols-3 mb">{live.map(({ c, sent, open, click, conv, next }) => (
+      <Link key={c.id} href={`/marketing/campaigns/${c.id}`} className="card" style={{ textDecoration: "none", color: "inherit" }}>
+        <div className="row between"><b className="clip" style={{ maxWidth: 220 }}>{c.name}</b><StatusBadge value={next && !sent ? "scheduled" : "active"} /></div>
+        <div className="row mt"><Ch c={c.channel} />{next && <span className="muted" style={{ fontSize: 12 }}>next {fmtTime(next.scheduled_at)}</span>}</div>
+        <div className="grid cols-4 mt" style={{ gap: 6 }}>{[["Sent", sent.toLocaleString()], ["Open", pct(open, sent)], ["Click", pct(click, sent)], ["Convert", conv.toLocaleString()]].map(([l, v]) => (
+          <div key={l}><div style={{ fontWeight: 800, fontSize: 17 }}>{v}</div><div className="muted" style={{ fontSize: 11 }}>{l}</div></div>
+        ))}</div>
+      </Link>
+    ))}</div>
   );
 }

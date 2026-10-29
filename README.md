@@ -108,8 +108,16 @@ permissions (`marketing.manager@voyqi.example`):
 - **Voice compliance** — calls reach only contacts with voice consent,
   open by saying they're automated, and wait for the calling window
   (set per tenant, within 08:00-21:00).
-- Audience segments with contacts, suppression list, A/B tests,
-  calendar, analytics, reports (CSV), leads.
+- **Composers per channel** — email sender name, reply-to, preview
+  text and an A/B subject; SMS part counting and the opt-out line (added
+  unless the message says STOP); push title and deep link; AI voice and
+  language. Tokens (`{first_name}`, `{city}`, `{class}`…) are filled from
+  each contact's attributes.
+- **Audience builder** — contacts imported as CSV keep any extra columns
+  as attributes; rules over them give a live estimate per channel and can
+  be saved as a segment filled with the matching contacts.
+- Suppression list, A/B tests, calendar, analytics (date range, funnel),
+  reports (CSV, or emailed weekly/monthly to recipients), leads.
 
 Dev inbox: emails sent by the platform appear in Mailpit at
 http://localhost:8125 once the SMTP integration points at host `mailpit`,

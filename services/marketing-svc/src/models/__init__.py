@@ -89,6 +89,8 @@ class ContentDraft(Base):
     subject_line: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     body_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     media_asset_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Channel settings sent with every delivery — see services/channel_options.
+    options: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[ContentStatus] = mapped_column(Enum(ContentStatus), nullable=False, default=ContentStatus.DRAFT)
     guardrail_findings: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     reviewed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -164,6 +166,9 @@ class SegmentMember(Base):
     # Prior express written consent to automated (AI voice) calls — TCPA.
     # Voice sends only ever reach members with it.
     consent_voice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # What targeting and personalisation can use: city, class, status,
+    # tenure_months, churn_risk, upgrade_ready, gu_balance, hub, … (free-form).
+    attributes: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -473,6 +478,10 @@ class MarketingSettings(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Chicago")
     voice_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
     voice_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    # Emailed performance report: off / weekly / monthly, to these people.
+    report_frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="off")
+    report_recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    report_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
 
 

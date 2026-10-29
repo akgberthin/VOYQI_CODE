@@ -58,7 +58,7 @@ def _no_real_delivery(monkeypatch):
     about delivery replace this with their own stand-in."""
     from src.services import delivery
 
-    async def console(tenant_id, channel, recipient, body, subject, source):
+    async def console(tenant_id, channel, recipient, body, subject, source, options=None):
         return {"status": "sent", "delivery_mode": "console", "error_message": None}
 
     monkeypatch.setattr(delivery, "deliver", console)

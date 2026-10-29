@@ -110,3 +110,39 @@ async def test_delivery_summary_separates_real_console_and_failed(client, config
     assert summary["channels"]["sms"] == {"delivered": 1, "console": 1, "failed": 0, "opted_out": 0}
     listed = (await client.get("/api/v1/notifications/notifications", headers=TENANT_HEADERS)).json()
     assert {"error_message", "delivery_mode"} <= set(listed[0])
+
+
+async def test_email_options_set_sender_name_reply_to_and_preview(configured, monkeypatch):
+    configured["smtp"] = {"host": "smtp.example", "port": 587, "from_address": "news@voyqi.com", "use_tls": "false"}
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, *a, **kw): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def sendmail(self, frm, to, raw): sent.update(frm=frm, to=to, raw=raw)
+
+    monkeypatch.setattr(providers.smtplib, "SMTP", FakeSMTP)
+    ok, mode, _id, _err = await providers.send_email(recipient="ava@example.com", subject="Your plan", body="<p>Hello</p>", tenant_id=TENANT,
+                                                     from_name="VOYQI Concierge\r\nBcc: x@evil", reply_to="care@voyqi.com", preview_text="Ready at Brickell")
+    assert (ok, mode) == (True, "real_provider")
+    # The typed name can't start a header of its own; it stays quoted inside From.
+    assert '\nFrom: "VOYQI Concierge Bcc: x@evil" <news@voyqi.com>' in sent["raw"] and "\nBcc:" not in sent["raw"]
+    assert "Reply-To: care@voyqi.com" in sent["raw"]
+    assert sent["raw"].index("Ready at Brickell") < sent["raw"].index("Hello")
+
+
+def test_preview_text_only_goes_into_html_mail():
+    assert providers.with_preheader("Plain body", "Preview") == "Plain body"
+    assert providers.with_preheader("<p>x</p>", "<b>Preview</b>").startswith('<div style="display:none')
+
+
+async def test_push_carries_the_deep_link_and_voice_the_chosen_voice(client, configured, outbound):
+    configured["twilio"] = TWILIO
+    r = await client.post("/api/v1/notifications/send-direct", json={"channel": "voice", "recipient": "+15125550101", "body": "Hola",
+                                                                       "options": {"voice": "Polly.Lupe", "language": "es-US"}}, headers=TENANT_HEADERS)
+    assert r.json()["status"] == "sent"
+    twiml = parse_qs(outbound[-1].content.decode())["Twiml"][0]
+    assert 'voice="Polly.Lupe" language="es-US"' in twiml
+    ok, _mode, _id, _err = await providers.send_push(recipient="tok", body="x", subject="t", tenant_id="other-tenant", data={"deep_link": "voyqi://unlock"})
+    assert ok

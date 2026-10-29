@@ -34,6 +34,7 @@ class DirectIn(BaseModel):
     category: str = "marketing"
     source: str = "direct"
     user_id: uuid.UUID | None = None
+    options: dict = {}
 
 
 class PreferenceIn(BaseModel):
@@ -81,6 +82,7 @@ async def send_direct(payload: DirectIn, background_tasks: BackgroundTasks, tena
         notification = await notification_engine.send_direct(
             db, tenant_id=tenant_id, channel=payload.channel, recipient=payload.recipient, body=payload.body,
             subject=payload.subject, category=payload.category, user_id=payload.user_id, source=payload.source,
+            options=payload.options,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

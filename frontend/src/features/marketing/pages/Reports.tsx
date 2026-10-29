@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getTenant } from "@/lib/api";
-import { Empty, ErrorNote, Loading, PageHead } from "@/lib/ui";
+import { Empty, ErrorNote, Loading, PageHead, fmtTime, useAction, useLoad } from "@/lib/ui";
 import { Ch } from "../bits";
 import { mk, money } from "../mk";
 
@@ -32,6 +32,7 @@ export default function Reports() {
         <button className="ghost" onClick={download}>Download CSV</button>
       </PageHead>
       <ErrorNote error={error} />
+      <ReportSchedule days={days} />
       {loading || !data ? (error ? null : <Loading />) : (
         <>
           <div className="grid cols-4 mb">
@@ -83,5 +84,32 @@ export default function Reports() {
         </>
       )}
     </>
+  );
+}
+
+/** Who gets the report by email, how often, and a send-now. */
+function ReportSchedule({ days }: { days: number }) {
+  const run = useAction();
+  const { data, reload } = useLoad(() => mk.settings());
+  const [f, setF] = useState<{ frequency: string; recipients: string } | null>(null);
+  useEffect(() => { if (data && !f) setF({ frequency: data.report_frequency || "off", recipients: (data.report_recipients || []).join(", ") }); }, [data, f]);
+  if (!f) return null;
+  const list = f.recipients.split(/[\s,;]+/).filter(Boolean);
+  return (
+    <div className="card mb">
+      <div className="row between"><h3>Emailed reports</h3>{data?.report_last_sent_at && <span className="muted" style={{ fontSize: 12 }}>last sent {fmtTime(data.report_last_sent_at)}</span>}</div>
+      <div className="form mt">
+        <label className="field">Send automatically<select value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value })}><option value="off">Off</option><option value="weekly">Weekly (last 7 days)</option><option value="monthly">Monthly (last 30 days)</option></select></label>
+        <label className="field" style={{ gridColumn: "span 2" }}>Recipients<input value={f.recipients} placeholder="cmo@voyqi.com, growth@voyqi.com" onChange={(e) => setF({ ...f, recipients: e.target.value })} /></label>
+      </div>
+      <div className="row mt">
+        <button onClick={() => run("Report schedule saved", () => mk.saveSettings({ report_frequency: f.frequency, report_recipients: list })).then(reload)}>Save</button>
+        <button className="ghost" disabled={!list.length} onClick={() => run("Report emailed", async () => {
+          const r = await mk.sendReport(days, list);
+          if (r.failed.length) throw new Error(`Sent ${r.sent}; failed: ${r.failed.join("; ")}`);
+          if (r.console) throw new Error(`${r.console} of ${r.sent} only logged — no email provider is set up (super admin → Integrations).`);
+        })}>Send this report now</button>
+      </div>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import httpx
 from src.core.config import get_settings
 
 
-async def deliver(tenant_id: str, channel: str, recipient: str, body: str, subject: str, source: str) -> dict:
+async def deliver(tenant_id: str, channel: str, recipient: str, body: str, subject: str, source: str, options: dict | None = None) -> dict:
     """Returns {"status": "sent"|"failed"|"skipped_opted_out", "delivery_mode", "error_message"}."""
     settings = get_settings()
     try:
@@ -13,7 +13,7 @@ async def deliver(tenant_id: str, channel: str, recipient: str, body: str, subje
             resp = await client.post(f"{settings.notification_svc_base_url}/api/v1/notifications/send-direct",
                                      headers={"X-Tenant-Id": tenant_id},
                                      json={"channel": channel, "recipient": recipient, "body": body, "subject": subject or None,
-                                           "category": "marketing", "source": source})
+                                           "category": "marketing", "source": source, "options": options or {}})
     except httpx.HTTPError as exc:
         return {"status": "failed", "delivery_mode": None, "error_message": f"notification-svc unreachable ({type(exc).__name__})"}
     if resp.status_code != 201:

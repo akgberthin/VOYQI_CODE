@@ -17,8 +17,8 @@ def notif(monkeypatch):
     """notification-svc stand-in: real delivery unless told otherwise."""
     state = {"calls": [], "mode": "real_provider", "fail": set()}
 
-    async def fake_deliver(tenant_id, channel, recipient, body, subject, source):
-        state["calls"].append({"channel": channel, "recipient": recipient, "body": body, "subject": subject, "source": source})
+    async def fake_deliver(tenant_id, channel, recipient, body, subject, source, options=None):
+        state["calls"].append({"channel": channel, "recipient": recipient, "body": body, "subject": subject, "source": source, "options": options})
         if recipient in state["fail"]:
             return {"status": "failed", "delivery_mode": "real_provider", "error_message": "Twilio HTTP 400: invalid number"}
         return {"status": "sent", "delivery_mode": state["mode"], "error_message": None}

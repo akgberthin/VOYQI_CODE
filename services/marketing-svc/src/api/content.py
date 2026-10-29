@@ -8,7 +8,7 @@ from src.core.database import get_db
 from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
 from src.models import ContentStatus
-from src.services import ai_drafting, campaign_engine, content_engine
+from src.services import ai_drafting, campaign_engine, channel_options, content_engine
 
 router = APIRouter(prefix="/api/v1/marketing/content", tags=["content"])
 
@@ -19,6 +19,7 @@ class ContentDraftCreate(BaseModel):
     body_text: str
     subject_line: str = ""
     media_asset_ids: list[str] = []
+    options: dict = {}
     created_by: str = "marketing-admin"
 
 
@@ -30,6 +31,7 @@ class ContentDraftOut(BaseModel):
     subject_line: str
     body_text: str
     media_asset_ids: list
+    options: dict = {}
     status: str
     guardrail_findings: list
     reviewed_by: str | None
@@ -40,7 +42,10 @@ class ContentDraftOut(BaseModel):
 async def create_content_draft(body: ContentDraftCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     """Fully autonomous: the guardrail check and the resulting
     APPROVED/HELD_FOR_REVIEW status happen in this same call."""
-    return await content_engine.create_content_draft(db, tenant_id, body.campaign_id, body.channel, body.body_text, body.created_by, body.subject_line, body.media_asset_ids)
+    try:
+        return await content_engine.create_content_draft(db, tenant_id, body.campaign_id, body.channel, body.body_text, body.created_by, body.subject_line, body.media_asset_ids, body.options)
+    except channel_options.InvalidOptions as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 class AIDraftRequest(BaseModel):

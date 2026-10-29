@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import get_settings
 from src.models import AnalyticsSnapshot, CalendarEntry, Campaign, CampaignStatus, ContentDraft, ContentStatus, ScheduledSend, SegmentMember, SendStatus
-from src.services import channel_policy, delivery, suppression_engine
+from src.services import channel_options, channel_policy, delivery, suppression_engine
 
 
 class DraftNotApprovedError(ValueError):
@@ -74,20 +74,18 @@ async def claim(db: AsyncSession, tenant_id: str, send_id: uuid.UUID) -> bool:
     return result.rowcount == 1
 
 
-async def segment_recipients(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID, channel: str) -> list[tuple[str, str]]:
-    """(contact, name) for every member of the campaign's segment reachable on this channel."""
+async def segment_recipients(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID, channel: str) -> list[tuple[str, str, dict]]:
+    """(contact, name, attributes) for every member of the campaign's segment reachable on this channel."""
     campaign = (await db.execute(select(Campaign).where(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id))).scalar_one_or_none()
     if campaign is None or campaign.audience_segment_id is None:
         return []
     field = CONTACT_FIELD.get(channel)
     members = (await db.execute(select(SegmentMember).where(SegmentMember.segment_id == campaign.audience_segment_id, SegmentMember.tenant_id == tenant_id))).scalars()
     # Automated calls only reach members who consented to them (TCPA).
-    return [(getattr(m, field), m.name) for m in members if field and getattr(m, field) and (channel != "voice" or m.consent_voice)]
+    return [(getattr(m, field), m.name, m.attributes or {}) for m in members if field and getattr(m, field) and (channel != "voice" or m.consent_voice)]
 
 
-def personalize(text: str, name: str) -> str:
-    first = (name or "").split(" ")[0] or "there"
-    return (text or "").replace("{first_name}", first).replace("{name}", name or first)
+personalize = channel_options.personalize
 
 
 async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid.UUID, recipient_contacts: list[str] | None = None, *,
@@ -118,7 +116,7 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
     channel = send.channel.value
     draft = (await db.execute(select(ContentDraft).where(ContentDraft.id == send.content_draft_id))).scalar_one_or_none()
 
-    recipients = [(c, "") for c in recipient_contacts] if recipient_contacts else await segment_recipients(db, tenant_id, send.campaign_id, channel)
+    recipients = [(c, "", {}) for c in recipient_contacts] if recipient_contacts else await segment_recipients(db, tenant_id, send.campaign_id, channel)
     send.recipients_targeted = len(recipients)
     send.sent_at = datetime.now(timezone.utc)
     if not recipients:
@@ -131,20 +129,28 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
 
     allowed = []
     suppressed = 0
-    for contact, name in recipients:
+    for contact, name, attrs in recipients:
         if await suppression_engine.is_suppressed(db, tenant_id, channel, contact):
             suppressed += 1
         else:
-            allowed.append((contact, name))
+            allowed.append((contact, name, attrs))
 
     gate = asyncio.Semaphore(get_settings().delivery_concurrency)
 
-    async def one(contact: str, name: str) -> dict:
-        async with gate:
-            return await delivery.deliver(tenant_id, channel, contact, personalize(draft.body_text if draft else "", name),
-                                          personalize(draft.subject_line if draft else "", name), f"marketing:{send.id}")
+    options = (draft.options if draft else None) or {}
 
-    results = await asyncio.gather(*(one(c, n) for c, n in allowed))
+    async def one(contact: str, name: str, attrs: dict) -> dict:
+        body = personalize(draft.body_text if draft else "", name, attrs)
+        if channel == "sms":
+            body = channel_options.sms_body(body, options)
+        opts = dict(options)
+        if opts.get("preview_text"):
+            opts["preview_text"] = personalize(opts["preview_text"], name, attrs)
+        async with gate:
+            return await delivery.deliver(tenant_id, channel, contact, body, personalize(draft.subject_line if draft else "", name, attrs),
+                                          f"marketing:{send.id}", opts)
+
+    results = await asyncio.gather(*(one(c, n, a) for c, n, a in allowed))
     real = sum(1 for r in results if r.get("status") == "sent" and r.get("delivery_mode") == "real_provider")
     console = sum(1 for r in results if r.get("status") == "sent" and r.get("delivery_mode") != "real_provider")
     opted_out = sum(1 for r in results if r.get("status") == "skipped_opted_out")
