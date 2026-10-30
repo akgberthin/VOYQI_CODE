@@ -85,11 +85,16 @@ export function Social() {
       <h3>Posts</h3>
       {posts.loading ? <Loading /> : !(posts.data || []).length ? <Empty>No posts yet.</Empty> : (
         <div className="card table-wrap"><table>
-          <thead><tr><th>Account</th><th>Scheduled</th><th>Status</th><th>Platform post</th><th /></tr></thead>
+          <thead><tr><th>Account</th><th>Scheduled</th><th>Status</th><th>Platform post</th><th>Engagement</th><th /></tr></thead>
           <tbody>{(posts.data || []).map((p) => {
             const a = handle(p.social_account_id);
             return (
               <tr key={p.id}><td>{a ? `${a.platform} ${a.handle}` : "—"}</td><td>{fmtTime(p.scheduled_at)}</td><td><StatusBadge value={p.status} /></td><td className="mono muted">{p.delivery_mode === "console" ? <span title="No integration for this platform — recorded, not posted">console only</span> : p.platform_post_id || "—"}{p.published_at && <div>{fmtTime(p.published_at)}</div>}{p.error_detail && <div style={{ color: "var(--bad)", maxWidth: 320, whiteSpace: "normal" }}>{p.error_detail}</div>}</td>
+                <td style={{ fontSize: 12 }}>{p.status === "published" && ["real", "external"].includes(p.delivery_mode) ? <>
+                  {p.metrics_updated_at ? <div>♥ {p.likes ?? "—"} · 💬 {p.comments ?? "—"} · ↻ {p.shares ?? "—"}{p.impressions != null && <> · 👁 {p.impressions.toLocaleString()}</>}</div> : <div className="muted">not read yet</div>}
+                  {p.metrics_error && <div style={{ color: "var(--warn)", maxWidth: 260, whiteSpace: "normal" }}>{p.metrics_error}</div>}
+                  <button className="sm ghost" onClick={() => run("Engagement updated", () => mk.refreshMetrics(p.id)).then(posts.reload)}>Refresh</button>
+                </> : <span className="muted">—</span>}</td>
                 <td>{p.status === "scheduled" && <button className="sm" onClick={() => run("Published", () => mk.publishPost(p.id)).then(posts.reload)}>Publish now</button>}</td></tr>
             );
           })}</tbody>
@@ -218,6 +223,63 @@ function Generator() {
 }
 
 export function Library() {
+  const [tab, setTab] = useState<"templates" | "campaigns">("templates");
+  const head = <div className="seg mb">{(["templates", "campaigns"] as const).map((t) => <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t === "templates" ? "Templates" : "Campaigns"}</button>)}</div>;
+  return tab === "campaigns" ? <>{head}<CampaignLibrary /></> : <>{head}<Templates /></>;
+}
+
+const CAMPAIGN_FILTERS = [["", "All"], ["active", "Running"], ["draft", "Drafts"], ["scheduled", "Scheduled"], ["paused", "Paused"], ["completed", "Completed"]] as const;
+
+/** Every campaign with its sends, filterable, exportable as CSV. */
+function CampaignLibrary() {
+  const campaigns = useLoad(() => mk.campaigns());
+  const sends = useLoad(() => mk.sends());
+  const [filter, setFilter] = useState("");
+  const [q, setQ] = useState("");
+  const bySend = (id: string) => (sends.data || []).filter((x) => x.campaign_id === id);
+  const scheduled = (id: string) => bySend(id).some((x) => x.status === "scheduled");
+  const all = campaigns.data || [];
+  const count = (f: string) => all.filter((c) => (f === "scheduled" ? scheduled(c.id) : !f || c.status === f)).length;
+  const rows = all.filter((c) => (filter === "scheduled" ? scheduled(c.id) : !filter || c.status === filter) && (!q || `${c.name} ${c.objective}`.toLowerCase().includes(q.toLowerCase())));
+  const reached = (id: string) => bySend(id).reduce((a, x) => a + Math.max(0, x.recipients_targeted - x.recipients_suppressed - x.recipients_failed), 0);
+  const lastSent = (id: string) => bySend(id).map((x) => x.sent_at).filter(Boolean).sort().pop() as string | undefined;
+  const exportCsv = () => {
+    const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["Campaign", "Channel", "Objective", "Status", "Sends", "Reached", "Last sent", "Created by"].join(",")]
+      .concat(rows.map((c) => [c.name, c.channel, c.objective, c.status, bySend(c.id).length, reached(c.id), lastSent(c.id) || "", c.created_by].map(cell).join(",")));
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    Object.assign(document.createElement("a"), { href: url, download: "campaigns.csv" }).click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <>
+      <PageHead title="Library" text="Every campaign in one place — filter by state, open one, or export the list.">
+        <input placeholder="Search campaigns…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button className="ghost" disabled={!rows.length} onClick={exportCsv}>Export CSV</button>
+      </PageHead>
+      <ErrorNote error={campaigns.error} />
+      <div className="seg mb">{CAMPAIGN_FILTERS.map(([v, l]) => <button key={v} className={filter === v ? "on" : ""} onClick={() => setFilter(v)}>{l} ({count(v)})</button>)}</div>
+      {campaigns.loading ? <Loading /> : !rows.length ? <Empty>{q || filter ? "Nothing matches." : "No campaigns yet."}</Empty> : (
+        <div className="card table-wrap"><table>
+          <thead><tr><th>Campaign</th><th>Channel</th><th>Status</th><th>Sends</th><th>Reached</th><th>Last sent</th><th /></tr></thead>
+          <tbody>{rows.map((c) => (
+            <tr key={c.id}>
+              <td><b>{c.name}</b><div className="muted">{c.objective}</div></td>
+              <td><Ch c={c.channel} /></td>
+              <td><StatusBadge value={c.status} />{scheduled(c.id) && <span className="badge">scheduled</span>}</td>
+              <td>{bySend(c.id).length}</td>
+              <td>{reached(c.id).toLocaleString()}</td>
+              <td className="muted">{lastSent(c.id) ? fmtTime(lastSent(c.id)!) : "—"}</td>
+              <td><Link href={`/marketing/campaigns/${c.id}`}><button className="sm ghost">Open</button></Link></td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+    </>
+  );
+}
+
+function Templates() {
   const run = useAction();
   const { me } = useSession();
   const [channel, setChannel] = useState("");

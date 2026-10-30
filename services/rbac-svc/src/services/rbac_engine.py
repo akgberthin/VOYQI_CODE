@@ -22,6 +22,7 @@ from src.models import (
     PlatformUser,
     Role,
     RoleAssignment,
+    UserStatus,
 )
 
 SENSITIVE_PERMISSION_PREFIXES = ("rbac.", "abac.", "billing.refund", "compliance.")
@@ -159,6 +160,10 @@ async def resolve_effective_permissions(db: AsyncSession, tenant_id: str, user_i
     regardless of how many ALLOWs support it; any ALLOW override adds
     one even without a role granting it. Order of override application
     doesn't matter because DENY is checked last, unconditionally."""
+    user = (await db.execute(select(PlatformUser).where(PlatformUser.id == user_id, PlatformUser.tenant_id == tenant_id))).scalar_one_or_none()
+    if user is not None and user.status == UserStatus.SUSPENDED:
+        # A suspended account keeps its roles on record but can use none of them.
+        return {"user_id": str(user_id), "effective_permissions": [], "denied": [], "suspended": True}
     assignments = await get_user_role_assignments(db, tenant_id, user_id)
     role_ids = [a.role_id for a in assignments]
     allowed: set[str] = set()
@@ -253,3 +258,51 @@ async def revoke_permission_override(db: AsyncSession, tenant_id: str, override_
     await db.commit()
     await db.refresh(override)
     return override
+
+
+async def touch_last_seen(db: AsyncSession, tenant_id: str, user_id: uuid.UUID, resolution_seconds: int = 60) -> None:
+    """Stamp when the user last made a request (called via the gateway)."""
+    from datetime import datetime, timedelta, timezone
+    user = (await db.execute(select(PlatformUser).where(PlatformUser.id == user_id, PlatformUser.tenant_id == tenant_id))).scalar_one_or_none()
+    if user is None:
+        return
+    now = datetime.now(timezone.utc)
+    last = user.last_seen_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if last is None or now - last >= timedelta(seconds=resolution_seconds):
+        user.last_seen_at = now
+        await db.commit()
+
+
+async def get_platform_user(db: AsyncSession, tenant_id: str, user_id: uuid.UUID) -> PlatformUser:
+    user = (await db.execute(select(PlatformUser).where(PlatformUser.id == user_id, PlatformUser.tenant_id == tenant_id))).scalar_one_or_none()
+    if user is None:
+        raise ValueError(f"platform user {user_id} not found")
+    return user
+
+
+async def update_platform_user(db: AsyncSession, tenant_id: str, user_id: uuid.UUID, changes: dict) -> tuple[PlatformUser, dict]:
+    """Applies display_name / email / mfa_enabled / status. Returns the user and {field: (old, new)}."""
+    user = await get_platform_user(db, tenant_id, user_id)
+    if "email" in changes and changes["email"] != user.email:
+        clash = (await db.execute(select(PlatformUser).where(PlatformUser.tenant_id == tenant_id, PlatformUser.email == changes["email"], PlatformUser.id != user_id))).scalar_one_or_none()
+        if clash is not None:
+            raise DuplicatePlatformUserError(f"{changes['email']} already belongs to another user in this tenant")
+    diff = {}
+    for key, value in changes.items():
+        if key == "status":
+            value = UserStatus(value)
+        old = getattr(user, key)
+        if old != value:
+            diff[key] = (old.value if isinstance(old, UserStatus) else old, value.value if isinstance(value, UserStatus) else value)
+            setattr(user, key, value)
+    if diff:
+        await db.commit()
+        await db.refresh(user)
+    return user, diff
+
+
+async def list_role_assignments(db: AsyncSession, tenant_id: str) -> list[RoleAssignment]:
+    result = await db.execute(select(RoleAssignment).where(RoleAssignment.tenant_id == tenant_id).order_by(RoleAssignment.assigned_at.desc()))
+    return list(result.scalars().all())

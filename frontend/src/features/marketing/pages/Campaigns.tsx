@@ -168,7 +168,7 @@ export function CampaignDetail() {
       )}
       {tab === "sends" && (!sends.length ? <Empty>Nothing scheduled. Approve a draft and schedule it from the Content tab.</Empty> : (
         <div className="card table-wrap"><table>
-          <thead><tr><th>When</th><th>Status</th><th>Reached</th><th>Not reached</th><th>Send now</th></tr></thead>
+          <thead><tr><th>When</th><th>Status</th><th>Reached</th><th>Not reached</th><th>Report</th><th>Send now</th></tr></thead>
           <tbody>{sends.map((s) => (
             <tr key={s.id}>
               <td>{fmtTime(s.scheduled_at)}{s.recurrence !== "none" && <div><span className="badge info">{RECURRENCE.find(([k]) => k === s.recurrence)?.[1]}</span></div>}{s.sent_at && <div className="muted">ran {fmtTime(s.sent_at)}</div>}</td>
@@ -182,6 +182,7 @@ export function CampaignDetail() {
                 {s.recipients_failed > 0 && <div style={{ color: "var(--bad)" }}>{s.recipients_failed} failed</div>}
                 {s.failure_detail && <div className="muted" style={{ fontSize: 12, maxWidth: 320 }}>{s.failure_detail}</div>}
               </>}</td>
+              <td>{s.status !== "scheduled" && <Outcomes sendId={s.id} channel={c.channel} />}</td>
               <td>{s.status === "scheduled" && (
                 <div className="row">
                   <input style={{ minWidth: 220 }} placeholder={segment ? `${segment.name} (${segment.member_count})` : c.channel === "email" ? "a@x.com, b@y.com" : "+15125550101, …"} value={recipients[s.id] || ""} onChange={(e) => setRecipients({ ...recipients, [s.id]: e.target.value })} />
@@ -244,5 +245,22 @@ function Results({ campaignId, channel, summary, onChange }: { campaignId: strin
         </table></div>
       )}
     </>
+  );
+}
+
+const OUTCOME_LABEL: Record<string, string> = { answered: "answered", voicemail: "voicemail", "no-answer": "no answer", busy: "busy", failed: "failed", canceled: "canceled",
+  delivered: "delivered", undelivered: "undelivered", suppressed: "opted out before retry", "awaiting report": "awaiting provider report", "console only": "console only" };
+
+/** What happened to each message of a send: provider reports, opens/clicks, retries, recordings. */
+function Outcomes({ sendId, channel }: { sendId: string; channel: string }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof mk.outcomes>> | null>(null);
+  if (!data) return <button className="sm ghost" onClick={() => mk.outcomes(sendId).then(setData).catch((e) => alert(e.message))}>Show</button>;
+  return (
+    <div style={{ fontSize: 12, minWidth: 180 }}>
+      {Object.entries(data.outcomes).map(([k, v]) => <div key={k}>{v} {OUTCOME_LABEL[k] || k}</div>)}
+      {channel === "email" && <div className="muted">{data.opened} opened · {data.clicked} clicked</div>}
+      {channel === "voice" && <div className="muted">{data.attempts} call attempt(s){data.retries_scheduled ? ` · ${data.retries_scheduled} retry scheduled` : ""}</div>}
+      {data.recordings.slice(0, 5).map((r) => <div key={r.url}><a href={r.url} target="_blank" rel="noreferrer">▶ {r.contact}</a></div>)}
+    </div>
   );
 }

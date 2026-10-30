@@ -30,9 +30,11 @@ export default function Reports() {
       <PageHead title="Reports" text="What went out and what came back over a period: deliveries by channel (real deliveries only — console-only messages are listed separately), social posts, automation flows, leads and the campaigns that drove results.">
         <select value={days} onChange={(e) => { const d = Number(e.target.value); setDays(d); load(d); }}>{[7, 30, 90, 365].map((d) => <option key={d} value={d}>Last {d} days</option>)}</select>
         <button className="ghost" onClick={download}>Download CSV</button>
+        <button className="ghost" onClick={() => downloadPdf(days)}>Download PDF</button>
       </PageHead>
       <ErrorNote error={error} />
       <ReportSchedule days={days} />
+      <Schedules />
       {loading || !data ? (error ? null : <Loading />) : (
         <>
           <div className="grid cols-4 mb">
@@ -110,6 +112,64 @@ function ReportSchedule({ days }: { days: number }) {
           if (r.console) throw new Error(`${r.console} of ${r.sent} only logged — no email provider is set up (super admin → Integrations).`);
         })}>Send this report now</button>
       </div>
+    </div>
+  );
+}
+
+async function downloadPdf(days: number) {
+  const res = await fetch(`/api/v1/marketing/reports.pdf?days=${days}`, { credentials: "same-origin", headers: { "X-Tenant-Id": getTenant() } });
+  if (!res.ok) return alert(`Could not build the PDF (HTTP ${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  Object.assign(document.createElement("a"), { href: url, download: `marketing-report-${days}d.pdf` }).click();
+  URL.revokeObjectURL(url);
+}
+
+const EMPTY_SCHEDULE = { name: "", frequency: "weekly", days: 7, channels: [] as string[], recipients: "", format: "pdf" as "csv" | "pdf" };
+
+/** Named reports, each emailed on its own schedule with a CSV or PDF attached. */
+function Schedules() {
+  const run = useAction();
+  const { data, reload } = useLoad(() => mk.schedules());
+  const [f, setF] = useState(EMPTY_SCHEDULE);
+  const save = () => run("Report scheduled", () => mk.createSchedule({ ...f, recipients: f.recipients.split(/[\s,;]+/).filter(Boolean) }))
+    .then((ok) => { if (ok) { setF(EMPTY_SCHEDULE); reload(); } });
+  const sendNow = (id: string) => run("Report emailed", async () => {
+    const r = await mk.runSchedule(id);
+    if (r.failed.length) throw new Error(`Sent ${r.sent}; failed: ${r.failed.join("; ")}`);
+    if (r.console) throw new Error(`${r.console} of ${r.sent} only logged — no email provider is set up (super admin → Integrations).`);
+  }).then(reload);
+  return (
+    <div className="card mb">
+      <h3>Scheduled reports</h3>
+      <div className="sub">Each report goes to its own recipients on its own schedule, with the numbers in the email and a CSV or PDF attached.</div>
+      {(data || []).length > 0 && (
+        <table className="mt"><thead><tr><th>Report</th><th>Frequency</th><th>Covers</th><th>Recipients</th><th>Last sent</th><th /></tr></thead>
+          <tbody>{(data || []).map((s) => (
+            <tr key={s.id} style={{ opacity: s.active ? 1 : 0.55 }}>
+              <td><b>{s.name}</b> <span className="badge">{s.format.toUpperCase()}</span></td>
+              <td>{s.frequency} · last {s.days} days</td>
+              <td>{s.channels.length ? s.channels.join(", ") : "all channels"}</td>
+              <td className="muted" style={{ fontSize: 12 }}>{s.recipients.join(", ")}</td>
+              <td className="muted">{s.last_sent_at ? fmtTime(s.last_sent_at) : "never"}</td>
+              <td><div className="row">
+                <button className="sm" onClick={() => sendNow(s.id)}>Run now</button>
+                <button className="sm ghost" onClick={() => run(s.active ? "Paused" : "Resumed", () => mk.updateSchedule(s.id, { active: !s.active })).then(reload)}>{s.active ? "Pause" : "Resume"}</button>
+                <button className="sm danger" onClick={() => confirm(`Delete “${s.name}”?`) && run("Deleted", () => mk.deleteSchedule(s.id)).then(reload)}>×</button>
+              </div></td>
+            </tr>
+          ))}</tbody></table>
+      )}
+      <div className="form mt">
+        <label className="field">Report name<input value={f.name} placeholder="Weekly campaign performance" onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+        <label className="field">Frequency<select value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value, days: e.target.value === "daily" ? 1 : e.target.value === "monthly" ? 30 : 7 })}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+        <label className="field">Period (days)<input type="number" min={1} max={365} value={f.days} onChange={(e) => setF({ ...f, days: Number(e.target.value) })} /></label>
+        <label className="field">Format<select value={f.format} onChange={(e) => setF({ ...f, format: e.target.value as "csv" | "pdf" })}><option value="pdf">PDF</option><option value="csv">CSV</option></select></label>
+        <label className="field" style={{ gridColumn: "span 2" }}>Recipients<input value={f.recipients} placeholder="cmo@voyqi.com, growth@voyqi.com" onChange={(e) => setF({ ...f, recipients: e.target.value })} /></label>
+      </div>
+      <div className="row mt">{["email", "sms", "push", "voice", "social"].map((c) => (
+        <label key={c} className="badge" style={{ cursor: "pointer" }}><input type="checkbox" checked={f.channels.includes(c)} onChange={(e) => setF({ ...f, channels: e.target.checked ? [...f.channels, c] : f.channels.filter((x) => x !== c) })} /> {c}</label>
+      ))}<span className="muted" style={{ fontSize: 12 }}>none ticked = all channels</span></div>
+      <button className="mt" disabled={!f.name || !f.recipients.trim()} onClick={save}>Schedule report</button>
     </div>
   );
 }

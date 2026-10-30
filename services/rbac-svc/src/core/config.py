@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # gateway doesn't route /internal/, so it's never reachable from
     # outside; this guards against other pods in the namespace too.
     internal_token: str = ""
+    # auth-svc answers lockout / last-login questions for the Users page.
+    auth_svc_base_url: str = "http://auth-svc:8024"
+    # The gateway asks for a user's permissions on their requests; at most
+    # this often that also stamps the user's "last seen".
+    last_seen_resolution_seconds: int = 60
 
 
 @lru_cache

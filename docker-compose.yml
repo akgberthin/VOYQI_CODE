@@ -107,6 +107,7 @@ services:
       # Encrypts integration credentials (super admin → Integrations). Dev-only key; set INTEGRATIONS_KEY elsewhere.
       RBAC_INTEGRATIONS_KEY: ${INTEGRATIONS_KEY:-oBE95Al1TrMdZitl_4RKK07oKgai2R6oHPGNs8Crsok=}
       RBAC_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
+      RBAC_AUTH_SVC_BASE_URL: http://auth-svc:8024
       RBAC_DATABASE_URL: postgresql+asyncpg://rbac_svc:${RBAC_DB_PASSWORD:-devpassword}@rbac-db:5432/rbac
       RBAC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
@@ -455,6 +456,7 @@ services:
       # must match exactly for the gateway to verify tokens statelessly.
       AUTH_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
       AUTH_REDIS_URL: redis://redis:6379/0
+      AUTH_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
     depends_on:
       redis:
         condition: service_started

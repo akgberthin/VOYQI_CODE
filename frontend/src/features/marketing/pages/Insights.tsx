@@ -119,6 +119,7 @@ export function Audience() {
           </div>
         </div>
       </div>
+      <Suggestions onCreated={reloadAll} />
       <div className="card mb table-wrap">
         <div className="row between"><h3>Segments</h3>
           <button className="sm ghost" onClick={() => run("Empty segment created — import contacts into it", () => mk.createSegment({ name: `Import ${new Date().toLocaleDateString()}`, filter_criteria: {}, created_by: me?.email })).then(reloadAll)}>New empty segment</button>
@@ -253,7 +254,14 @@ export function AbTests() {
   const campaigns = useLoad(() => mk.campaigns());
   const [campaignId, setCampaignId] = useState("");
   const drafts = useLoad(() => (campaignId ? mk.drafts(campaignId) : Promise.resolve([])), [campaignId]);
-  const [f, setF] = useState({ a: "", b: "", metric: "click_rate" });
+  const [f, setF] = useState({ a: "", b: "", metric: "click_rate", split: 50 });
+  const all = tests.data || [];
+  const done = all.filter((t) => t.status === "concluded");
+  const lifts = done.filter((t) => t.winner_draft_id && t.variant_a_sent && t.variant_b_sent).map((t) => {
+    const ra = t.variant_a_converted / t.variant_a_sent, rb = t.variant_b_converted / t.variant_b_sent;
+    const [win, lose] = t.winner_draft_id === t.variant_b_draft_id ? [rb, ra] : [ra, rb];
+    return lose ? (win - lose) / lose : 0;
+  });
   const cname = (id: string) => (campaigns.data || []).find((c) => c.id === id)?.name || id.slice(0, 8);
   const record = (t: any, variant: string) => {
     const sent = prompt(`Variant ${variant.toUpperCase()}: how many more were sent?`, "100");
@@ -264,7 +272,13 @@ export function AbTests() {
   };
   return (
     <>
-      <PageHead title="A/B tests" text="Two drafts of the same campaign compete. Sending variant A splits the campaign's audience 50/50 automatically; opens and clicks are tracked per message and the test concludes itself once the difference is statistically significant (p < 0.05, ≥100 per arm). Results can still be entered by hand for channels without tracking." />
+      <PageHead title="A/B tests" text="Two drafts of the same campaign compete. Sending variant A splits the campaign's audience (50/50 unless set otherwise); opens and clicks are tracked per message and the test concludes itself once the difference is statistically significant (p < 0.05, ≥100 per arm). Results can still be entered by hand for channels without tracking." />
+      <div className="grid cols-4 mb">
+        <div className="card kpi"><div className="l">Running</div><div className="n">{all.filter((t) => t.status !== "concluded").length}</div></div>
+        <div className="card kpi"><div className="l">Concluded</div><div className="n">{done.length}</div></div>
+        <div className="card kpi"><div className="l">Average lift</div><div className="n">{lifts.length ? `${lifts.reduce((a, x) => a + x, 0) / lifts.length >= 0 ? "+" : ""}${Math.round((lifts.reduce((a, x) => a + x, 0) / lifts.length) * 100)}%` : "—"}</div><div className="d">winner over loser</div></div>
+        <div className="card kpi"><div className="l">Winners picked automatically</div><div className="n">{done.filter((t) => t.winner_draft_id).length}</div><div className="d">at p &lt; 0.05</div></div>
+      </div>
       <div className="card mb">
         <h3>New test</h3>
         <div className="form mt">
@@ -273,9 +287,10 @@ export function AbTests() {
             <label key={v} className="field">Variant {v.toUpperCase()}<select value={f[v]} onChange={(e) => setF({ ...f, [v]: e.target.value })}><option value="">— draft —</option>{(drafts.data || []).map((d) => <option key={d.id} value={d.id}>{(d.subject_line || d.body_text).slice(0, 50)}</option>)}</select></label>
           ))}
           <label className="field">Metric<select value={f.metric} onChange={(e) => setF({ ...f, metric: e.target.value })}><option value="click_rate">click rate</option><option value="open_rate">open rate</option><option value="conversion_rate">conversion rate</option></select></label>
+          <label className="field">Share getting B (%)<input type="number" min={5} max={95} value={f.split} onChange={(e) => setF({ ...f, split: Math.max(5, Math.min(95, Number(e.target.value) || 50)) })} /></label>
         </div>
         {campaignId && (drafts.data || []).length < 2 && <div className="sub mt">This campaign needs two drafts — <Link href={`/marketing/campaigns/${campaignId}`}>write another</Link>.</div>}
-        <button className="mt" disabled={!f.a || !f.b || f.a === f.b} onClick={() => run("Test started", () => mk.createAbTest({ campaign_id: campaignId, variant_a_draft_id: f.a, variant_b_draft_id: f.b, metric: f.metric })).then(tests.reload)}>Start test</button>
+        <button className="mt" disabled={!f.a || !f.b || f.a === f.b} onClick={() => run("Test started", () => mk.createAbTest({ campaign_id: campaignId, variant_a_draft_id: f.a, variant_b_draft_id: f.b, metric: f.metric, split_b_pct: f.split })).then(tests.reload)}>Start test</button>
       </div>
       {tests.loading ? <Loading /> : !(tests.data || []).length ? <Empty>No tests yet.</Empty> : (
         <div className="grid cols-2">{(tests.data || []).map((t) => {
@@ -292,7 +307,7 @@ export function AbTests() {
           );
           return (
             <div key={t.id} className="card">
-              <div className="row between"><b>{cname(t.campaign_id)}</b><div className="row">{variable(t) && <span className="badge info">tests {variable(t)}</span>}<span className="badge">{t.metric.replace("_", " ")}</span><StatusBadge value={t.status} /></div></div>
+              <div className="row between"><b>{cname(t.campaign_id)}</b><div className="row">{variable(t) && <span className="badge info">tests {variable(t)}</span>}<span className="badge">{t.metric.replace("_", " ")}</span><span className="badge">{100 - (t.split_b_pct ?? 50)}/{t.split_b_pct ?? 50}</span><StatusBadge value={t.status} /></div></div>
               <div className="split mt">{arm("A", t.variant_a_sent, t.variant_a_converted, ra, t.variant_a_draft_id)}{arm("B", t.variant_b_sent, t.variant_b_converted, rb, t.variant_b_draft_id)}</div>
               {t.status !== "concluded" && <button className="mt" onClick={() => run("Evaluated", () => mk.evaluateAbTest(t.id)).then(tests.reload)}>Evaluate significance</button>}
             </div>
@@ -304,11 +319,23 @@ export function AbTests() {
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────
+const SPACING_HOURS = 20; // marketing-svc's over-messaging guard for one channel
+
 export function Calendar() {
   const { data, error, loading } = useLoad(() => mk.calendar());
+  const sends = useLoad(() => mk.sends());
+  const [view, setView] = useState<"month" | "week">("month");
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const start = new Date(month); start.setDate(1 - ((month.getDay() + 6) % 7));
-  const days = Array.from({ length: 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+  const [weekStart, setWeekStart] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; });
+  const start = view === "week" ? new Date(weekStart) : new Date(month);
+  if (view === "month") start.setDate(1 - ((month.getDay() + 6) % 7));
+  const days = Array.from({ length: view === "week" ? 7 : 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+  const now = Date.now();
+  const entries = (data || []).slice().sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+  const nextWeek = entries.filter((e) => { const t = new Date(e.scheduled_at).getTime(); return t > now && t < now + 7 * 86400e3; }).length;
+  const conflicts = entries.filter((e, i) => entries.slice(i + 1).some((o) => o.channel === e.channel && Math.abs(new Date(o.scheduled_at).getTime() - new Date(e.scheduled_at).getTime()) < SPACING_HOURS * 3600e3)).length;
+  const sentToday = (sends.data || []).filter((x) => x.sent_at && new Date(x.sent_at).toDateString() === new Date().toDateString()).length;
+  const shift = (dir: number) => (view === "week" ? setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7 * dir)) : setMonth(new Date(month.getFullYear(), month.getMonth() + dir, 1)));
   const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
   const byDay: Record<string, any[]> = {};
   for (const e of data || []) { const d = new Date(e.scheduled_at); (byDay[key(d)] ||= []).push(e); }
@@ -316,17 +343,25 @@ export function Calendar() {
   return (
     <>
       <PageHead title="Calendar" text="Every scheduled send and social post across channels. Entries appear here automatically when something is scheduled.">
-        <button className="ghost" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
-        <b style={{ minWidth: 150, textAlign: "center" }}>{month.toLocaleString(undefined, { month: "long", year: "numeric" })}</b>
-        <button className="ghost" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
+        <div className="seg">{(["month", "week"] as const).map((v) => <button key={v} className={view === v ? "on" : ""} onClick={() => setView(v)}>{v}</button>)}</div>
+        <button className="ghost" onClick={() => shift(-1)}>‹</button>
+        <b style={{ minWidth: 170, textAlign: "center" }}>{view === "week" ? `${days[0].toLocaleDateString(undefined, { day: "numeric", month: "short" })} – ${days[6].toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : month.toLocaleString(undefined, { month: "long", year: "numeric" })}</b>
+        <button className="ghost" onClick={() => shift(1)}>›</button>
+        <button className="ghost" onClick={() => { const d = new Date(); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); setWeekStart(d); }}>Today</button>
       </PageHead>
+      <div className="grid cols-4 mb">
+        <div className="card kpi"><div className="l">Sent today</div><div className="n">{sentToday}</div></div>
+        <div className="card kpi"><div className="l">Scheduled</div><div className="n">{nextWeek}</div><div className="d">next 7 days</div></div>
+        <div className="card kpi"><div className="l">Too close together</div><div className="n" style={{ color: conflicts ? "var(--warn)" : "var(--ok)" }}>{conflicts}</div><div className="d">{conflicts ? `same channel within ${SPACING_HOURS}h` : "no overlaps ✓"}</div></div>
+        <div className="card kpi"><div className="l">On the calendar</div><div className="n">{entries.length}</div><div className="d">sends and posts</div></div>
+      </div>
       <ErrorNote error={error} />
       {loading ? <Loading /> : (
         <div className="cal">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="dow">{d}</div>)}
           {days.map((d) => (
-            <div key={key(d)} className={`day ${d.getMonth() !== month.getMonth() ? "out" : ""} ${key(d) === today ? "today" : ""}`}>
-              <div className="num">{d.getDate()}</div>
+            <div key={key(d)} className={`day ${view === "month" && d.getMonth() !== month.getMonth() ? "out" : ""} ${key(d) === today ? "today" : ""}`} style={view === "week" ? { minHeight: 260 } : undefined}>
+              <div className="num">{view === "week" ? d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" }) : d.getDate()}</div>
               {(byDay[key(d)] || []).map((e) => (
                 <div key={e.id} className={`ev ch-${e.channel}`} title={`${e.title} · ${new Date(e.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}>
                   {new Date(e.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {e.title}
@@ -414,5 +449,34 @@ export function Analytics() {
         </table></div>
       )}
     </>
+  );
+}
+
+/** Audiences the Marketing Content Agent thinks are worth a campaign. */
+function Suggestions({ onCreated }: { onCreated: () => void }) {
+  const run = useAction();
+  const { me } = useSession();
+  const [data, setData] = useState<Awaited<ReturnType<typeof mk.suggestSegments>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const ask = async () => { setBusy(true); await run("Suggestions ready", async () => setData(await mk.suggestSegments())); setBusy(false); };
+  const create = (sug: any) => run(`“${sug.name}” created with its contacts`, () => mk.createSegment({ name: sug.name, filter_criteria: sug.filter_criteria, created_by: me?.email, populate: true }))
+    .then((ok) => { if (ok) { setData(data && { ...data, suggestions: data.suggestions.filter((x) => x !== sug) }); onCreated(); } });
+  return (
+    <div className="card mb">
+      <div className="row between"><h3>✦ AI-suggested segments</h3><button className="sm" disabled={busy} onClick={ask}>{busy ? "Thinking…" : data ? "Suggest again" : "Suggest segments"}</button></div>
+      <div className="sub">From the attributes your contacts carry. Each comes with the reason and a live count; nothing is created until you choose.</div>
+      {data?.skipped_reason && <div className="notice warn mt">{data.skipped_reason}</div>}
+      {data && !data.suggestions.length && !data.skipped_reason && <div className="empty">No new audiences to suggest — import contacts with attributes (city, class, churn_risk, tenure_months…) first.</div>}
+      {data && data.suggestions.length > 0 && (
+        <div className="grid cols-3 mt">{data.suggestions.map((sug) => (
+          <div key={sug.name} className="card" style={{ background: "var(--panel-2)" }}>
+            <div className="row between"><b>{sug.name}</b><span className={`badge ${data.source === "claude" ? "ai" : ""}`}>{data.source === "claude" ? "Claude" : "rules"}</span></div>
+            <div className="sub mt">{sug.why}</div>
+            <div className="row mt">{Object.entries(sug.filter_criteria).map(([k, v]) => <span key={k} className="badge">{k}: {typeof v === "object" && !Array.isArray(v) ? `${(v as any).min ?? "…"}–${(v as any).max ?? "…"}` : Array.isArray(v) ? v.join(" / ") : String(v)}</span>)}</div>
+            <div className="row between mt"><span><b>{sug.estimate.total.toLocaleString()}</b> <span className="muted">contacts · best on {sug.channel}</span></span><button className="sm" onClick={() => create(sug)}>Create</button></div>
+          </div>
+        ))}</div>
+      )}
+    </div>
   );
 }

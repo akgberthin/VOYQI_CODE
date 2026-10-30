@@ -70,7 +70,8 @@ async def fetch_permissions(tenant_id: str, user_id: str) -> frozenset[str]:
         async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
             resp = await client.get(
                 f"{settings.rbac_base_url}/api/v1/rbac/users/{user_id}/effective-permissions",
-                headers={"x-tenant-id": tenant_id},
+                # Also stamps the user's "last seen" for the Users page.
+                headers={"x-tenant-id": tenant_id, "x-record-seen": "1"},
             )
     except httpx.HTTPError as exc:
         raise AuthorizationError(503, "Authorization service unavailable") from exc

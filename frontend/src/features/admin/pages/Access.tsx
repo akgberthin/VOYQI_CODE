@@ -1,12 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { get, must, post } from "@/lib/api";
+import { api, get, must, post } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Badge, Empty, ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useAction, useLoad } from "@/lib/ui";
 import { CONSOLES, PERMISSION_KEYS, allows } from "../permissions";
 
 // ── Users & their roles ───────────────────────────────────────────────
+const DAY = 86400e3;
+/** Most recent of: last request through the gateway, last sign-in. */
+const lastSeen = (u: any): string | null => [u.last_seen_at, u.last_login_at].filter(Boolean).sort().pop() || null;
+const ago = (iso: string | null) => {
+  if (!iso) return "never";
+  const d = Date.now() - new Date(iso).getTime();
+  if (d < 3600e3) return `${Math.max(1, Math.round(d / 60e3))}m ago`;
+  if (d < DAY) return `${Math.round(d / 3600e3)}h ago`;
+  return `${Math.round(d / DAY)}d ago`;
+};
+const mfaOn = (u: any) => u.login_mfa_enabled ?? u.mfa_enabled;
 export function Users() {
   const run = useAction();
   const { me } = useSession();
@@ -26,6 +37,20 @@ export function Users() {
   const [add, setAdd] = useState({ email: "", display_name: "", id: "", mfa_enabled: false });
   const [adding, setAdding] = useState(false);
   const actor = me?.email || "super.admin";
+  const all = users.data || [];
+  const [filter, setFilter] = useState("");
+  const shown = all.filter((u) => !filter || (filter === "locked" ? u.locked : filter === "inactive" ? !lastSeen(u) || Date.now() - new Date(lastSeen(u)!).getTime() > 30 * DAY : filter === "suspended" ? u.status === "suspended" : !mfaOn(u)));
+  const statusError = all.find((u) => u.account_status_error)?.account_status_error;
+  const unlock = (u: any) => run(`${u.display_name} unlocked — they can sign in again`, () => must(post(`/api/v1/rbac/users/${u.id}/unlock`, { unlocked_by: actor }))).then(users.reload);
+  const [edit, setEdit] = useState<any>(null);
+  const saveEdit = () => run("User updated", () => must(api("PATCH", `/api/v1/rbac/users/${sel.id}`, { display_name: edit.display_name, email: edit.email, mfa_enabled: edit.mfa_enabled, updated_by: actor })))
+    .then((ok) => { if (ok) { setSel({ ...sel, ...edit }); setEdit(null); users.reload(); } });
+  const setStatus = (status: "active" | "suspended") => {
+    const reason = status === "suspended" ? prompt(`Suspend ${sel.display_name}? They keep their roles on record but lose all access. Reason:`) : "";
+    if (reason === null) return;
+    run(status === "suspended" ? "Suspended — access removed" : "Reactivated", () => must(api("PATCH", `/api/v1/rbac/users/${sel.id}`, { status, updated_by: actor, reason: reason || "" })))
+      .then((ok) => { if (ok) { setSel({ ...sel, status }); users.reload(); detail.reload(); } });
+  };
   const createUser = () => run("User created", () => must(post("/api/v1/rbac/users", { email: add.email, display_name: add.display_name, mfa_enabled: add.mfa_enabled, ...(add.id ? { id: add.id } : {}) })))
     .then((ok) => { if (ok) { setAdd({ email: "", display_name: "", id: "", mfa_enabled: false }); setAdding(false); users.reload(); } });
 
@@ -48,16 +73,30 @@ export function Users() {
         </div>
       )}
       <ErrorNote error={users.error} />
-      <div className="grid" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.3fr)" }}>
+      <div className="grid cols-4 mb">
+        {([["", "Total users", all.length, `${all.filter((u) => u.status === "suspended").length} suspended`],
+          ["nomfa", "MFA enabled", `${all.filter(mfaOn).length}/${all.length}`, `${all.filter((u) => !mfaOn(u)).length} without — click to list`],
+          ["inactive", "Inactive 30d", all.filter((u) => !lastSeen(u) || Date.now() - new Date(lastSeen(u)!).getTime() > 30 * DAY).length, "review required"],
+          ["locked", "Locked", statusError ? "—" : all.filter((u) => u.locked).length, "failed sign-in attempts"]] as const).map(([k, l, n, d]) => (
+          <button key={l} className="card kpi" style={{ textAlign: "left", color: "inherit", borderColor: filter === k && k ? "var(--gold)" : undefined }} onClick={() => setFilter(filter === k ? "" : k)}>
+            <div className="l">{l}</div><div className="n" style={k === "locked" && Number(n) > 0 ? { color: "var(--bad)" } : undefined}>{n}</div><div className="d">{d}</div>
+          </button>
+        ))}
+      </div>
+      {statusError && <div className="notice warn mb">Sign-in status (locked accounts, last login) is unavailable: {statusError}</div>}
+      <div className="grid" style={{ gridTemplateColumns: "minmax(0,1.25fr) minmax(0,1fr)" }}>
         <div className="card table-wrap">
           {users.loading ? <Loading /> : (
             <table>
-              <thead><tr><th>User</th><th>MFA</th><th>Status</th></tr></thead>
-              <tbody>{(users.data || []).map((u) => (
-                <tr key={u.id} className="click" onClick={() => setSel(u)} style={sel?.id === u.id ? { outline: "1px solid var(--gold)" } : undefined}>
+              <thead><tr><th>User</th><th>Roles</th><th>MFA</th><th>Last seen</th><th>Status</th><th /></tr></thead>
+              <tbody>{shown.map((u) => (
+                <tr key={u.id} className="click" onClick={() => { setSel(u); setEdit(null); }} style={sel?.id === u.id ? { outline: "1px solid var(--gold)" } : undefined}>
                   <td><b>{u.display_name}</b><div className="muted">{u.email}</div></td>
-                  <td>{u.mfa_enabled ? <Badge kind="ok">on</Badge> : <Badge>off</Badge>}</td>
-                  <td><StatusBadge value={u.status} /></td>
+                  <td>{u.role_keys?.length ? u.role_keys.map((k: string) => <span key={k} className="badge" style={{ fontSize: 10 }}>{k}</span>) : <span className="muted">—</span>}</td>
+                  <td>{mfaOn(u) ? <Badge kind="ok">on</Badge> : <Badge kind="bad">off</Badge>}</td>
+                  <td className="muted" title={lastSeen(u) ? fmtTime(lastSeen(u)!) : ""}>{ago(lastSeen(u))}{u.has_login === false && <div style={{ fontSize: 11 }}>no sign-in account</div>}</td>
+                  <td>{u.locked ? <Badge kind="bad">locked</Badge> : <StatusBadge value={u.status} />}</td>
+                  <td>{u.locked && <button className="sm danger" title={`${u.failed_login_attempts} failed attempts; locked until ${fmtTime(u.locked_until)}`} onClick={(e) => { e.stopPropagation(); unlock(u); }}>Unlock</button>}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -66,7 +105,23 @@ export function Users() {
         <div className="card">
           {!sel ? <Empty>Select a user.</Empty> : detail.loading && !detail.data ? <Loading /> : detail.data && (
             <>
-              <h3>{sel.display_name}</h3><div className="sub mono">{sel.id}</div>
+              <div className="row between"><h3>{sel.display_name}</h3><div className="row">
+                <button className="sm ghost" onClick={() => setEdit(edit ? null : { display_name: sel.display_name, email: sel.email, mfa_enabled: sel.mfa_enabled })}>{edit ? "Cancel" : "Edit"}</button>
+                {sel.status === "suspended" ? <button className="sm" onClick={() => setStatus("active")}>Reactivate</button> : <button className="sm danger" onClick={() => setStatus("suspended")}>Suspend</button>}
+              </div></div>
+              <div className="sub mono">{sel.id}</div>
+              {sel.status === "suspended" && <div className="notice warn mt">Suspended — the gateway refuses all of this user&apos;s requests. Their roles stay on record for reactivation.</div>}
+              {edit && (
+                <div className="mt">
+                  <div className="form">
+                    <label className="field">Display name<input value={edit.display_name} onChange={(e) => setEdit({ ...edit, display_name: e.target.value })} /></label>
+                    <label className="field">Email<input value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></label>
+                    <label className="field">MFA required<select value={String(edit.mfa_enabled)} onChange={(e) => setEdit({ ...edit, mfa_enabled: e.target.value === "true" })}><option value="true">yes</option><option value="false">no</option></select></label>
+                  </div>
+                  <div className="sub mt">Sign-in email and the user&apos;s own MFA enrolment live in their account (auth-svc); this edits the platform record.</div>
+                  <button className="mt" disabled={!edit.display_name.trim() || !edit.email.trim()} onClick={saveEdit}>Save</button>
+                </div>
+              )}
               <h4 className="mt">Roles</h4>
               <div className="row">
                 {detail.data.ctx.assignments.map((a: any) => (
@@ -110,6 +165,12 @@ const rolePerms = (r: any): string[] => [...(r.permission_keys || []), ...(r.wil
 export function Roles() {
   const run = useAction();
   const { data, error, loading, reload } = useLoad(() => must<any[]>(get("/api/v1/rbac/roles")));
+  const { me } = useSession();
+  const assignments = useLoad(() => must<any[]>(get("/api/v1/rbac/role-assignments")));
+  const people = useLoad(() => must<any[]>(get("/api/v1/rbac/users")));
+  const who = (id: string) => (people.data || []).find((u) => u.id === id);
+  const holders = (roleId: string) => (assignments.data || []).filter((a) => a.role_id === roleId);
+  const [roleFilter, setRoleFilter] = useState("");
   const [form, setForm] = useState({ key: "", name: "", perms: [] as string[] });
   const [pick, setPick] = useState("");
   const [check, setCheck] = useState({ role: "", permission: "" });
@@ -152,9 +213,31 @@ export function Roles() {
           <div key={r.id} className="card">
             <div className="row between"><h3>{r.name}</h3><div className="row"><span className="mono muted">{r.key}</span>{r.is_system_role && <Badge kind="gold">system</Badge>}</div></div>
             <div className="row mt">{rolePerms(r).map((p: string) => <Badge key={p} kind={p.includes("*") ? "gold" : "info"}>{p}</Badge>)}</div>
+            <div className="row between mt"><span className="muted">{holders(r.id).length} user{holders(r.id).length === 1 ? "" : "s"}</span>
+              {holders(r.id).length > 0 && <button className="sm ghost" onClick={() => setRoleFilter(roleFilter === r.id ? "" : r.id)}>{roleFilter === r.id ? "Show all" : "Who has it"}</button>}</div>
           </div>
         ))}</div>
       )}
+      <div className="card table-wrap mt">
+        <div className="row between"><h3>Active assignments{roleFilter && ` — ${(data || []).find((r) => r.id === roleFilter)?.name}`}</h3>{roleFilter && <button className="sm ghost" onClick={() => setRoleFilter("")}>Show all</button>}</div>
+        <ErrorNote error={assignments.error} />
+        {!(assignments.data || []).length ? <Empty>No one holds a role yet. Assign roles from Users &amp; roles.</Empty> : (
+          <table className="mt"><thead><tr><th>User</th><th>Role</th><th>Assigned by</th><th>When</th><th /></tr></thead>
+            <tbody>{(assignments.data || []).filter((a) => !roleFilter || a.role_id === roleFilter).map((a) => {
+              const u = who(a.user_id);
+              const r = (data || []).find((x) => x.id === a.role_id);
+              return (
+                <tr key={a.id}>
+                  <td>{u ? <><b>{u.display_name}</b><div className="muted">{u.email}</div></> : <span className="mono muted">{a.user_id}</span>}{u?.status === "suspended" && <Badge kind="warn">suspended</Badge>}</td>
+                  <td><span className="badge gold">{r?.key || a.role_id}</span></td>
+                  <td>{a.assigned_by.startsWith("ai:") ? <Badge kind="info">{a.assigned_by}</Badge> : a.assigned_by}</td>
+                  <td className="muted">{a.assigned_at ? fmtTime(a.assigned_at) : "—"}</td>
+                  <td><button className="sm ghost" onClick={() => confirm(`Revoke ${r?.key} from ${u?.display_name || a.user_id}?`) && run("Role revoked", () => must(post(`/api/v1/rbac/role-assignments/${a.id}/revoke`, { revoked_by: me?.email || "super.admin", reason: "super admin" }))).then(assignments.reload)}>Revoke</button></td>
+                </tr>
+              );
+            })}</tbody></table>
+        )}
+      </div>
     </>
   );
 }

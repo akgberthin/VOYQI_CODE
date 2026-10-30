@@ -7,7 +7,7 @@ import { NavLink } from "@/components/NavLink";
 import { useSession } from "@/lib/session";
 import { PageHead, useAction, useLoad } from "@/lib/ui";
 import { DraftCard } from "../bits";
-import { CHANNEL_ICON, CHANNEL_LABEL, DEEP_LINKS, RECURRENCE, TOKENS, VOICES, inHours, mk, smsParts, toIso, type Draft } from "../mk";
+import { CHANNEL_ICON, CHANNEL_LABEL, DEEP_LINKS, RECURRENCE, TIMEZONES, TOKENS, VOICES, inHours, mk, smsParts, toIso, zonedToIso, type Draft } from "../mk";
 
 const HINT: Record<string, string> = {
   email: "Sender, subject, inbox preview and body — with an optional B subject that starts an A/B test. The guardrail holds subjects over 150 characters and absolute claims (“guaranteed”, “risk-free”…).",
@@ -17,7 +17,7 @@ const HINT: Record<string, string> = {
 };
 const LIMIT: Record<string, number> = { sms: 320, push: 120 };
 const STOP_LINE = "Reply STOP to opt out.";
-const EMPTY = { from_name: "", reply_to: "", preview_text: "", append_stop: true, sender_id: "", media_url: "", deep_link: "", notification_type: "promotional", platforms: [] as string[], voice: "Polly.Joanna" };
+const EMPTY = { from_name: "", reply_to: "", preview_text: "", append_stop: true, sender_id: "", media_url: "", deep_link: "", notification_type: "promotional", platforms: [] as string[], voice: "Polly.Joanna", max_attempts: 1, retry_hours: 4, record: false };
 const PLATFORMS: [string, string][] = [["ios", "iOS (APNs)"], ["android", "Android (FCM)"], ["web", "Web push"]];
 
 export default function Compose() {
@@ -41,6 +41,15 @@ export default function Compose() {
   const [abNote, setAbNote] = useState("");
   const [at, setAt] = useState(inHours(24));
   const [recurrence, setRecurrence] = useState("none");
+  const [tz, setTz] = useState("");
+  const [splitB, setSplitB] = useState(50);
+  const [segmentId, setSegmentId] = useState("");
+  const [audio, setAudio] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const segments = useLoad(() => mk.segments());
+  const campaign = (campaigns.data || []).find((c) => c.id === campaignId);
+  const audienceSeg = (segments.data || []).find((x) => x.id === (campaignId ? campaign?.audience_segment_id : segmentId));
+  useEffect(() => { if (policy.data && !tz) setTz(policy.data.timezone || "UTC"); }, [policy.data, tz]);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { setCampaignId(""); setSaved(null); setSubject(""); setSubjectB(""); setBody(""); setO(EMPTY); setAbNote(""); }, [channel]);
@@ -51,7 +60,7 @@ export default function Compose() {
     if (channel === "email") return { from_name: o.from_name, reply_to: o.reply_to, preview_text: o.preview_text };
     if (channel === "sms") return { append_stop: o.append_stop, sender_id: o.sender_id, media_url: o.media_url };
     if (channel === "push") return { deep_link: o.deep_link, notification_type: o.notification_type, ...(o.platforms.length && o.platforms.length < 3 ? { platforms: o.platforms } : {}) };
-    if (channel === "voice") return { voice: o.voice, language: VOICES.find(([k]) => k === o.voice)?.[2] };
+    if (channel === "voice") return { voice: o.voice, language: VOICES.find(([k]) => k === o.voice)?.[2], max_attempts: o.max_attempts, retry_hours: o.retry_hours, record: o.record };
     return {};
   };
   const insertToken = (t: string) => {
@@ -63,7 +72,7 @@ export default function Compose() {
   };
   async function ensureCampaign(): Promise<string> {
     if (campaignId) return campaignId;
-    const c = await mk.createCampaign({ name: newName || `${CHANNEL_LABEL[channel]} message`, channel: channel as any, objective: brief, created_by: actor } as any);
+    const c = await mk.createCampaign({ name: newName || `${CHANNEL_LABEL[channel]} message`, channel: channel as any, objective: brief, audience_segment_id: segmentId || null, created_by: actor } as any);
     setCampaignId(c.id);
     campaigns.reload();
     return c.id;
@@ -75,8 +84,8 @@ export default function Compose() {
     setAbNote("");
     if (channel === "email" && subjectB.trim()) {
       const b = await mk.createDraft({ campaign_id: id, channel: "email", subject_line: subjectB, body_text: body, options: options(), created_by: actor } as any);
-      await mk.createAbTest({ campaign_id: id, variant_a_draft_id: a.id, variant_b_draft_id: b.id, metric: "open_rate" });
-      setAbNote(b.status === "approved" ? "Variant B saved too. Schedule each variant to half the audience from the campaign page; record results under A/B tests." : "Variant B was held by the guardrail — review it before testing.");
+      await mk.createAbTest({ campaign_id: id, variant_a_draft_id: a.id, variant_b_draft_id: b.id, metric: "open_rate", split_b_pct: splitB });
+      setAbNote(b.status === "approved" ? `Variant B saved too. Sending A splits the audience ${100 - splitB}/${splitB}; opens are tracked and the test picks its winner.` : "Variant B was held by the guardrail — review it before testing.");
     }
   });
   const ai = async () => {
@@ -89,9 +98,22 @@ export default function Compose() {
     setBusy(false);
   };
   const schedule = () => run("Scheduled — on the calendar", async () => {
-    await mk.scheduleSend({ campaign_id: saved!.campaign_id, content_draft_id: saved!.id, channel, scheduled_at: toIso(at), recurrence });
+    await mk.scheduleSend({ campaign_id: saved!.campaign_id, content_draft_id: saved!.id, channel, scheduled_at: tz ? zonedToIso(at, tz) : toIso(at), recurrence });
     setSaved({ ...saved!, status: "scheduled" });
   });
+  const sendNow = () => run("Sent — every recipient checked against the suppression list", async () => {
+    if (!audienceSeg) throw new Error("Choose an audience (a segment) for this campaign first.");
+    if (!confirm(`Send now to the ${audienceSeg.member_count} contacts in “${audienceSeg.name}”?`)) throw new Error("Not sent.");
+    const sendRow = await mk.scheduleSend({ campaign_id: saved!.campaign_id, content_draft_id: saved!.id, channel, scheduled_at: new Date().toISOString(), recurrence: "none" });
+    const r = await mk.executeSend(sendRow.id, [], false);
+    setSaved({ ...saved!, status: "sent" });
+    if (r.status !== "sent") throw new Error(r.failure_detail || `Send ${r.status.replace(/_/g, " ")}`);
+  });
+  const preview = async () => {
+    setPreviewing(true);
+    await run("Audio ready — press play", async () => { const url = await mk.voicePreview(body, o.voice, o.record); if (audio) URL.revokeObjectURL(audio); setAudio(url); });
+    setPreviewing(false);
+  };
   const toLibrary = () => run("Saved to library", () => mk.saveToLibrary({ title: subject || body.slice(0, 40), channel, body_text: subject ? `${subject}\n\n${body}` : body, tags: [], created_by: actor })).then(library.reload);
 
   const smsOut = channel === "sms" && o.append_stop && !/stop/i.test(body) ? `${body.trim()} ${STOP_LINE}`.trim() : body;
@@ -114,6 +136,7 @@ export default function Compose() {
               </select>
             </label>
             {!campaignId && <label className="field">New campaign name<input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Weekend luxury rentals" /></label>}
+            {!campaignId && <label className="field">Audience<select value={segmentId} onChange={(e) => setSegmentId(e.target.value)}><option value="">— choose a segment —</option>{(segments.data || []).map((x) => <option key={x.id} value={x.id}>{x.name} ({x.member_count})</option>)}</select></label>}
             {(library.data || []).length > 0 && (
               <label className="field">Start from template
                 <select value="" onChange={(e) => { const t = library.data!.find((x) => x.id === e.target.value); if (t) { const [first, ...rest] = t.body_text.split("\n\n"); if (channel === "email" && rest.length) { setSubject(first); setBody(rest.join("\n\n")); } else setBody(t.body_text); } }}>
@@ -130,7 +153,10 @@ export default function Compose() {
                 <label className="field">Reply-to<input value={o.reply_to} placeholder="care@voyqi.com" onChange={(e) => setO({ ...o, reply_to: e.target.value })} /></label>
               </div>
               <label className="field mt">Subject line<input value={subject} onChange={(e) => setSubject(e.target.value)} /><span className={subject.length > 150 ? "counter over" : "counter"}>{subject.length}/150</span></label>
-              <label className="field">A/B variant subject (optional)<input value={subjectB} placeholder="A second subject to test against the first — 50/50 split" onChange={(e) => setSubjectB(e.target.value)} /></label>
+              <div className="form">
+                <label className="field" style={{ gridColumn: "span 2" }}>A/B variant subject (optional)<input value={subjectB} placeholder="A second subject to test against the first" onChange={(e) => setSubjectB(e.target.value)} /></label>
+                {subjectB && <label className="field">A/B split % (B)<input type="number" min={5} max={95} value={splitB} onChange={(e) => setSplitB(Math.max(5, Math.min(95, Number(e.target.value) || 50)))} /></label>}
+              </div>
               <label className="field">Preview text<input value={o.preview_text} placeholder="The line inboxes show after the subject" onChange={(e) => setO({ ...o, preview_text: e.target.value })} /><span className={o.preview_text.length > 140 ? "counter over" : "counter"}>{o.preview_text.length}/140</span></label>
             </>
           )}
@@ -158,6 +184,10 @@ export default function Compose() {
           {channel === "voice" && (
             <div className="form mt">
               <label className="field">AI voice<select value={o.voice} onChange={(e) => setO({ ...o, voice: e.target.value })}>{VOICES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+              <label className="field">Max attempts per contact<select value={o.max_attempts} onChange={(e) => setO({ ...o, max_attempts: Number(e.target.value) })}>{[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+              {o.max_attempts > 1 && <label className="field">Retry after<select value={o.retry_hours} onChange={(e) => setO({ ...o, retry_hours: Number(e.target.value) })}>{[1, 2, 4, 8, 24].map((h) => <option key={h} value={h}>{h} hour{h > 1 ? "s" : ""}</option>)}</select></label>}
+              <label className="row" style={{ gridColumn: "1 / -1", fontSize: 12.5 }}><input type="checkbox" checked={o.record} onChange={(e) => setO({ ...o, record: e.target.checked })} /> Record calls for QA — the call says so first</label>
+              <div className="muted" style={{ gridColumn: "1 / -1", fontSize: 12 }}>Retries and pickup counts need Twilio&apos;s delivery reports: set &quot;Public URL for delivery reports&quot; on the Twilio integration in super admin.</div>
             </div>
           )}
 
@@ -201,7 +231,10 @@ export default function Compose() {
                   <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Tap → {DEEP_LINKS.find(([k]) => k === o.deep_link)?.[1]}</div></div>
               ) : channel === "voice" ? (
                 <div className="phone"><div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>📞 {VOICES.find(([k]) => k === o.voice)?.[1]}</div>
-                  <div className="bubble"><span className="muted">This is an automated call from VOYQI. </span>{sample(body) || "Your script…"}</div></div>
+                  <div className="bubble"><span className="muted">This is an automated call from VOYQI.{o.record ? " This call may be recorded for quality." : ""} </span>{sample(body) || "Your script…"}</div>
+                  <button className="sm ghost mt" disabled={!body || previewing} onClick={preview}>{previewing ? "Generating…" : "▶ Preview audio"}</button>
+                  {audio && <audio className="mt" controls autoPlay src={audio} style={{ width: "100%" }} />}
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>A close stand-in voice (OpenAI, from super admin → Integrations); the call itself uses the Polly voice chosen.</div></div>
               ) : (
                 <div className="phone"><div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>💬 {o.sender_id || "VOYQI"}</div>{o.media_url && <img src={o.media_url} alt="" style={{ width: "100%", borderRadius: 10, marginBottom: 6 }} />}<div className="bubble">{sample(smsOut) || "Your message…"}</div></div>
               )}
@@ -214,7 +247,14 @@ export default function Compose() {
               {saved.status === "approved" && (
                 <div className="card">
                   <h3>Schedule</h3>
-                  <div className="row mt"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /><select value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select><button onClick={schedule}>Schedule send</button></div>
+                  <div className="row mt">
+                    <input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />
+                    <select value={tz} onChange={(e) => setTz(e.target.value)} title="Timezone">{Array.from(new Set([tz, ...TIMEZONES].filter(Boolean))).map((z) => <option key={z}>{z}</option>)}</select>
+                    <select value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+                    <button onClick={schedule}>Schedule send</button>
+                    <button className="ok" onClick={sendNow}>Send now</button>
+                  </div>
+                  <div className="muted mt" style={{ fontSize: 12 }}>{audienceSeg ? `Audience: ${audienceSeg.name} — ${audienceSeg.member_count.toLocaleString()} contacts` : "No audience yet — pick a segment for the campaign."}</div>
                 </div>
               )}
               {saved.status === "scheduled" && <div className="notice ok">Scheduled. Send it to recipients from the <Link href={`/marketing/campaigns/${saved.campaign_id}`}>campaign page</Link>.</div>}

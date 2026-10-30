@@ -1,13 +1,16 @@
 import uuid
+from datetime import datetime
+from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import get_settings
 from src.core.database import get_db
 from src.core.kafka_events import publish_event
 from src.core.security import get_tenant_id
-from src.services import audit_engine, rbac_engine
+from src.services import account_status, audit_engine, rbac_engine
 
 router = APIRouter(prefix="/api/v1/rbac", tags=["rbac"])
 
@@ -29,6 +32,20 @@ class UserOut(BaseModel):
     display_name: str
     mfa_enabled: bool
     status: str
+    last_seen_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class UserListOut(UserOut):
+    # From auth-svc; null when it couldn't be asked (see account_status_error).
+    has_login: bool | None = None
+    locked: bool | None = None
+    locked_until: str | None = None
+    failed_login_attempts: int | None = None
+    last_login_at: str | None = None
+    login_mfa_enabled: bool | None = None
+    account_status_error: str | None = None
+    role_keys: list[str] = []
 
 
 @router.post("/users", response_model=UserOut, status_code=201)
@@ -39,9 +56,83 @@ async def create_user(body: UserCreate, tenant_id: str = Depends(get_tenant_id),
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.get("/users", response_model=list[UserOut])
+@router.get("/users", response_model=list[UserListOut])
 async def list_users(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    return await rbac_engine.list_platform_users(db, tenant_id)
+    """Platform users with their roles, plus sign-in state (locked, last
+    login, MFA) from auth-svc when it can be reached."""
+    users = await rbac_engine.list_platform_users(db, tenant_id)
+    roles = {r.id: r.key for r in await rbac_engine.list_roles(db, tenant_id)}
+    by_user: dict = {}
+    for a in await rbac_engine.list_role_assignments(db, tenant_id):
+        by_user.setdefault(a.user_id, []).append(roles.get(a.role_id, "?"))
+    try:
+        status, error = await account_status.fetch(tenant_id, [str(u.id) for u in users]) if users else {}, None
+    except account_status.AccountServiceError as exc:
+        status, error = {}, str(exc)
+    out = []
+    for u in users:
+        row = UserListOut.model_validate(u).model_dump()
+        row["role_keys"] = sorted(by_user.get(u.id, []))
+        acct = status.get(str(u.id))
+        if error:
+            row["account_status_error"] = error
+        elif acct is None:
+            row["has_login"] = False
+        else:
+            row.update(has_login=True, locked=acct["locked"], locked_until=acct["locked_until"], failed_login_attempts=acct["failed_login_attempts"],
+                       last_login_at=acct["last_login_at"], login_mfa_enabled=acct["mfa_enabled"])
+        out.append(row)
+    return out
+
+
+class UserUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=128)
+    email: str | None = Field(default=None, min_length=3, max_length=256)
+    mfa_enabled: bool | None = None
+    status: Literal["active", "suspended"] | None = None
+    updated_by: str = Field(min_length=1)
+    reason: str = ""
+
+
+@router.patch("/users/{user_id}", response_model=UserOut)
+async def update_user(user_id: uuid.UUID, body: UserUpdate, background_tasks: BackgroundTasks, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Edit a user. Suspending takes effect on the gateway's next permission
+    check: a suspended user keeps their roles on record but has none."""
+    changes = body.model_dump(exclude_none=True, exclude={"updated_by", "reason"})
+    if not changes:
+        raise HTTPException(status_code=422, detail="Nothing to change.")
+    try:
+        user, diff = await rbac_engine.update_platform_user(db, tenant_id, user_id, changes)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except rbac_engine.DuplicatePlatformUserError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if diff:
+        action = {"suspended": "platform_user.suspended", "active": "platform_user.reactivated"}.get(diff["status"][1], "platform_user.updated") if "status" in diff else "platform_user.updated"
+        detail = "; ".join(f"{k}: {o} → {n}" for k, (o, n) in diff.items())
+        await audit_engine.record(db, tenant_id, "human", body.updated_by, action, str(user_id), f"{detail} {body.reason}".strip())
+        background_tasks.add_task(publish_event, "rbac.access", action, tenant_id, {"user_id": str(user_id), "changes": {k: list(v) for k, v in diff.items()}, "by": body.updated_by})
+    return user
+
+
+class UnlockIn(BaseModel):
+    unlocked_by: str = Field(min_length=1)
+
+
+@router.post("/users/{user_id}/unlock")
+async def unlock_user(user_id: uuid.UUID, body: UnlockIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Lift a lockout from failed sign-in attempts (auth-svc does the work)."""
+    try:
+        await rbac_engine.get_platform_user(db, tenant_id, user_id)
+        result = await account_status.unlock(tenant_id, str(user_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except account_status.AccountServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    await audit_engine.record(db, tenant_id, "human", body.unlocked_by, "platform_user.unlocked", str(user_id), "failed sign-in lockout cleared")
+    return result
 
 
 class RoleCreate(BaseModel):
@@ -84,6 +175,13 @@ class RoleAssignmentOut(BaseModel):
     user_id: uuid.UUID
     role_id: uuid.UUID
     assigned_by: str
+    assigned_at: datetime | None = None
+
+
+@router.get("/role-assignments", response_model=list[RoleAssignmentOut])
+async def list_role_assignments(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Every active assignment in the tenant, newest first."""
+    return await rbac_engine.list_role_assignments(db, tenant_id)
 
 
 @router.post("/role-assignments", response_model=RoleAssignmentOut, status_code=201)
@@ -210,5 +308,10 @@ async def get_user_rbac_context(user_id: uuid.UUID, tenant_id: str = Depends(get
 
 
 @router.get("/users/{user_id}/effective-permissions")
-async def resolve_effective_permissions(user_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+async def resolve_effective_permissions(user_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db),
+                                        x_record_seen: str | None = Header(default=None)):
+    """The gateway sends X-Record-Seen on a user's own requests, which also
+    stamps their "last seen" (at most once a minute)."""
+    if x_record_seen:
+        await rbac_engine.touch_last_seen(db, tenant_id, user_id, get_settings().last_seen_resolution_seconds)
     return await rbac_engine.resolve_effective_permissions(db, tenant_id, user_id)

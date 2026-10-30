@@ -46,7 +46,7 @@ so a service is renamed in the code and the catalog together or not at all.
    | Secret | Keys |
    |---|---|
    | every service with a database | `<PREFIX>DATABASE_URL` = `postgresql+asyncpg://<db>_svc:<password>@127.0.0.1:5432/<db>` (the Cloud SQL proxy sidecar listens on 127.0.0.1) |
-   | `auth-svc-secrets` | `AUTH_JWT_SECRET`, `AUTH_REDIS_URL`, `AUTH_COOKIE_DOMAIN` |
+   | `auth-svc-secrets` | `AUTH_JWT_SECRET`, `AUTH_REDIS_URL`, `AUTH_COOKIE_DOMAIN`, `AUTH_INTERNAL_TOKEN` (same value as `RBAC_INTERNAL_TOKEN`; lets super admin see and lift sign-in lockouts) |
    | `gateway-secrets` | `GATEWAY_JWT_SECRET` (same value as `AUTH_JWT_SECRET`), `GATEWAY_REDIS_URL` |
    | `ai-orchestration-realtime-secrets` | `AI_ORCH_DATABASE_URL`, `AI_ORCH_ANTHROPIC_API_KEY` (realtime Workspace key; a tenant's own key from Integrations overrides it), `AI_ORCH_INTERNAL_TOKEN` |
    | `ai-orchestration-batch-secrets` | `AI_ORCH_DATABASE_URL`, `AI_ORCH_ANTHROPIC_API_KEY` (batch Workspace key), `AI_ORCH_INTERNAL_TOKEN` |

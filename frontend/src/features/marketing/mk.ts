@@ -1,5 +1,5 @@
 /* Typed access to marketing-svc through the gateway. */
-import { api, del, get, must, post } from "@/lib/api";
+import { api, del, get, getTenant, must, post } from "@/lib/api";
 
 export const CHANNELS = ["email", "sms", "push", "voice", "social"] as const;
 export type Channel = (typeof CHANNELS)[number];
@@ -71,7 +71,7 @@ export const mk = {
   publishPost: (id: string) => must(post(`${M}/social/posts/${id}/publish`, {})),
 
   abTests: (campaign_id?: string) => must<any[]>(get(`${M}/ab-tests${q({ campaign_id })}`)),
-  createAbTest: (body: { campaign_id: string; variant_a_draft_id: string; variant_b_draft_id: string; metric: string }) => must(post(`${M}/ab-tests`, body)),
+  createAbTest: (body: { campaign_id: string; variant_a_draft_id: string; variant_b_draft_id: string; metric: string; split_b_pct?: number }) => must(post(`${M}/ab-tests`, body)),
   recordAbResult: (id: string, body: { variant: string; sent_delta: number; converted_delta: number }) => must(post(`${M}/ab-tests/${id}/record-result`, body)),
   evaluateAbTest: (id: string) => must<any>(post(`${M}/ab-tests/${id}/evaluate`, {})),
 
@@ -101,6 +101,19 @@ export const mk = {
   saveSettings: (body: any) => must<any>(api("PUT", `${M}/settings`, body)),
   report: (days: number) => must<any>(get(`${M}/reports?days=${days}`)),
   sendTimes: () => must<{ timezone: string; cells: { weekday: number; hour: number; sent: number; opened: number; open_rate: number }[]; best: { weekday: number; hour: number; open_rate: number; sent: number }[]; messages: number; note: string | null }>(get(`${M}/analytics/send-times`)),
+  outcomes: (sendId: string) => must<{ messages: number; outcomes: Record<string, number>; opened: number; clicked: number; retries_scheduled: number; attempts: number; recordings: { contact: string; url: string }[] }>(get(`${M}/analytics/sends/${sendId}/outcomes`)),
+  voicePreview: async (text: string, voice: string, record: boolean): Promise<string> => {
+    const r = await fetch(`${M}/content/voice-preview`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Tenant-Id": getTenant() }, body: JSON.stringify({ text, voice, record }) });
+    if (!r.ok) { let d = `HTTP ${r.status}`; try { d = (await r.json()).detail || d; } catch { /* not json */ } throw new Error(d); }
+    return URL.createObjectURL(await r.blob());
+  },
+  suggestSegments: () => must<{ suggestions: { name: string; why: string; filter_criteria: Record<string, unknown>; channel: string; estimate: Estimate }[]; source: string | null; skipped_reason: string | null }>(post("/api/v1/ai/marketing/suggest-segments", {})),
+  schedules: () => must<ReportSchedule[]>(get(`${M}/reports/schedules`)),
+  createSchedule: (body: Partial<ReportSchedule>) => must<ReportSchedule>(post(`${M}/reports/schedules`, body)),
+  updateSchedule: (id: string, body: Partial<ReportSchedule>) => must<ReportSchedule>(api("PATCH", `${M}/reports/schedules/${id}`, body)),
+  deleteSchedule: (id: string) => must(del(`${M}/reports/schedules/${id}`)),
+  runSchedule: (id: string) => must<{ sent: number; console: number; failed: string[] }>(post(`${M}/reports/schedules/${id}/run`, {})),
+  refreshMetrics: (postId: string) => must<any>(post(`${M}/social/posts/${postId}/refresh-metrics`, {})),
   sendReport: (days: number, recipients?: string[]) => must<{ sent: number; console: number; failed: string[] }>(post(`${M}/reports/send`, { days, recipients })),
   leads: (campaign_id?: string) => must<any[]>(get(`${M}/lead-captures${q({ campaign_id })}`)),
 };
@@ -133,7 +146,18 @@ export const OBJECTIVES: [string, string][] = [
 ];
 export const TONES: [string, string][] = [["premium", "Premium & aspirational"], ["personal", "Warm & personal"], ["urgent", "Urgent & action-focused"], ["exclusive", "Exclusive & invitation-only"], ["friendly", "Friendly & accessible"]];
 
-export const RECURRENCE: [string, string][] = [["none", "One-time"], ["daily", "Daily"], ["3x_week", "3× per week (Mon/Wed/Fri)"], ["weekly", "Weekly"]];
+export const RECURRENCE: [string, string][] = [["none", "One-time"], ["daily", "Daily"], ["3x_week", "3× per week (Mon/Wed/Fri)"], ["weekly", "Weekly"], ["biweekly", "Every two weeks"], ["monthly", "Monthly"]];
+export type ReportSchedule = { id: string; name: string; frequency: string; days: number; channels: string[]; recipients: string[]; format: "csv" | "pdf"; active: boolean; last_sent_at: string | null; created_by: string };
+export const TIMEZONES = ["UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Dubai", "Asia/Kolkata", "Asia/Singapore"];
+
+/** A wall-clock time ("2026-11-02T09:00") in a timezone, as an ISO instant. */
+export function zonedToIso(local: string, timeZone: string): string {
+  const asUtc = new Date(`${local}:00Z`);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    .formatToParts(asUtc).map((p) => [p.type, p.value]));
+  const seenAsUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return new Date(asUtc.getTime() - (seenAsUtc - asUtc.getTime())).toISOString();
+}
 export const TRIGGERS: [string, string][] = [
   ["manual", "Manual / segment enrolment"], ["user.created", "New user signs up"], ["lead.captured", "Website lead captured"],
   ["crm.person_profile_created", "New CRM contact"], ["subscription.cancelled", "Subscription cancelled"],
