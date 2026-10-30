@@ -154,3 +154,55 @@ async def list_posts(db: AsyncSession, tenant_id: str, status: str | None = None
         query = query.where(SocialPost.status == status)
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+
+async def refresh_metrics(db: AsyncSession, tenant_id: str, post_id: uuid.UUID) -> SocialPost:
+    """Reads the post's likes, comments, shares and impressions from its
+    platform, with the tenant's credentials from Integrations."""
+    post = (await db.execute(select(SocialPost).where(SocialPost.id == post_id, SocialPost.tenant_id == tenant_id))).scalar_one_or_none()
+    if post is None:
+        raise ValueError(f"post {post_id} not found")
+    if post.delivery_mode not in ("real", "external") or not post.platform_post_id:
+        raise NotPublishedLive("Only posts published on the platform itself have engagement to read")
+    account = (await db.execute(select(SocialAccount).where(SocialAccount.id == post.social_account_id))).scalar_one()
+    platform = account.platform.value if hasattr(account.platform, "value") else str(account.platform)
+    config = await integrations.get(tenant_id, social_adapters.INTEGRATION.get(platform, ""))
+    post.metrics_updated_at = datetime.now(timezone.utc)
+    if not config:
+        post.metrics_error = f"No {social_adapters.INTEGRATION.get(platform, platform)} integration set up in super admin"
+    else:
+        try:
+            m = await social_adapters.metrics(platform, config, post.platform_post_id)
+            post.likes, post.comments, post.shares, post.impressions = m.get("likes"), m.get("comments"), m.get("shares"), m.get("impressions")
+            post.metrics_error = ""
+        except social_adapters.PublishError as exc:
+            post.metrics_error = str(exc)[:500]
+    await db.commit()
+    await db.refresh(post)
+    return post
+
+
+async def refresh_due_metrics(session_factory, now: datetime | None = None) -> int:
+    """Every 6 hours, for posts published live between an hour and 30 days ago
+    (right after publishing there is nothing to read yet)."""
+    from datetime import timedelta
+
+    now = now or datetime.now(timezone.utc)
+    async with session_factory() as db:
+        rows = [(p.tenant_id, p.id) for p in (await db.execute(select(SocialPost).where(
+            SocialPost.status == SocialPostStatus.PUBLISHED, SocialPost.platform_post_id.is_not(None)))).scalars()
+            if p.delivery_mode in ("real", "external") and p.published_at and timedelta(hours=1) <= now - _utc(p.published_at) <= timedelta(days=30)
+            and (p.metrics_updated_at is None or now - _utc(p.metrics_updated_at) >= timedelta(hours=6))]
+    for tenant_id, post_id in rows:
+        async with session_factory() as db:
+            await refresh_metrics(db, tenant_id, post_id)
+    return len(rows)
+
+
+def _utc(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
+class NotPublishedLive(Exception):
+    pass

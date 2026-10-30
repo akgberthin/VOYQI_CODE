@@ -14,10 +14,11 @@ CATALOG: dict[str, dict] = {
     },
     "openai": {
         "label": "OpenAI", "category": "AI",
-        "used_for": "Marketing image generation (AI studio, social creatives).",
+        "used_for": "Marketing image generation (AI studio, social creatives) and voice-script previews.",
         "fields": [
             {"key": "api_key", "label": "API key", "secret": True, "required": True},
             {"key": "image_model", "label": "Image model", "default": "gpt-image-1"},
+            {"key": "tts_model", "label": "Voice preview model", "default": "gpt-4o-mini-tts"},
         ],
     },
     "smtp": {
@@ -40,6 +41,8 @@ CATALOG: dict[str, dict] = {
             {"key": "auth_token", "label": "Auth token", "secret": True, "required": True},
             {"key": "from_number", "label": "From number", "required": True, "hint": "+15125550100"},
             {"key": "voice", "label": "Voice", "default": "Polly.Joanna", "hint": "Twilio <Say> voice"},
+            {"key": "status_callback_base_url", "label": "Public URL for delivery reports",
+             "hint": "https://api.voyqi.com — the gateway's public address. Twilio reports whether each text arrived and each call was answered here; voice retries and pickup rates need it."},
         ],
     },
     "fcm": {
@@ -51,7 +54,7 @@ CATALOG: dict[str, dict] = {
     },
     "meta": {
         "label": "Meta (Facebook & Instagram)", "category": "Social",
-        "used_for": "Publishing posts to a Facebook Page and its Instagram business account.",
+        "used_for": "Publishing posts to a Facebook Page and its Instagram business account, and reading their engagement (needs read_insights / instagram_manage_insights).",
         "fields": [
             {"key": "page_id", "label": "Facebook Page ID", "required": True},
             {"key": "page_access_token", "label": "Page access token", "secret": True, "required": True},
@@ -60,7 +63,7 @@ CATALOG: dict[str, dict] = {
     },
     "linkedin": {
         "label": "LinkedIn", "category": "Social",
-        "used_for": "Publishing posts as a LinkedIn organization.",
+        "used_for": "Publishing posts as a LinkedIn organization and reading their likes and comments (needs r_organization_social).",
         "fields": [
             {"key": "organization_urn", "label": "Organization URN", "required": True, "hint": "urn:li:organization:123456"},
             {"key": "access_token", "label": "Access token", "secret": True, "required": True},
@@ -68,7 +71,7 @@ CATALOG: dict[str, dict] = {
     },
     "x": {
         "label": "X (Twitter)", "category": "Social",
-        "used_for": "Publishing posts on X.",
+        "used_for": "Publishing posts on X and reading their public metrics (needs tweet.read).",
         "fields": [
             {"key": "access_token", "label": "OAuth 2.0 user access token", "secret": True, "required": True},
         ],

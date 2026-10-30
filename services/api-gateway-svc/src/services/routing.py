@@ -31,7 +31,9 @@ ROUTE_TABLE: list[RouteConfig] = [
         }),
     ),
     RouteConfig(prefix="/api/v1/user", target_base_url="http://user-svc:8025", public_paths=frozenset({"/api/v1/user/users/register"})),
-    RouteConfig(prefix="/api/v1/notifications", target_base_url="http://notification-svc:8027"),
+    # Twilio's delivery/call reports (verified by Twilio's signature there).
+    RouteConfig(prefix="/api/v1/notifications", target_base_url="http://notification-svc:8027",
+                public_prefixes=("/api/v1/notifications/public/twilio/",)),
     RouteConfig(prefix="/api/v1/subscription", target_base_url="http://subscription-svc:8003"),
     RouteConfig(prefix="/api/v1/fleet", target_base_url="http://fleet-svc:8004"),
     RouteConfig(prefix="/api/v1/rental", target_base_url="http://rental-svc:8005"),

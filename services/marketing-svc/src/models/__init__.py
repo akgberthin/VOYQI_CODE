@@ -302,6 +302,13 @@ class SocialPost(Base):
     media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     recurrence: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
+    # Engagement read back from the platform (None: the platform doesn't report it).
+    likes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    comments: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shares: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    impressions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    metrics_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metrics_error: Mapped[str] = mapped_column(String(512), nullable=False, default="")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -323,6 +330,8 @@ class ABTest(Base):
     variant_a_draft_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("content_drafts.id"), nullable=False)
     variant_b_draft_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("content_drafts.id"), nullable=False)
     metric: Mapped[str] = mapped_column(String(32), nullable=False, default="click_rate")
+    # Share of the audience that gets variant B (the rest get A).
+    split_b_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     variant_a_sent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     variant_a_converted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     variant_b_sent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -554,3 +563,32 @@ class MessageRecipient(Base):
     clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     opens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     clicks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The provider's report, read back from notification-svc: delivered /
+    # undelivered (texts); answered / voicemail / no-answer / busy / failed (calls).
+    notification_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    recording_url: Mapped[str] = mapped_column(String(1024), nullable=False, default="")
+    # Calls that weren't answered are tried again (up to max_attempts).
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retry_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class ReportSchedule(Base):
+    """A named report emailed on a schedule (daily / weekly / monthly) —
+    its period, the channels it covers, its recipients and its format."""
+
+    __tablename__ = "report_schedules"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="weekly")
+    days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
+    channels: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    format: Mapped[str] = mapped_column(String(8), nullable=False, default="pdf")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

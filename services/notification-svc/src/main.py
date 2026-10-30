@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from src.api import provider_callbacks
 from src.api.notifications import router as notifications_router
 from src.core.config import get_settings
 from src.core.database import AsyncSessionLocal, init_models
@@ -21,6 +22,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="notification-svc", lifespan=lifespan)
 app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["notifications"])
+app.include_router(provider_callbacks.router)
+app.include_router(provider_callbacks.public_router)
 
 
 @app.get("/health")

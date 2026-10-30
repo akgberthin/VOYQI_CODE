@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import MarketingSettings
 
-RECURRENCES = ("none", "daily", "weekly", "3x_week")
+RECURRENCES = ("none", "daily", "weekly", "biweekly", "monthly", "3x_week")
 
 
 REPORT_FREQUENCIES = ("off", "weekly", "monthly")
@@ -94,6 +94,13 @@ def next_occurrence(previous: datetime, recurrence: str) -> datetime | None:
         return previous + timedelta(days=1)
     if recurrence == "weekly":
         return previous + timedelta(days=7)
+    if recurrence == "biweekly":
+        return previous + timedelta(days=14)
+    if recurrence == "monthly":  # same day next month (the month's last day if shorter)
+        import calendar
+
+        year, month = (previous.year + 1, 1) if previous.month == 12 else (previous.year, previous.month + 1)
+        return previous.replace(year=year, month=month, day=min(previous.day, calendar.monthrange(year, month)[1]))
     if recurrence == "3x_week":  # Monday, Wednesday, Friday at the same time
         nxt = previous + timedelta(days=1)
         while nxt.weekday() not in (0, 2, 4):

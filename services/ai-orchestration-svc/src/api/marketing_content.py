@@ -50,3 +50,12 @@ async def compose(body: ComposeRequest, tenant_id: str = Depends(get_tenant_id),
     return await marketing_content_agent.compose_variants(
         db, tenant_id, body.channel, body.mobility_class, body.objective, body.tones, body.context,
     )
+
+
+@router.post("/suggest-segments")
+async def suggest_segments(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Audience segments worth a campaign, from the contact attributes
+    marketing holds — each with its reason and a live estimate."""
+    from src.services import segment_suggestions
+
+    return await segment_suggestions.suggest(db, tenant_id)

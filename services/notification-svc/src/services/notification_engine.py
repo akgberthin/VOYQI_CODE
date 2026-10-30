@@ -105,7 +105,7 @@ async def _deliver(db: AsyncSession, *, tenant_id: str, channel: str, template_k
     if channel == Channel.EMAIL.value:
         success, delivery_mode, provider_message_id, error = await providers.send_email(
             recipient=recipient, subject=subject or "", body=body, tenant_id=tenant_id,
-            from_name=o.get("from_name"), reply_to=o.get("reply_to"), preview_text=o.get("preview_text"))
+            from_name=o.get("from_name"), reply_to=o.get("reply_to"), preview_text=o.get("preview_text"), attachments=o.get("attachments"))
     elif channel == Channel.SMS.value:
         success, delivery_mode, provider_message_id, error = await providers.send_sms(
             recipient=recipient, body=body, tenant_id=tenant_id, sender_id=o.get("sender_id"), media_url=o.get("media_url"))
@@ -115,7 +115,8 @@ async def _deliver(db: AsyncSession, *, tenant_id: str, channel: str, template_k
             data={k: str(o[k]) for k in ("deep_link", "notification_type") if o.get(k)})
     elif channel == Channel.VOICE.value:
         success, delivery_mode, provider_message_id, error = await providers.send_voice(
-            recipient=recipient, body=body, tenant_id=tenant_id, voice=o.get("voice"), language=o.get("language"))
+            recipient=recipient, body=body, tenant_id=tenant_id, voice=o.get("voice"), language=o.get("language"),
+            record=bool(o.get("record")))
     else:
         raise ValueError(f"unsupported channel: {channel}")
 

@@ -155,3 +155,26 @@ async def test_sms_sender_id_and_mms_image(configured, outbound):
     assert form["From"] == ["VOYQI"] and form["MediaUrl"] == ["https://cdn.voyqi.com/car.jpg"]
     await providers.send_sms(recipient="+15125550101", body="x", tenant_id=TENANT, media_url="http://insecure.example/a.jpg")
     assert "MediaUrl" not in parse_qs(outbound[-1].content.decode())
+
+
+async def test_email_attachments_and_their_limits(configured, monkeypatch, client):
+    import base64
+
+    configured["smtp"] = {"host": "smtp.example", "port": 587, "from_address": "news@voyqi.com", "use_tls": "false"}
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, *a, **kw): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def sendmail(self, frm, to, raw): sent["raw"] = raw
+
+    monkeypatch.setattr(providers.smtplib, "SMTP", FakeSMTP)
+    pdf = base64.b64encode(b"%PDF-1.4 report").decode()
+    ok, _mode, _id, _err = await providers.send_email(recipient="cmo@x.com", subject="Report", body="Attached.", tenant_id=TENANT,
+                                                      attachments=[{"filename": "../report.pdf", "content_type": "application/pdf", "data_base64": pdf}])
+    assert ok and "multipart/mixed" in sent["raw"] and 'filename="report.pdf"' in sent["raw"]
+    assert "application/pdf" in sent["raw"]
+    r = await client.post("/api/v1/notifications/send-direct", json={"channel": "email", "recipient": "cmo@x.com", "body": "x",
+                                                                       "options": {"attachments": [{"filename": "a.pdf", "data_base64": "not base64!!"}]}}, headers=TENANT_HEADERS)
+    assert r.status_code == 400 and "base64" in r.json()["detail"]

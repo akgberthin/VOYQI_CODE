@@ -19,3 +19,13 @@ async def deliver(tenant_id: str, channel: str, recipient: str, body: str, subje
     if resp.status_code != 201:
         return {"status": "failed", "delivery_mode": None, "error_message": f"notification-svc HTTP {resp.status_code}: {resp.text[:200]}"}
     return resp.json()
+
+
+async def statuses(tenant_id: str, notification_ids: list[str]) -> list[dict]:
+    """What the provider reported for each message (delivered, answered...)."""
+    settings = get_settings()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(f"{settings.notification_svc_base_url}/api/v1/notifications/statuses",
+                                 headers={"X-Tenant-Id": tenant_id}, json={"ids": notification_ids})
+    resp.raise_for_status()
+    return resp.json()

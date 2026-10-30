@@ -88,6 +88,13 @@ async def segment_recipients(db: AsyncSession, tenant_id: str, campaign_id: uuid
 personalize = channel_options.personalize
 
 
+def _uuid(value) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(value)) if value else None
+    except ValueError:
+        return None
+
+
 async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid.UUID, recipient_contacts: list[str] | None = None, *,
                        claimed: bool = False, consent_confirmed: bool = False) -> ScheduledSend:
     """Delivers a scheduled send to the given contacts, or to the
@@ -157,7 +164,7 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
     track = get_settings().tracking_enabled
 
     async def one(contact: str, name: str, attrs: dict) -> dict:
-        variant = tracking.arm(contact, test.id) if test and draft_b else ""
+        variant = tracking.arm(contact, test.id, test.split_b_pct) if test and draft_b else ""
         d = draft_b if variant == "b" else draft
         options = (d.options if d else None) or {}
         rid = uuid.uuid4()
@@ -175,9 +182,13 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
             result = await delivery.deliver(tenant_id, channel, contact, body, personalize(d.subject_line if d else "", name, attrs),
                                             f"marketing:{send.id}", opts)
         if result.get("status") == "sent":
+            subject = personalize(d.subject_line if d else "", name, attrs)
+            # Calls that may be retried keep what was said, to say it again.
+            retry = {"body": body, "subject": subject, "options": opts} if channel == "voice" and int(options.get("max_attempts") or 1) > 1 else {}
             db.add(MessageRecipient(id=rid, tenant_id=tenant_id, send_id=send.id, campaign_id=send.campaign_id, content_draft_id=d.id if d else None,
                                     ab_test_id=test.id if variant else None, variant=variant, channel=channel, contact=contact,
-                                    status="sent", delivery_mode=result.get("delivery_mode") or ""))
+                                    status="sent", delivery_mode=result.get("delivery_mode") or "", notification_id=_uuid(result.get("id")),
+                                    retry_payload=retry))
         return {**result, "variant": variant}
 
     results = await asyncio.gather(*(one(c, n, a) for c, n, a in allowed))

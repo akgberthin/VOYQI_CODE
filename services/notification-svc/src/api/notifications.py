@@ -106,7 +106,8 @@ async def list_notifications(recipient: str | None = None, status: str | None = 
     result = await db.execute(query)
     rows = result.scalars().all()
     return [{"id": r.id, "channel": r.channel, "template_key": r.template_key, "recipient": r.recipient, "status": r.status,
-             "delivery_mode": r.delivery_mode, "error_message": r.error_message, "created_at": r.created_at} for r in rows]
+             "delivery_mode": r.delivery_mode, "error_message": r.error_message, "created_at": r.created_at,
+             "provider_status": r.provider_status, "answered_by": r.answered_by} for r in rows]
 
 
 @router.get("/summary")
@@ -115,14 +116,16 @@ async def delivery_summary(hours: int = 24, tenant_id: str = Depends(get_tenant_
     logged (no provider configured), failed, skipped (opted out)."""
     since = datetime.now(timezone.utc) - timedelta(hours=max(1, min(hours, 24 * 90)))
     rows = (await db.execute(
-        select(Notification.channel, Notification.status, Notification.delivery_mode, func.count())
+        select(Notification.channel, Notification.status, Notification.delivery_mode, Notification.provider_status, func.count())
         .where(Notification.tenant_id == tenant_id, Notification.created_at >= since)
-        .group_by(Notification.channel, Notification.status, Notification.delivery_mode)
+        .group_by(Notification.channel, Notification.status, Notification.delivery_mode, Notification.provider_status)
     )).all()
     out: dict[str, dict[str, int]] = {}
-    for channel, status, mode, n in rows:
+    for channel, status, mode, provider_status, n in rows:
         bucket = out.setdefault(channel, {"delivered": 0, "console": 0, "failed": 0, "opted_out": 0})
-        key = "failed" if status == "failed" else "opted_out" if status == "skipped_opted_out" else "console" if mode == "console" else "delivered"
+        # Accepted by the provider but later reported undelivered counts as failed.
+        failed = status == "failed" or provider_status in ("undelivered", "failed")
+        key = "failed" if failed else "opted_out" if status == "skipped_opted_out" else "console" if mode == "console" else "delivered"
         bucket[key] += n
     return {"hours": hours, "channels": out}
 

@@ -131,9 +131,11 @@ async def ab_for(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID, draft
         ABTest.status != ABTestStatus.CONCLUDED))).scalars().first()
 
 
-def arm(contact: str, test_id: uuid.UUID) -> str:
-    """A stable 50/50 split: the same contact always gets the same arm."""
-    return "a" if hashlib.sha256(f"{test_id}|{contact.lower()}".encode()).digest()[0] < 128 else "b"
+def arm(contact: str, test_id: uuid.UUID, split_b_pct: int = 50) -> str:
+    """A stable split: the same contact always gets the same arm; about
+    split_b_pct% of contacts get B."""
+    h = int.from_bytes(hashlib.sha256(f"{test_id}|{contact.lower()}".encode()).digest()[:2], "big") % 100
+    return "b" if h < split_b_pct else "a"
 
 
 async def send_times(db: AsyncSession, tenant_id: str, tz_name: str) -> dict:
@@ -156,3 +158,111 @@ async def send_times(db: AsyncSession, tenant_id: str, tz_name: str) -> dict:
     best = sorted((c for c in cells if c["sent"] >= 20), key=lambda c: c["open_rate"], reverse=True)[:3]
     return {"timezone": tz_name, "cells": cells, "best": best, "messages": sum(c["sent"] for c in cells),
             "note": None if cells else "No tracked email deliveries yet — best times appear once real sends are opened."}
+
+
+# -- Provider outcomes and voice retries --------------------------------
+
+def call_outcome(report: dict) -> str | None:
+    """answered / voicemail / no-answer / busy / failed, or None while the call is not over."""
+    status = report.get("provider_status")
+    if status == "completed":
+        return "voicemail" if str(report.get("answered_by") or "").startswith("machine") else "answered"
+    return status if status in ("no-answer", "busy", "failed", "canceled") else None
+
+
+async def sync_outcomes(session_factory, now: datetime | None = None) -> int:
+    """Reads delivery and call outcomes back from notification-svc for
+    recent texts and calls. An answered call counts as a pickup (an open);
+    an unanswered one is scheduled again while attempts remain."""
+    from datetime import timedelta
+
+    from src.models import ContentDraft
+    from src.services import delivery
+
+    now = now or datetime.now(timezone.utc)
+    updated = 0
+    async with session_factory() as db:
+        pending = list((await db.execute(select(MessageRecipient).where(
+            MessageRecipient.channel.in_(("voice", "sms")), MessageRecipient.outcome == "", MessageRecipient.notification_id.is_not(None),
+            MessageRecipient.delivery_mode == "real_provider", MessageRecipient.sent_at >= now - timedelta(days=3)))).scalars())
+        by_tenant: dict[str, list[MessageRecipient]] = {}
+        for r in pending:
+            by_tenant.setdefault(r.tenant_id, []).append(r)
+        for tenant_id, rows in by_tenant.items():
+            try:
+                reports = {x["id"]: x for x in await delivery.statuses(tenant_id, [str(r.notification_id) for r in rows])}
+            except Exception:  # noqa: BLE001 - notification-svc down: try on the next pass
+                continue
+            for r in rows:
+                rep = reports.get(str(r.notification_id))
+                if not rep:
+                    continue
+                if rep.get("recording_url"):
+                    r.recording_url = rep["recording_url"]
+                if r.channel == "sms":
+                    if rep.get("provider_status") in ("delivered", "undelivered", "failed"):
+                        r.outcome = "delivered" if rep["provider_status"] == "delivered" else "undelivered"
+                        updated += 1
+                    continue
+                outcome = call_outcome(rep)
+                if outcome is None:
+                    continue
+                r.outcome = outcome
+                updated += 1
+                if outcome == "answered":
+                    await db.commit()
+                    await record(db, r.id, "open")  # a pickup
+                    continue
+                draft = await db.get(ContentDraft, r.content_draft_id) if r.content_draft_id else None
+                o = (draft.options if draft else None) or {}
+                if r.retry_payload and r.attempts < int(o.get("max_attempts") or 1):
+                    r.next_attempt_at = now + timedelta(hours=int(o.get("retry_hours") or 4))
+        await db.commit()
+    return updated
+
+
+async def retry_due(session_factory, now: datetime | None = None) -> int:
+    """Calls again the contacts whose last call was not answered, once the
+    retry time has come and the calling window is open. Suppression is
+    checked again: someone who opted out meanwhile is never called back."""
+    from src.services import channel_policy, delivery, suppression_engine
+
+    now = now or datetime.now(timezone.utc)
+    done = 0
+    async with session_factory() as db:
+        due = list((await db.execute(select(MessageRecipient).where(MessageRecipient.next_attempt_at.is_not(None), MessageRecipient.next_attempt_at <= now))).scalars())
+        for r in due:
+            policy = await channel_policy.get(db, r.tenant_id)
+            if not channel_policy.in_voice_window(policy, now):
+                r.next_attempt_at = channel_policy.next_window_start(policy, now)
+                continue
+            r.next_attempt_at = None
+            if await suppression_engine.is_suppressed(db, r.tenant_id, r.channel, r.contact):
+                r.outcome = "suppressed"
+                continue
+            p = r.retry_payload or {}
+            result = await delivery.deliver(r.tenant_id, r.channel, r.contact, p.get("body", ""), p.get("subject", ""), f"marketing:{r.send_id}:retry", p.get("options") or {})
+            r.attempts += 1
+            if result.get("status") == "sent":
+                r.outcome, r.delivery_mode = "", result.get("delivery_mode") or ""
+                try:
+                    r.notification_id = uuid.UUID(str(result.get("id")))
+                except ValueError:
+                    r.notification_id = None
+            else:
+                r.outcome = "failed"
+            done += 1
+        await db.commit()
+    return done
+
+
+async def outcomes(db: AsyncSession, tenant_id: str, send_id: uuid.UUID) -> dict:
+    """Per send: delivered / answered / voicemail / no answer, retries waiting, recordings."""
+    rows = list((await db.execute(select(MessageRecipient).where(MessageRecipient.tenant_id == tenant_id, MessageRecipient.send_id == send_id))).scalars())
+    counts: dict[str, int] = {}
+    for r in rows:
+        key = r.outcome or ("awaiting report" if r.delivery_mode == "real_provider" else "console only")
+        counts[key] = counts.get(key, 0) + 1
+    return {"messages": len(rows), "outcomes": counts, "opened": sum(1 for r in rows if r.opened_at), "clicked": sum(1 for r in rows if r.clicked_at),
+            "retries_scheduled": sum(1 for r in rows if r.next_attempt_at), "attempts": sum(r.attempts for r in rows),
+            "recordings": [{"contact": r.contact, "url": r.recording_url} for r in rows if r.recording_url][:100]}

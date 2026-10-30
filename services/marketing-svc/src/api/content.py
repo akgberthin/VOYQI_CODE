@@ -132,3 +132,26 @@ async def reject_draft(draft_id: uuid.UUID, body: ReviewRequest, tenant_id: str 
     if draft is None:
         raise HTTPException(status_code=404, detail="Content draft not found")
     return draft
+
+
+class VoicePreviewIn(BaseModel):
+    text: str
+    voice: str = "Polly.Joanna"
+    record: bool = False
+
+
+@router.post("/voice-preview")
+async def voice_preview(body: VoicePreviewIn, tenant_id: str = Depends(get_tenant_id)):
+    """MP3 of a voice script as the call will say it (OpenAI text-to-speech,
+    set up in super admin -> Integrations)."""
+    from fastapi.responses import Response
+
+    from src.services import voice_preview as vp
+
+    try:
+        audio = await vp.speak(tenant_id, body.text, body.voice, body.record)
+    except vp.PreviewUnavailable as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})

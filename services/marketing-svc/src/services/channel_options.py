@@ -8,7 +8,8 @@ sms    append_stop (default true: "Reply STOP to opt out." is added unless
        sender, where the carrier allows it), media_url (MMS image, https)
 push   deep_link, notification_type, platforms (ios / android / web: only
        contacts whose `platform` attribute is one of them)
-voice  voice, language
+voice  voice, language, max_attempts (1-3), retry_hours (1/2/4/8/24),
+       record (the call says it may be recorded)
 """
 import re
 
@@ -23,6 +24,7 @@ VOICES = {
 }
 LANGUAGES = ("en-US", "en-GB", "es-US", "fr-FR", "arb")
 STOP_LINE = "Reply STOP to opt out."
+RETRY_HOURS = (1, 2, 4, 8, 24)
 
 # {token}: the contact field or attribute that fills it.
 TOKENS = {"first_name": "first name", "name": "name", "city": "city", "class": "mobility class", "hub": "home hub",
@@ -37,7 +39,7 @@ def validate(channel: str, options: dict | None) -> dict:
     """The options this channel accepts, cleaned — or InvalidOptions."""
     o = dict(options or {})
     allowed = {"email": {"preview_text", "from_name", "reply_to"}, "sms": {"append_stop", "sender_id", "media_url"}, "push": {"deep_link", "notification_type", "platforms"},
-               "voice": {"voice", "language"}}.get(channel, set())
+               "voice": {"voice", "language", "max_attempts", "retry_hours", "record"}}.get(channel, set())
     unknown = set(o) - allowed
     if unknown:
         raise InvalidOptions(f"{channel} messages don't take {', '.join(sorted(unknown))}")
@@ -50,9 +52,19 @@ def validate(channel: str, options: dict | None) -> dict:
                 raise InvalidOptions(f"platforms must be a list of {', '.join(PUSH_PLATFORMS)}")
             out[key] = sorted(set(value))
             continue
-        if key == "append_stop":
+        if key == "max_attempts":
+            if not isinstance(value, int) or isinstance(value, bool) or not 1 <= value <= 3:
+                raise InvalidOptions("max_attempts must be 1, 2 or 3")
+            out[key] = value
+            continue
+        if key == "retry_hours":
+            if value not in RETRY_HOURS or isinstance(value, bool):
+                raise InvalidOptions(f"retry_hours must be one of {', '.join(map(str, RETRY_HOURS))}")
+            out[key] = value
+            continue
+        if key in ("append_stop", "record"):
             if not isinstance(value, bool):
-                raise InvalidOptions("append_stop must be true or false")
+                raise InvalidOptions(f"{key} must be true or false")
             out[key] = value
             continue
         if not isinstance(value, str):

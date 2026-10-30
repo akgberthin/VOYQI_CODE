@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
@@ -17,6 +17,7 @@ class ABTestCreate(BaseModel):
     variant_a_draft_id: uuid.UUID
     variant_b_draft_id: uuid.UUID
     metric: str = "click_rate"
+    split_b_pct: int = Field(default=50, ge=5, le=95)
 
 
 class ABTestOut(BaseModel):
@@ -26,6 +27,7 @@ class ABTestOut(BaseModel):
     variant_a_draft_id: uuid.UUID
     variant_b_draft_id: uuid.UUID
     metric: str
+    split_b_pct: int = 50
     variant_a_sent: int
     variant_a_converted: int
     variant_b_sent: int
@@ -42,7 +44,11 @@ async def list_ab_tests(campaign_id: uuid.UUID | None = None, tenant_id: str = D
 
 @router.post("", response_model=ABTestOut, status_code=201)
 async def create_ab_test(body: ABTestCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    return await ab_test_engine.create_ab_test(db, tenant_id, body.campaign_id, body.variant_a_draft_id, body.variant_b_draft_id, body.metric)
+    test = await ab_test_engine.create_ab_test(db, tenant_id, body.campaign_id, body.variant_a_draft_id, body.variant_b_draft_id, body.metric)
+    test.split_b_pct = body.split_b_pct
+    await db.commit()
+    await db.refresh(test)
+    return test
 
 
 @router.get("/{test_id}", response_model=ABTestOut)

@@ -1,5 +1,6 @@
 """Open pixel and tracked-link redirect (public — opened from inboxes and
 phones with no session), and the best-send-times view built on them."""
+import uuid
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -33,6 +34,12 @@ async def clicked(tok: str, u: str = Query(...), s: str = Query(...), db: AsyncS
         raise HTTPException(status_code=404, detail="link not found")
     await tracking.record(db, rid, "click")
     return RedirectResponse(u, status_code=302, headers=NO_STORE)
+
+
+@router.get("/sends/{send_id}/outcomes")
+async def send_outcomes(send_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Delivered / answered / voicemail / no answer per send, retries waiting and call recordings."""
+    return await tracking.outcomes(db, tenant_id, send_id)
 
 
 @router.get("/send-times")
