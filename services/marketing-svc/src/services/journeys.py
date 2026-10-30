@@ -32,9 +32,13 @@ TEMPLATES = [
         {"delay_hours": 1440, "channel": "sms", "subject": "", "body": "VOYQI: a returning-member offer is waiting for you, {first_name}. Reply STOP to opt out."},
         {"delay_hours": 2160, "channel": "voice", "subject": "", "body": "Hello {first_name}, we'd love to welcome you back to VOYQI with a returning-member offer. Open the app to see it."},
     ]},
-    {"key": "churn_prevention", "name": "Churn prevention", "trigger_event": "manual", "steps": [
+    {"key": "churn_prevention", "name": "Churn prevention", "trigger_event": "member.churn_risk_high", "steps": [
         {"delay_hours": 0, "channel": "email", "subject": "Still with us, {first_name}?", "body": "Hi {first_name}, we noticed you haven't driven in a while. Here's what's new at your nearest hub."},
         {"delay_hours": 72, "channel": "sms", "subject": "", "body": "VOYQI: need a break? You can pause your membership any time in the app. Reply STOP to opt out."},
+    ]},
+    {"key": "upgrade_readiness", "name": "Upgrade readiness", "trigger_event": "member.upgrade_ready", "steps": [
+        {"delay_hours": 0, "channel": "email", "subject": "{first_name}, you've outgrown {class}", "body": "Hi {first_name}, you've been booking above your class lately. Your upgrade offer is waiting in the app — nothing changes until you accept it."},
+        {"delay_hours": 72, "channel": "sms", "subject": "", "body": "VOYQI: your class upgrade offer is still open, {first_name}. Reply STOP to opt out."},
     ]},
 ]
 

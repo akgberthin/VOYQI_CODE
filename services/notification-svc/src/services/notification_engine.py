@@ -100,15 +100,23 @@ async def send_notification(
 
 
 async def _deliver(db: AsyncSession, *, tenant_id: str, channel: str, template_key: str, recipient: str,
-                   user_id: uuid.UUID | None, subject: str | None, body: str) -> Notification:
+                   user_id: uuid.UUID | None, subject: str | None, body: str, options: dict | None = None) -> Notification:
+    o = options or {}
     if channel == Channel.EMAIL.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_email(recipient=recipient, subject=subject or "", body=body, tenant_id=tenant_id)
+        success, delivery_mode, provider_message_id, error = await providers.send_email(
+            recipient=recipient, subject=subject or "", body=body, tenant_id=tenant_id,
+            from_name=o.get("from_name"), reply_to=o.get("reply_to"), preview_text=o.get("preview_text"), attachments=o.get("attachments"))
     elif channel == Channel.SMS.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_sms(recipient=recipient, body=body, tenant_id=tenant_id)
+        success, delivery_mode, provider_message_id, error = await providers.send_sms(
+            recipient=recipient, body=body, tenant_id=tenant_id, sender_id=o.get("sender_id"), media_url=o.get("media_url"))
     elif channel == Channel.PUSH.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_push(recipient=recipient, body=body, subject=subject or "", tenant_id=tenant_id)
+        success, delivery_mode, provider_message_id, error = await providers.send_push(
+            recipient=recipient, body=body, subject=subject or "", tenant_id=tenant_id,
+            data={k: str(o[k]) for k in ("deep_link", "notification_type") if o.get(k)})
     elif channel == Channel.VOICE.value:
-        success, delivery_mode, provider_message_id, error = await providers.send_voice(recipient=recipient, body=body, tenant_id=tenant_id)
+        success, delivery_mode, provider_message_id, error = await providers.send_voice(
+            recipient=recipient, body=body, tenant_id=tenant_id, voice=o.get("voice"), language=o.get("language"),
+            record=bool(o.get("record")))
     else:
         raise ValueError(f"unsupported channel: {channel}")
 
@@ -126,10 +134,12 @@ async def _deliver(db: AsyncSession, *, tenant_id: str, channel: str, template_k
 
 async def send_direct(
     db: AsyncSession, *, tenant_id: str, channel: str, recipient: str, body: str, subject: str | None = None,
-    category: str = "marketing", user_id: uuid.UUID | None = None, source: str = "direct",
+    category: str = "marketing", user_id: uuid.UUID | None = None, source: str = "direct", options: dict | None = None,
 ) -> Notification:
     """Already-written content (a marketing send) rather than a template.
-    Opt-out preferences still apply."""
+    Opt-out preferences still apply. `options` carries channel settings:
+    email from_name / reply_to / preview_text, sms sender_id / media_url, push deep_link /
+    notification_type, voice voice / language."""
     if await _is_opted_out(db, tenant_id=tenant_id, user_id=user_id, category=category, channel=channel):
         notification = Notification(
             tenant_id=tenant_id, channel=channel, template_key=source, recipient=recipient, user_id=user_id,
@@ -139,7 +149,7 @@ async def send_direct(
         await db.flush()
         return notification
     return await _deliver(db, tenant_id=tenant_id, channel=channel, template_key=source, recipient=recipient,
-                          user_id=user_id, subject=subject, body=body)
+                          user_id=user_id, subject=subject, body=body, options=options)
 
 
 async def set_preference(db: AsyncSession, *, tenant_id: str, user_id: uuid.UUID, category: str, channel: str, opted_in: bool) -> NotificationPreference:

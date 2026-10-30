@@ -33,6 +33,9 @@ crash.log
 # Node (frontend)
 node_modules/
 dist/
+.next/
+next-env.d.ts
+*.tsbuildinfo
 .output/
 .vinxi/
 

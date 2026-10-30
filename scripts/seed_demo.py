@@ -279,6 +279,54 @@ def seed_marketing(api: Api) -> None:
     print("  marketing     demo workspace: segments, templates, 4 campaigns, sends, results, A/B test, social post, leads", flush=True)
 
 
+def seed_seo(api: Api, domain: str) -> None:
+    """The Growth module's demo site: sample-data connections (local
+    demos only), three locations, a programmatic template and a
+    competitor. The SEO agents take it from there on their next cycle."""
+    S = "/api/v1/marketing/seo"
+    if api.call("marketing", "GET", f"{S}/sites")[1]:
+        print("  seo           demo site already seeded", flush=True)
+        return
+    post = lambda path, body=None: api.call("marketing", "POST", f"{S}{path}", body or {})[1]
+    site = post("/sites", {"name": "VOYQI Mobility", "domain": "voyqi.com", "competitors": ["rival-mobility.example"], "business_profile": {
+        "description": "Portable Mobility: access to vehicles across hubs on one monthly membership, no ownership",
+        "positioning": "premium mobility membership", "brand_terms": ["voyqi"], "products": ["car subscription", "ev subscription"],
+        "markets": ["phoenix", "miami", "austin"], "topics": ["car subscription", "mobility membership"]}})
+    sid = site["id"]
+    api.call("marketing", "PATCH", f"{S}/sites/{sid}", {"authorized_requesters": [f"marketing.manager@{domain}"], "report_frequency": "weekly"})
+    connected = []
+    for kind in ("cms", "search_console", "analytics", "keyword_data", "serp_data", "backlink_index"):
+        api.call("marketing", "PUT", f"{S}/sites/{sid}/integrations/{kind}", {"provider": "sample"})
+        status, _body, _h = api.call("marketing", "POST", f"{S}/sites/{sid}/integrations/{kind}/test", ok=(200, 503))
+        if status == 200:
+            connected.append(kind)
+    for name, street, city, region, postal, phone, extra in (
+            ("VOYQI Phoenix Hub", "100 Mill Ave", "Tempe", "AZ", "85281", "+1 480 555 0101", {"photos_count": 12, "has_logo": True}),
+            ("VOYQI Miami Hub", "800 Brickell Ave", "Miami", "FL", "33131", "+1 305 555 0142", {}),
+            ("VOYQI Austin Hub", "300 Congress Ave", "Austin", "TX", "78701", "+1 512 555 0177", {"reviews_count": 23, "reviews_avg": 4.6})):
+        post(f"/sites/{sid}/local/locations", {
+            "name": name, "address": {"street": street, "city": city, "region": region, "postal": postal, "country": "US"}, "phone": phone,
+            "website": f"https://voyqi.com/hubs/{city.lower()}", "categories": ["Car rental agency"], "profile": extra,
+            "hours": {d: "08:00-18:00" for d in ("mon", "tue", "wed", "thu", "fri")} if city != "Miami" else {},
+            "citations": [{"directory": "maps", "name": name, "street": street, "city": city, "postal": postal, "phone": phone},
+                          {"directory": "yelp", "name": name, "street": street, "city": city, "postal": postal,
+                           "phone": phone if city != "Miami" else "+1 305 555 0000"}]})
+    tpl = post(f"/sites/{sid}/programmatic/templates", {
+        "name": "Car subscription by city", "slug_pattern": "car-subscription-{city}", "title_pattern": "Car subscription in {city_name}: plans and hubs",
+        "meta_pattern": "See VOYQI car subscription plans, hub locations and what members in {city_name} get.",
+        "body_template": "# Car subscription in {city_name}\n\nVOYQI members in {city_name} choose from {fleet_note}.\n\n"
+                         "## Getting around {city_name}\n\n{local_blurb}\n\n## Getting started\n\nPick a plan, choose a vehicle class "
+                         "and collect it at a hub. Insurance and care are part of the plan, and you can swap vehicles as your week changes.",
+        "required_slots": ["city", "city_name"], "min_words": 60, "min_unique_ratio": 0.3})
+    post(f"/programmatic/templates/{tpl['id']}/rows", {"rows": [
+        {"city": "denver", "city_name": "Denver", "fleet_note": "SUVs ready for mountain weekends and city EVs",
+         "local_blurb": "Members head to the Front Range on Fridays and swap to an EV for the work week; the Union Station hub opens early."},
+        {"city": "seattle", "city_name": "Seattle", "fleet_note": "all-wheel-drive EVs and compact hybrids",
+         "local_blurb": "Rainy commutes and ferry trips shape the fleet here; members keep a compact for downtown and book an AWD for the passes."},
+        {"city": "tampa", "city_name": "Tampa", "fleet_note": "convertibles and hybrids", "local_blurb": "Short."}]})
+    print(f"  seo           demo site voyqi.com: {len(connected)} sample connections, 3 locations, 1 programmatic template", flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--tenant", default="voyqi-demo")
@@ -294,6 +342,7 @@ def main() -> int:
     seed_business_data(api, accounts)
     seed_marketing(api)
     seed_segment_contacts(api)
+    seed_seo(api, args.email_domain)
     print("done")
     return 0
 

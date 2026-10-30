@@ -13,8 +13,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import get_settings
-from src.models import AnalyticsSnapshot, CalendarEntry, Campaign, CampaignStatus, ContentDraft, ContentStatus, ScheduledSend, SegmentMember, SendStatus
-from src.services import channel_policy, delivery, suppression_engine
+from src.models import AnalyticsSnapshot, CalendarEntry, Campaign, CampaignStatus, ContentDraft, ContentStatus, MessageRecipient, ScheduledSend, SegmentMember, SendStatus
+from src.services import channel_options, channel_policy, delivery, suppression_engine, tracking
 
 
 class DraftNotApprovedError(ValueError):
@@ -74,20 +74,25 @@ async def claim(db: AsyncSession, tenant_id: str, send_id: uuid.UUID) -> bool:
     return result.rowcount == 1
 
 
-async def segment_recipients(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID, channel: str) -> list[tuple[str, str]]:
-    """(contact, name) for every member of the campaign's segment reachable on this channel."""
+async def segment_recipients(db: AsyncSession, tenant_id: str, campaign_id: uuid.UUID, channel: str) -> list[tuple[str, str, dict]]:
+    """(contact, name, attributes) for every member of the campaign's segment reachable on this channel."""
     campaign = (await db.execute(select(Campaign).where(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id))).scalar_one_or_none()
     if campaign is None or campaign.audience_segment_id is None:
         return []
     field = CONTACT_FIELD.get(channel)
     members = (await db.execute(select(SegmentMember).where(SegmentMember.segment_id == campaign.audience_segment_id, SegmentMember.tenant_id == tenant_id))).scalars()
     # Automated calls only reach members who consented to them (TCPA).
-    return [(getattr(m, field), m.name) for m in members if field and getattr(m, field) and (channel != "voice" or m.consent_voice)]
+    return [(getattr(m, field), m.name, m.attributes or {}) for m in members if field and getattr(m, field) and (channel != "voice" or m.consent_voice)]
 
 
-def personalize(text: str, name: str) -> str:
-    first = (name or "").split(" ")[0] or "there"
-    return (text or "").replace("{first_name}", first).replace("{name}", name or first)
+personalize = channel_options.personalize
+
+
+def _uuid(value) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(value)) if value else None
+    except ValueError:
+        return None
 
 
 async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid.UUID, recipient_contacts: list[str] | None = None, *,
@@ -111,6 +116,15 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
                 await db.refresh(send)
                 return send
             raise OutsideCallingWindow(f"Calls are only placed {policy.voice_window_start}:00-{policy.voice_window_end}:00 {policy.timezone}")
+    if send.channel.value == "sms":
+        policy = await channel_policy.get(db, tenant_id)
+        if not channel_policy.in_sms_window(policy):
+            if claimed:  # the scheduler: wait until quiet hours end
+                send.scheduled_at, send.claimed_at = channel_policy.next_window_start(policy, start_hour=policy.sms_window_start), None
+                await db.commit()
+                await db.refresh(send)
+                return send
+            raise OutsideCallingWindow(f"Marketing texts only go out {policy.sms_window_start}:00-{policy.sms_window_end}:00 {policy.timezone} (quiet hours)")
     if not claimed and not await claim(db, tenant_id, scheduled_send_id):
         await db.refresh(send)
         raise AlreadyExecutedError(f"send is already {send.status.value}" if send.status != SendStatus.SCHEDULED else "send is already being executed")
@@ -118,7 +132,7 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
     channel = send.channel.value
     draft = (await db.execute(select(ContentDraft).where(ContentDraft.id == send.content_draft_id))).scalar_one_or_none()
 
-    recipients = [(c, "") for c in recipient_contacts] if recipient_contacts else await segment_recipients(db, tenant_id, send.campaign_id, channel)
+    recipients = [(c, "", {}) for c in recipient_contacts] if recipient_contacts else await segment_recipients(db, tenant_id, send.campaign_id, channel)
     send.recipients_targeted = len(recipients)
     send.sent_at = datetime.now(timezone.utc)
     if not recipients:
@@ -129,22 +143,60 @@ async def execute_send(db: AsyncSession, tenant_id: str, scheduled_send_id: uuid
         await db.refresh(send)
         return send
 
+    platforms = ((draft.options if draft else None) or {}).get("platforms") if channel == "push" else None
+    if platforms:
+        # Only devices on the chosen platforms (contacts carry a `platform` attribute).
+        recipients = [r for r in recipients if str((r[2] or {}).get("platform", "")).lower() in platforms]
+        send.recipients_targeted = len(recipients)
     allowed = []
     suppressed = 0
-    for contact, name in recipients:
+    for contact, name, attrs in recipients:
         if await suppression_engine.is_suppressed(db, tenant_id, channel, contact):
             suppressed += 1
         else:
-            allowed.append((contact, name))
+            allowed.append((contact, name, attrs))
 
     gate = asyncio.Semaphore(get_settings().delivery_concurrency)
 
-    async def one(contact: str, name: str) -> dict:
-        async with gate:
-            return await delivery.deliver(tenant_id, channel, contact, personalize(draft.body_text if draft else "", name),
-                                          personalize(draft.subject_line if draft else "", name), f"marketing:{send.id}")
+    # A running A/B test whose variant A is this draft splits the audience 50/50.
+    test = await tracking.ab_for(db, tenant_id, send.campaign_id, send.content_draft_id)
+    draft_b = (await db.execute(select(ContentDraft).where(ContentDraft.id == test.variant_b_draft_id))).scalar_one_or_none() if test else None
+    track = get_settings().tracking_enabled
 
-    results = await asyncio.gather(*(one(c, n) for c, n in allowed))
+    async def one(contact: str, name: str, attrs: dict) -> dict:
+        variant = tracking.arm(contact, test.id, test.split_b_pct) if test and draft_b else ""
+        d = draft_b if variant == "b" else draft
+        options = (d.options if d else None) or {}
+        rid = uuid.uuid4()
+        body = personalize(d.body_text if d else "", name, attrs)
+        if channel == "sms":
+            body = channel_options.sms_body(body, options)
+        if track and channel == "email":
+            body = tracking.instrument_email(body, tracking.token(rid))
+        elif track and channel == "sms":
+            body = tracking.instrument_sms(body, tracking.token(rid))
+        opts = dict(options)
+        if opts.get("preview_text"):
+            opts["preview_text"] = personalize(opts["preview_text"], name, attrs)
+        async with gate:
+            result = await delivery.deliver(tenant_id, channel, contact, body, personalize(d.subject_line if d else "", name, attrs),
+                                            f"marketing:{send.id}", opts)
+        if result.get("status") == "sent":
+            subject = personalize(d.subject_line if d else "", name, attrs)
+            # Calls that may be retried keep what was said, to say it again.
+            retry = {"body": body, "subject": subject, "options": opts} if channel == "voice" and int(options.get("max_attempts") or 1) > 1 else {}
+            db.add(MessageRecipient(id=rid, tenant_id=tenant_id, send_id=send.id, campaign_id=send.campaign_id, content_draft_id=d.id if d else None,
+                                    ab_test_id=test.id if variant else None, variant=variant, channel=channel, contact=contact,
+                                    status="sent", delivery_mode=result.get("delivery_mode") or "", notification_id=_uuid(result.get("id")),
+                                    retry_payload=retry))
+        return {**result, "variant": variant}
+
+    results = await asyncio.gather(*(one(c, n, a) for c, n, a in allowed))
+    if test and draft_b:
+        # Only real deliveries count: a console-only message can never be opened.
+        for v in ("a", "b"):
+            n = sum(1 for r in results if r.get("variant") == v and r.get("status") == "sent" and r.get("delivery_mode") == "real_provider")
+            setattr(test, f"variant_{v}_sent", getattr(test, f"variant_{v}_sent") + n)
     real = sum(1 for r in results if r.get("status") == "sent" and r.get("delivery_mode") == "real_provider")
     console = sum(1 for r in results if r.get("status") == "sent" and r.get("delivery_mode") != "real_provider")
     opted_out = sum(1 for r in results if r.get("status") == "skipped_opted_out")

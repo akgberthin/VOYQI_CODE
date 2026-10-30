@@ -98,7 +98,7 @@ async def test_fetch_permissions_reads_rbac_effective_permissions():
     assert perms == frozenset({"fleet.read", "rental.*"})
     url = client.get.call_args.args[0]
     assert url.endswith(f"/api/v1/rbac/users/{USER}/effective-permissions")
-    assert client.get.call_args.kwargs["headers"] == {"x-tenant-id": "voyqi-holdings"}
+    assert client.get.call_args.kwargs["headers"] == {"x-tenant-id": "voyqi-holdings", "x-record-seen": "1"}
 
 
 async def test_unknown_rbac_user_has_no_permissions():

@@ -50,26 +50,16 @@ services:
       retries: 20
 
 
-  # Super admin console (frontend/super-admin): http://localhost:3001
-  super-admin:
+  # The console (frontend/, Next.js): super admin at
+  # http://localhost:3001/admin, marketing at http://localhost:3001/marketing
+  console:
     build:
       context: ./frontend
-      dockerfile: super-admin/Dockerfile
     restart: unless-stopped
+    environment:
+      VOYQI_GATEWAY_URL: http://api-gateway-svc:8000
     ports:
-      - "3001:80"
-    depends_on:
-      api-gateway-svc:
-        condition: service_started
-
-  # Marketing command center (frontend/marketing): http://localhost:3002
-  marketing-console:
-    build:
-      context: ./frontend
-      dockerfile: marketing/Dockerfile
-    restart: unless-stopped
-    ports:
-      - "3002:80"
+      - "3001:3000"
     depends_on:
       api-gateway-svc:
         condition: service_started
@@ -117,6 +107,7 @@ services:
       # Encrypts integration credentials (super admin → Integrations). Dev-only key; set INTEGRATIONS_KEY elsewhere.
       RBAC_INTEGRATIONS_KEY: ${INTEGRATIONS_KEY:-oBE95Al1TrMdZitl_4RKK07oKgai2R6oHPGNs8Crsok=}
       RBAC_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
+      RBAC_AUTH_SVC_BASE_URL: http://auth-svc:8024
       RBAC_DATABASE_URL: postgresql+asyncpg://rbac_svc:${RBAC_DB_PASSWORD:-devpassword}@rbac-db:5432/rbac
       RBAC_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
@@ -213,6 +204,9 @@ services:
       # https URL for Instagram/Facebook to fetch them; localhost is fine
       # for console-mode demos.
       MARKETING_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      # Local demo only: lets an SEO integration use the labelled "sample"
+      # provider when no real account is connected yet.
+      MARKETING_SEO_SAMPLE_ADAPTERS: ${SEO_SAMPLE_ADAPTERS:-true}
       MARKETING_DATABASE_URL: postgresql+asyncpg://marketing_svc:${MARKETING_DB_PASSWORD:-devpassword}@marketing-db:5432/marketing
       MARKETING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
@@ -462,6 +456,7 @@ services:
       # must match exactly for the gateway to verify tokens statelessly.
       AUTH_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
       AUTH_REDIS_URL: redis://redis:6379/0
+      AUTH_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
     depends_on:
       redis:
         condition: service_started
@@ -478,6 +473,7 @@ services:
     environment:
       GATEWAY_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
       GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
     depends_on:
       redis:
         condition: service_started

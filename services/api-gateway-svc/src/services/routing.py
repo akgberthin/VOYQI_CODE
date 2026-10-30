@@ -31,7 +31,9 @@ ROUTE_TABLE: list[RouteConfig] = [
         }),
     ),
     RouteConfig(prefix="/api/v1/user", target_base_url="http://user-svc:8025", public_paths=frozenset({"/api/v1/user/users/register"})),
-    RouteConfig(prefix="/api/v1/notifications", target_base_url="http://notification-svc:8027"),
+    # Twilio's delivery/call reports (verified by Twilio's signature there).
+    RouteConfig(prefix="/api/v1/notifications", target_base_url="http://notification-svc:8027",
+                public_prefixes=("/api/v1/notifications/public/twilio/",)),
     RouteConfig(prefix="/api/v1/subscription", target_base_url="http://subscription-svc:8003"),
     RouteConfig(prefix="/api/v1/fleet", target_base_url="http://fleet-svc:8004"),
     RouteConfig(prefix="/api/v1/rental", target_base_url="http://rental-svc:8005"),
@@ -41,7 +43,11 @@ ROUTE_TABLE: list[RouteConfig] = [
         prefix="/api/v1/marketing",
         target_base_url="http://marketing-svc:8007",
         public_paths=frozenset({"/api/v1/marketing/public/lead-captures"}),
-        public_prefixes=("/api/v1/marketing/public/media/",),
+        # Media social platforms download, and the SEO task inbox's
+        # inbound mail webhook (checked against its own token).
+        public_prefixes=("/api/v1/marketing/public/media/", "/api/v1/marketing/public/seo/inbound/",
+                         # Open pixel and tracked links, opened from inboxes and phones.
+                         "/api/v1/marketing/public/t/"),
     ),
     RouteConfig(prefix="/api/v1/dms", target_base_url="http://dms-svc:8008"),
     RouteConfig(prefix="/api/v1/pricing", target_base_url="http://pricing-svc:8010"),

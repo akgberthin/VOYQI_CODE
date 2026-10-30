@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import GUID, Base
@@ -79,6 +79,14 @@ class Notification(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # What the provider reported afterwards (Twilio status callbacks):
+    # delivered / undelivered for texts; completed / no-answer / busy / failed
+    # for calls, with who answered (human / machine_*) and how long.
+    provider_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    answered_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recording_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class NotificationPreference(Base):

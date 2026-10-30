@@ -231,3 +231,25 @@ async def test_handle_above_class_request_recorded_adapter(db_session, monkeypat
         {"member_profile_id": "mem-1", "subscription_id": "sub-1", "subscribed_class": "executive"},
     )
     assert result.case_created is False
+
+
+async def test_churn_score_and_upgrade_readiness_reach_marketing(db_session, monkeypatch):
+    from src.services import marketing_tools, subscription_tools
+
+    synced = []
+    monkeypatch.setattr(marketing_tools, "sync_contact_attributes", lambda tenant_id, member_id, attrs, email=None, phone=None: synced.append((member_id, attrs, email)) or {"updated": 1})
+    monkeypatch.setattr(subscription_tools, "award_retention_gu_bonus", lambda *a, **k: {})
+    await member_experience_agent.evaluate_churn_risk(db_session, TENANT, "mem-2", context={"days_since_last_use": 45, "email": "ava@x.com"}, client=_UnconfiguredClient())
+    assert synced[0][0] == "mem-2" and synced[0][1]["churn_risk"] >= 40 and synced[0][2] == "ava@x.com"
+
+    monkeypatch.setattr(subscription_tools, "get_upgrade_pattern", lambda tenant_id, member_id: {"pattern_detected": True, "recommended_class": "luxury", "request_count": 3, "reasoning": "3 requests"})
+    monkeypatch.setattr(subscription_tools, "create_upgrade_case", lambda *a, **k: {"id": "case-1"})
+    await member_experience_agent.evaluate_upgrade_pattern(db_session, TENANT, "mem-1", "sub-1", "executive", client=_UnconfiguredClient())
+    assert synced[-1] == ("mem-1", {"upgrade_ready": True, "class": "executive", "recommended_class": "luxury"}, None)
+
+
+def test_marketing_sync_never_breaks_the_agent(monkeypatch):
+    from src.services import marketing_tools
+
+    monkeypatch.setattr(marketing_tools.get_settings(), "marketing_svc_base_url", "http://127.0.0.1:1")
+    assert "error" in marketing_tools.sync_contact_attributes("t", "m", {"churn_risk": 10})

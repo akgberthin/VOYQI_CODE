@@ -80,3 +80,52 @@ def to_csv(report: dict) -> str:
         rows += [f'campaign,"{name}",{k},{c[k]}' for k in ("delivered", "conversions", "revenue_usd")]
     rows += [f"daily,{d['date']},delivered,{d['delivered']}" for d in report["daily_delivered"]]
     return "\n".join(rows) + "\n"
+
+
+PERIOD_DAYS = {"weekly": 7, "monthly": 30}
+
+
+def as_text(r: dict) -> str:
+    """The report as an email: deliveries, social, journeys, leads, top campaigns."""
+    delivered = sum(c["delivered"] for c in r["channels"].values())
+    lines = [f"VOYQI marketing report — last {r['days']} days", "",
+             f"Delivered: {delivered:,} (real deliveries only)"]
+    for ch, c in r["channels"].items():
+        lines.append(f"  {ch}: {c['delivered']:,} delivered, {c['console']:,} console only, {c['failed']:,} failed, {c['suppressed']:,} suppressed")
+    if r["social"]:
+        lines.append("Social: " + "; ".join(f"{p} {v.get('published', 0)} published" for p, v in r["social"].items()))
+    lines += [f"Automation: {r['journeys']['messages_sent']:,} messages, {r['journeys']['completed']:,} journeys completed",
+              f"Leads captured: {r['leads']:,}", "", "Top campaigns:"]
+    lines += [f"  {c['name']} ({c['channel']}): {c['delivered']:,} delivered, {c['conversions']} conversions, ${c['revenue_usd']:,.0f}"
+              for c in r["top_campaigns"][:5]] or ["  none with results in this period"]
+    return "\n".join(lines)
+
+
+async def send(db: AsyncSession, tenant_id: str, days: int, recipients: list[str]) -> dict:
+    """Emails the report to each recipient through notification-svc."""
+    from src.services import delivery
+
+    body = as_text(await build(db, tenant_id, days))
+    results = [await delivery.deliver(tenant_id, "email", to, body, f"VOYQI marketing report — last {days} days", "marketing:report")
+               for to in recipients]
+    return {"sent": sum(1 for x in results if x.get("status") == "sent"), "failed": [x.get("error_message") for x in results if x.get("status") == "failed"],
+            "console": sum(1 for x in results if x.get("status") == "sent" and x.get("delivery_mode") == "console")}
+
+
+async def send_due(session_factory) -> int:
+    """Weekly/monthly reports whose time has come."""
+    from src.models import MarketingSettings
+
+    now, sent = datetime.now(timezone.utc), 0
+    async with session_factory() as db:
+        due = [(s.tenant_id, s.report_frequency, list(s.report_recipients or []))
+               for s in (await db.execute(select(MarketingSettings).where(MarketingSettings.report_frequency != "off"))).scalars()
+               if s.report_recipients and (s.report_last_sent_at is None or now - _aware(s.report_last_sent_at) >= timedelta(days=PERIOD_DAYS.get(s.report_frequency, 7)))]
+    for tenant_id, freq, recipients in due:
+        async with session_factory() as db:
+            row = (await db.execute(select(MarketingSettings).where(MarketingSettings.tenant_id == tenant_id))).scalar_one()
+            row.report_last_sent_at = now  # first, so a slow send isn't repeated by the next pass
+            await db.commit()
+            await send(db, tenant_id, PERIOD_DAYS.get(freq, 7), recipients)
+            sent += 1
+    return sent

@@ -66,6 +66,12 @@ class PostOut(BaseModel):
     error_detail: str
     media_asset_id: uuid.UUID | None
     recurrence: str
+    likes: int | None = None
+    comments: int | None = None
+    shares: int | None = None
+    impressions: int | None = None
+    metrics_updated_at: datetime | None = None
+    metrics_error: str = ""
 
 
 @router.post("/posts", response_model=PostOut, status_code=201)
@@ -94,6 +100,18 @@ async def publish_post(post_id: uuid.UUID, body: PublishRequest, tenant_id: str 
     try:
         return await social_engine.publish_post(db, tenant_id, post_id, body.platform_post_id)
     except social_engine.AlreadyPublishedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+
+@router.post("/posts/{post_id}/refresh-metrics", response_model=PostOut)
+async def refresh_metrics(post_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Reads likes, comments, shares and impressions from the platform now."""
+    try:
+        return await social_engine.refresh_metrics(db, tenant_id, post_id)
+    except social_engine.NotPublishedLive as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

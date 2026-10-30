@@ -89,6 +89,8 @@ class ContentDraft(Base):
     subject_line: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     body_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     media_asset_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Channel settings sent with every delivery — see services/channel_options.
+    options: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[ContentStatus] = mapped_column(Enum(ContentStatus), nullable=False, default=ContentStatus.DRAFT)
     guardrail_findings: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     reviewed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -152,7 +154,8 @@ class SegmentMember(Base):
     on. Imported by the marketing team (or synced from CRM/membership)."""
 
     __tablename__ = "segment_members"
-    __table_args__ = (UniqueConstraint("segment_id", "email", "phone", name="uq_segment_member_contact"),)
+    # push_token too: contacts reachable only by push have no email or phone.
+    __table_args__ = (UniqueConstraint("segment_id", "email", "phone", "push_token", name="uq_segment_member_contact"),)
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -164,6 +167,9 @@ class SegmentMember(Base):
     # Prior express written consent to automated (AI voice) calls — TCPA.
     # Voice sends only ever reach members with it.
     consent_voice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # What targeting and personalisation can use: city, class, status,
+    # tenure_months, churn_risk, upgrade_ready, gu_balance, hub, … (free-form).
+    attributes: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -296,6 +302,13 @@ class SocialPost(Base):
     media_asset_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     recurrence: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
+    # Engagement read back from the platform (None: the platform doesn't report it).
+    likes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    comments: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shares: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    impressions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    metrics_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metrics_error: Mapped[str] = mapped_column(String(512), nullable=False, default="")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -317,6 +330,8 @@ class ABTest(Base):
     variant_a_draft_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("content_drafts.id"), nullable=False)
     variant_b_draft_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("content_drafts.id"), nullable=False)
     metric: Mapped[str] = mapped_column(String(32), nullable=False, default="click_rate")
+    # Share of the audience that gets variant B (the rest get A).
+    split_b_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     variant_a_sent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     variant_a_converted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     variant_b_sent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -473,6 +488,13 @@ class MarketingSettings(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Chicago")
     voice_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
     voice_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    # SMS quiet hours: marketing texts only go out between these (local) hours.
+    sms_window_start: Mapped[int] = mapped_column(Integer, nullable=False, default=9)
+    sms_window_end: Mapped[int] = mapped_column(Integer, nullable=False, default=21)
+    # Emailed performance report: off / weekly / monthly, to these people.
+    report_frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="off")
+    report_recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    report_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
 
 
@@ -511,3 +533,62 @@ class JourneyEnrollment(Base):
     history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     source: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+# Growth / SEO engine tables live with the engine; importing them here
+# registers them on Base.metadata for Alembic and create_all.
+from src.seo import models as seo_models  # noqa: E402,F401
+
+
+class MessageRecipient(Base):
+    """One message delivered to one contact by a send — what opens and
+    clicks are recorded against (tracking pixel, tracked links), and which
+    A/B arm the contact got."""
+
+    __tablename__ = "message_recipients"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    send_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False, index=True)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False, index=True)
+    content_draft_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    ab_test_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    variant: Mapped[str] = mapped_column(String(1), nullable=False, default="")
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)
+    contact: Mapped[str] = mapped_column(String(512), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    delivery_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    clicks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The provider's report, read back from notification-svc: delivered /
+    # undelivered (texts); answered / voicemail / no-answer / busy / failed (calls).
+    notification_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    recording_url: Mapped[str] = mapped_column(String(1024), nullable=False, default="")
+    # Calls that weren't answered are tried again (up to max_attempts).
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retry_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class ReportSchedule(Base):
+    """A named report emailed on a schedule (daily / weekly / monthly) —
+    its period, the channels it covers, its recipients and its format."""
+
+    __tablename__ = "report_schedules"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(16), nullable=False, default="weekly")
+    days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
+    channels: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    format: Mapped[str] = mapped_column(String(8), nullable=False, default="pdf")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

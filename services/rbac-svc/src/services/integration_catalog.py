@@ -14,10 +14,11 @@ CATALOG: dict[str, dict] = {
     },
     "openai": {
         "label": "OpenAI", "category": "AI",
-        "used_for": "Marketing image generation (AI studio, social creatives).",
+        "used_for": "Marketing image generation (AI studio, social creatives) and voice-script previews.",
         "fields": [
             {"key": "api_key", "label": "API key", "secret": True, "required": True},
             {"key": "image_model", "label": "Image model", "default": "gpt-image-1"},
+            {"key": "tts_model", "label": "Voice preview model", "default": "gpt-4o-mini-tts"},
         ],
     },
     "smtp": {
@@ -40,6 +41,8 @@ CATALOG: dict[str, dict] = {
             {"key": "auth_token", "label": "Auth token", "secret": True, "required": True},
             {"key": "from_number", "label": "From number", "required": True, "hint": "+15125550100"},
             {"key": "voice", "label": "Voice", "default": "Polly.Joanna", "hint": "Twilio <Say> voice"},
+            {"key": "status_callback_base_url", "label": "Public URL for delivery reports",
+             "hint": "https://api.voyqi.com — the gateway's public address. Twilio reports whether each text arrived and each call was answered here; voice retries and pickup rates need it."},
         ],
     },
     "fcm": {
@@ -51,7 +54,7 @@ CATALOG: dict[str, dict] = {
     },
     "meta": {
         "label": "Meta (Facebook & Instagram)", "category": "Social",
-        "used_for": "Publishing posts to a Facebook Page and its Instagram business account.",
+        "used_for": "Publishing posts to a Facebook Page and its Instagram business account, and reading their engagement (needs read_insights / instagram_manage_insights).",
         "fields": [
             {"key": "page_id", "label": "Facebook Page ID", "required": True},
             {"key": "page_access_token", "label": "Page access token", "secret": True, "required": True},
@@ -60,7 +63,7 @@ CATALOG: dict[str, dict] = {
     },
     "linkedin": {
         "label": "LinkedIn", "category": "Social",
-        "used_for": "Publishing posts as a LinkedIn organization.",
+        "used_for": "Publishing posts as a LinkedIn organization and reading their likes and comments (needs r_organization_social).",
         "fields": [
             {"key": "organization_urn", "label": "Organization URN", "required": True, "hint": "urn:li:organization:123456"},
             {"key": "access_token", "label": "Access token", "secret": True, "required": True},
@@ -68,10 +71,81 @@ CATALOG: dict[str, dict] = {
     },
     "x": {
         "label": "X (Twitter)", "category": "Social",
-        "used_for": "Publishing posts on X.",
+        "used_for": "Publishing posts on X and reading their public metrics (needs tweet.read).",
         "fields": [
             {"key": "access_token", "label": "OAuth 2.0 user access token", "secret": True, "required": True},
         ],
+    },
+    "google_seo": {
+        "label": "Google Search Console & Analytics", "category": "SEO",
+        "used_for": "SEO agents: Search Console clicks, rankings and pages; GA4 traffic and conversions; PageSpeed Core Web Vitals.",
+        "fields": [
+            {"key": "service_account_json", "label": "Service account JSON", "secret": True, "required": True, "multiline": True,
+             "hint": "Add the service account's email as a user on the Search Console property and the GA4 property"},
+            {"key": "pagespeed_api_key", "label": "PageSpeed Insights API key", "secret": True, "hint": "Optional: raises the PageSpeed quota"},
+        ],
+    },
+    "dataforseo": {
+        "label": "DataForSEO", "category": "SEO",
+        "used_for": "SEO agents: keyword data, competitor gaps, search results, local-pack ranks and the backlink index.",
+        "fields": [
+            {"key": "login", "label": "API login", "required": True},
+            {"key": "password", "label": "API password", "secret": True, "required": True},
+        ],
+    },
+    "wordpress": {
+        "label": "WordPress", "category": "SEO",
+        "used_for": "SEO agents publish articles and landing pages and apply safe fixes (titles, descriptions, alt text, redirects).",
+        "fields": [
+            {"key": "base_url", "label": "Site URL", "required": True, "hint": "https://voyqi.com"},
+            {"key": "username", "label": "Username", "required": True, "hint": "An Editor or Administrator"},
+            {"key": "app_password", "label": "Application password", "secret": True, "required": True,
+             "hint": "Users → Profile → Application Passwords. Redirects need the Redirection plugin."},
+        ],
+    },
+    "cms_webhook": {
+        "label": "Website webhook", "category": "SEO",
+        "used_for": "For any other CMS or website builder: VOYQI posts signed publish and fix requests your site applies.",
+        "fields": [
+            {"key": "url", "label": "Webhook URL", "required": True},
+            {"key": "signing_secret", "label": "Signing secret", "secret": True, "required": True,
+             "hint": "Requests carry X-VOYQI-Signature: sha256=HMAC(body)"},
+        ],
+    },
+    "google_business_profile": {
+        "label": "Google Business Profile", "category": "SEO",
+        "used_for": "Local SEO agent: reads profiles and publishes descriptions and update posts.",
+        "fields": [
+            {"key": "client_id", "label": "OAuth client ID", "required": True},
+            {"key": "client_secret", "label": "OAuth client secret", "secret": True, "required": True},
+            {"key": "refresh_token", "label": "Refresh token", "secret": True, "required": True,
+             "hint": "From an OAuth consent with the business.manage scope"},
+            {"key": "account_id", "label": "Account ID", "hint": "accounts/123… (needed for update posts)"},
+        ],
+    },
+    "perplexity": {
+        "label": "Perplexity", "category": "AI",
+        "used_for": "GEO agent: checks how the brand appears in Perplexity answers.",
+        "fields": [{"key": "api_key", "label": "API key", "secret": True, "required": True}],
+    },
+    "youtube": {
+        "label": "YouTube Data API", "category": "SEO",
+        "used_for": "Search intelligence agent: video research.",
+        "fields": [{"key": "api_key", "label": "API key", "secret": True, "required": True}],
+    },
+    "reddit": {
+        "label": "Reddit", "category": "SEO",
+        "used_for": "Search intelligence agent: community research (optional — public search works without it, at lower reliability).",
+        "fields": [
+            {"key": "client_id", "label": "App client ID", "required": True},
+            {"key": "client_secret", "label": "App secret", "secret": True, "required": True},
+        ],
+    },
+    "seo_inbox": {
+        "label": "SEO task inbox", "category": "SEO",
+        "used_for": "Task intake agent: emailed requests forwarded by your mail provider's inbound webhook.",
+        "fields": [{"key": "token", "label": "Webhook token", "secret": True, "required": True,
+                    "hint": "Any long random string; put it in the inbound webhook URL as ?token=…"}],
     },
     "stripe": {
         "label": "Stripe", "category": "Payments",

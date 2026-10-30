@@ -134,13 +134,20 @@ class SettingsIn(BaseModel):
     timezone: str | None = None
     voice_window_start: int | None = None
     voice_window_end: int | None = None
+    sms_window_start: int | None = None
+    sms_window_end: int | None = None
+    report_frequency: str | None = None
+    report_recipients: list[str] | None = None
 
 
 @router.get("/settings")
 async def get_settings_(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     s = await channel_policy.get(db, tenant_id)
     return {"timezone": s.timezone, "voice_window_start": s.voice_window_start, "voice_window_end": s.voice_window_end,
-            "voice_window_open_now": channel_policy.in_voice_window(s), "updated_by": s.updated_by}
+            "voice_window_open_now": channel_policy.in_voice_window(s), "updated_by": s.updated_by,
+            "sms_window_start": s.sms_window_start, "sms_window_end": s.sms_window_end, "sms_window_open_now": channel_policy.in_sms_window(s),
+            "report_frequency": s.report_frequency, "report_recipients": s.report_recipients or [],
+            "report_last_sent_at": s.report_last_sent_at}
 
 
 @router.put("/settings")
@@ -157,7 +164,114 @@ async def report(days: int = 30, tenant_id: str = Depends(get_tenant_id), db: As
     return await reports.build(db, tenant_id, max(1, min(days, 365)))
 
 
+class ReportSendIn(BaseModel):
+    days: int = 30
+    recipients: list[str] | None = None
+
+
+@router.post("/reports/send")
+async def send_report(body: ReportSendIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Emails the report now — to the given people, or the saved recipients."""
+    recipients = body.recipients or (await channel_policy.get(db, tenant_id)).report_recipients or []
+    if not recipients:
+        raise HTTPException(status_code=422, detail="Nobody to send it to: add report recipients first.")
+    bad = [r for r in recipients if not channel_policy.EMAIL_RE.match(str(r).strip())]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"Not an email address: {', '.join(bad)}")
+    return await reports.send(db, tenant_id, max(1, min(body.days, 365)), [str(r).strip().lower() for r in recipients])
+
+
 @router.get("/reports.csv")
 async def report_csv(days: int = 30, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
     data = reports.to_csv(await reports.build(db, tenant_id, max(1, min(days, 365))))
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="marketing-report-{days}d.csv"'})
+
+
+# -- Named, scheduled reports (CSV or PDF attached) ---------------------
+
+class ScheduleIn(BaseModel):
+    name: str | None = None
+    frequency: str | None = None
+    days: int | None = None
+    channels: list[str] | None = None
+    recipients: list[str] | None = None
+    format: str | None = None
+    active: bool | None = None
+
+
+def _schedule_out(s) -> dict:
+    return {"id": str(s.id), "name": s.name, "frequency": s.frequency, "days": s.days, "channels": s.channels, "recipients": s.recipients,
+            "format": s.format, "active": s.active, "last_sent_at": s.last_sent_at, "created_by": s.created_by}
+
+
+@router.get("/reports/schedules")
+async def list_schedules(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import select
+
+    from src.models import ReportSchedule
+
+    rows = (await db.execute(select(ReportSchedule).where(ReportSchedule.tenant_id == tenant_id).order_by(ReportSchedule.created_at))).scalars()
+    return [_schedule_out(s) for s in rows]
+
+
+@router.post("/reports/schedules", status_code=201)
+async def create_schedule(body: ScheduleIn, tenant_id: str = Depends(get_tenant_id), x_user_id: str | None = Header(default=None), db: AsyncSession = Depends(get_db)):
+    from src.models import ReportSchedule
+    from src.services import report_schedules as rs
+
+    try:
+        values = rs.clean(body.model_dump(exclude_none=True))
+    except rs.ScheduleError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    s = ReportSchedule(tenant_id=tenant_id, created_by=x_user_id or "marketing", **values)
+    db.add(s)
+    await db.commit()
+    return _schedule_out(s)
+
+
+@router.patch("/reports/schedules/{schedule_id}")
+async def update_schedule(schedule_id: uuid.UUID, body: ScheduleIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    from src.services import report_schedules as rs
+
+    try:
+        s = await rs.get(db, tenant_id, schedule_id)
+        for k, v in rs.clean(body.model_dump(exclude_none=True), current=s).items():
+            setattr(s, k, v)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except rs.ScheduleError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await db.commit()
+    return _schedule_out(s)
+
+
+@router.delete("/reports/schedules/{schedule_id}", status_code=204)
+async def delete_schedule(schedule_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    from src.services import report_schedules as rs
+
+    try:
+        await db.delete(await rs.get(db, tenant_id, schedule_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await db.commit()
+
+
+@router.post("/reports/schedules/{schedule_id}/run")
+async def run_schedule(schedule_id: uuid.UUID, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """Sends this report now (and counts as its latest run)."""
+    from src.services import report_schedules as rs
+
+    try:
+        s = await rs.get(db, tenant_id, schedule_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return await rs.send(db, s)
+
+
+@router.get("/reports.pdf")
+async def report_pdf(days: int = 30, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    from src.services import report_schedules as rs
+
+    days = max(1, min(days, 365))
+    data = rs.to_pdf("Marketing report", await reports.build(db, tenant_id, days))
+    return Response(content=data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="marketing-report-{days}d.pdf"'})

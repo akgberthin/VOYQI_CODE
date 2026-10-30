@@ -89,3 +89,21 @@ def test_hosted_marketing_media_is_public_but_nothing_else_under_marketing():
     assert is_public_path(resolve_route(media), media)
     for private in ("/api/v1/marketing/media", "/api/v1/marketing/campaigns", "/api/v1/marketing/public/media/../campaigns"):
         assert not is_public_path(resolve_route(private), private)
+
+
+def test_open_pixel_and_tracked_links_are_public():
+    from src.services.routing import is_public_path, resolve_route
+
+    for path in ("/api/v1/marketing/public/t/o/abc.def.gif", "/api/v1/marketing/public/t/c/abc.def"):
+        assert is_public_path(resolve_route(path), path)
+    for private in ("/api/v1/marketing/analytics/send-times", "/api/v1/marketing/public/t/../campaigns"):
+        assert not is_public_path(resolve_route(private), private)
+
+
+def test_twilio_delivery_reports_are_public_but_nothing_else_under_notifications():
+    from src.services.routing import is_public_path, resolve_route
+
+    ok = "/api/v1/notifications/public/twilio/voyqi-demo/status"
+    assert is_public_path(resolve_route(ok), ok)
+    for private in ("/api/v1/notifications/send-direct", "/api/v1/notifications/statuses", "/api/v1/notifications/public/twilio/../send-direct"):
+        assert not is_public_path(resolve_route(private), private)

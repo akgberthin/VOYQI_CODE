@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
@@ -19,6 +20,7 @@ class AuditLogEntryOut(BaseModel):
     action: str
     resource: str
     detail: str
+    occurred_at: datetime
 
 
 @router.get("", response_model=list[AuditLogEntryOut])

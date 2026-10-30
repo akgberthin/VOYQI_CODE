@@ -37,6 +37,10 @@ class Settings(BaseSettings):
 
     notification_svc_base_url: str = "http://notification-svc:8027"
 
+    # Shared secret rbac-svc presents on /internal/ calls (lockout status
+    # and unlock for the Super Admin panel). Empty disables those routes.
+    internal_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

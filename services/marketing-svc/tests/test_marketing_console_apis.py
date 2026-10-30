@@ -69,7 +69,7 @@ def provider(monkeypatch):
     from src.services import delivery
     calls = []
 
-    async def fake_deliver(tenant_id, channel, recipient, body, subject, source):
+    async def fake_deliver(tenant_id, channel, recipient, body, subject, source, options=None):
         calls.append({"recipient": recipient, "body": body, "subject": subject, "channel": channel})
         return {"status": "sent", "delivery_mode": "real_provider", "error_message": None}
 

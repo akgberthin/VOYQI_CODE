@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
@@ -31,6 +32,7 @@ class SnapshotOut(BaseModel):
     click_count: int
     conversion_count: int
     revenue_usd: float
+    snapshot_at: datetime | None = None
 
 
 @router.post("/snapshots", response_model=SnapshotOut, status_code=201)

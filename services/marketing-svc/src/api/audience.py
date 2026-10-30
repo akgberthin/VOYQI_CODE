@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,8 @@ class SegmentCreate(BaseModel):
     name: str
     filter_criteria: dict = {}
     created_by: str = "marketing-admin"
+    # Fill the new segment with every existing contact matching the criteria.
+    populate: bool = False
 
 
 class SegmentOut(BaseModel):
@@ -28,7 +30,57 @@ class SegmentOut(BaseModel):
 
 @router.post("/segments", response_model=SegmentOut, status_code=201)
 async def create_segment(body: SegmentCreate, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    return await audience_engine.create_segment(db, tenant_id, body.name, body.filter_criteria, body.created_by)
+    try:
+        audience_engine.check_criteria(body.filter_criteria)
+    except audience_engine.InvalidCriteria as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    segment = await audience_engine.create_segment(db, tenant_id, body.name, body.filter_criteria, body.created_by)
+    if body.populate:
+        await audience_engine.populate(db, tenant_id, segment.id, body.filter_criteria)
+        await db.refresh(segment)
+    return segment
+
+
+class EstimateIn(BaseModel):
+    filter_criteria: dict = {}
+
+
+@router.post("/estimate")
+async def estimate(body: EstimateIn, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """How many of the tenant's contacts match, and how many of those each
+    channel can reach (voice: only with consent to automated calls)."""
+    try:
+        return await audience_engine.estimate(db, tenant_id, body.filter_criteria)
+    except audience_engine.InvalidCriteria as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+class ContactSync(BaseModel):
+    member_profile_id: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    name: str | None = None
+    attributes: dict = {}
+
+
+class ContactsSyncIn(BaseModel):
+    contacts: list[ContactSync]
+    source: str = "sync"
+
+
+@router.post("/contacts/sync")
+async def sync_contacts(body: ContactsSyncIn, tenant_id: str = Depends(get_tenant_id), x_ai_initiated: str | None = Header(default=None),
+                        db: AsyncSession = Depends(get_db)):
+    """Attributes computed elsewhere (churn_risk, upgrade_ready, …) for
+    contacts matched by member_profile_id, email or phone. Crossing into
+    high churn risk or becoming upgrade-ready starts the matching journeys."""
+    source = f"ai:{x_ai_initiated}" if x_ai_initiated else body.source
+    return await audience_engine.sync_contacts(db, tenant_id, [c.model_dump() for c in body.contacts], source)
+
+
+@router.get("/attributes")
+async def attributes(tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    return await audience_engine.attribute_values(db, tenant_id)
 
 
 @router.get("/segments", response_model=list[SegmentOut])
@@ -54,6 +106,7 @@ class MemberIn(BaseModel):
     phone: str = ""
     push_token: str = ""
     consent_voice: bool = False
+    attributes: dict = {}
 
 
 class MemberOut(BaseModel):
@@ -64,6 +117,7 @@ class MemberOut(BaseModel):
     phone: str
     push_token: str
     consent_voice: bool
+    attributes: dict = {}
 
 
 class MembersImport(BaseModel):

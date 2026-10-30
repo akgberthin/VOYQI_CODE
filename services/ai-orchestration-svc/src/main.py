@@ -20,6 +20,7 @@ from src.api import (
     pricing_intelligence,
     recommendations,
     revenue_intelligence,
+    seo,
     talent,
     tier_policy,
 )
@@ -127,6 +128,7 @@ app.include_router(talent.router)
 app.include_router(dealer_intelligence.router)
 app.include_router(portfolio_intelligence.router)
 app.include_router(tier_policy.router)
+app.include_router(seo.router)
 
 
 @app.get("/health")

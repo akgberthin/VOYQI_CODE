@@ -241,3 +241,28 @@ async def test_password_reset_token_is_single_use(db_session):
 
     second = await auth_engine.reset_password(db_session, tenant_id=TENANT, raw_reset_token=reset_token, new_password="another-password-789")
     assert second is False
+
+
+@pytest.mark.asyncio
+async def test_reenrolling_mfa_keeps_the_old_secret_until_the_new_one_is_confirmed(db_session):
+    cred = await _register(db_session, password="correct-horse-battery-staple")
+    await db_session.flush()
+    old = pyotp.parse_uri(await auth_engine.enroll_mfa(db_session, user_credential_id=cred.id, tenant_id=TENANT)).secret
+    assert await auth_engine.confirm_mfa_enrollment(db_session, user_credential_id=cred.id, tenant_id=TENANT, totp_code=pyotp.TOTP(old).now())
+    await db_session.commit()
+
+    # start reconfiguring, then abandon it: the old authenticator still works
+    new = pyotp.parse_uri(await auth_engine.enroll_mfa(db_session, user_credential_id=cred.id, tenant_id=TENANT)).secret
+    await db_session.commit()
+    assert new != old
+    outcome = await auth_engine.verify_mfa_and_issue_tokens(db_session, tenant_id=TENANT, user_credential_id=cred.id, totp_code=pyotp.TOTP(old).now())
+    assert outcome.status == "success"
+
+    # a code from the old app can't confirm the new secret
+    assert not await auth_engine.confirm_mfa_enrollment(db_session, user_credential_id=cred.id, tenant_id=TENANT, totp_code="000000")
+    # confirming with the new app switches over
+    assert await auth_engine.confirm_mfa_enrollment(db_session, user_credential_id=cred.id, tenant_id=TENANT, totp_code=pyotp.TOTP(new).now())
+    await db_session.commit()
+    assert cred.mfa_secret == new and cred.mfa_pending_secret is None
+    outcome = await auth_engine.verify_mfa_and_issue_tokens(db_session, tenant_id=TENANT, user_credential_id=cred.id, totp_code=pyotp.TOTP(new).now())
+    assert outcome.status == "success"

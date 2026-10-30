@@ -1,0 +1,342 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useSession } from "@/lib/session";
+import { Empty, ErrorNote, Loading, PageHead, StatusBadge, fmtTime, useAction, useLoad } from "@/lib/ui";
+import { Ch, DraftCard } from "../bits";
+import { CHANNELS, CHANNEL_LABEL, CLASSES, OBJECTIVES, RECURRENCE, TONES, fileToBase64, inHours, mk, toIso } from "../mk";
+
+const PLATFORMS = ["instagram", "facebook", "linkedin", "twitter", "tiktok"];
+
+export function Social() {
+  const run = useAction();
+  const accounts = useLoad(() => mk.accounts());
+  const posts = useLoad(() => mk.posts());
+  const drafts = useLoad(async () => (await mk.drafts(undefined, "approved")).filter((d) => d.channel === "social"));
+  const assets = useLoad(() => mk.assets());
+  const [acct, setAcct] = useState({ platform: "instagram", handle: "" });
+  const [post, setPost] = useState({ account_ids: [] as string[], content_draft_id: "", media_asset_id: "", hashtags: "", at: inHours(4), recurrence: "none" });
+  const { me } = useSession();
+  const chosen = (drafts.data || []).find((d) => d.id === post.content_draft_id);
+  const tags = post.hashtags.split(/[\s,]+/).filter(Boolean).map((t) => (t.startsWith("#") ? t : `#${t}`)).join(" ");
+  const copy = chosen ? (tags ? `${chosen.body_text}\n\n${tags}` : chosen.body_text) : "";
+  const onX = post.account_ids.some((id) => (accounts.data || []).find((a) => a.id === id)?.platform === "twitter");
+  const schedule = () => run(`Scheduled on ${post.account_ids.length} account(s) — publishes automatically`, async () => {
+    // A draft backs exactly one post, so every account after the first (and
+    // any copy with hashtags) gets its own guardrail-checked draft.
+    for (const [i, id] of post.account_ids.entries()) {
+      let draftId = post.content_draft_id;
+      if ((tags || i > 0) && chosen) {
+        const d = await mk.createDraft({ campaign_id: chosen.campaign_id, channel: "social", body_text: copy, created_by: me?.email || "marketing" } as any);
+        if (d.status !== "approved") throw new Error("The copy was held by the guardrail — review it under Content review.");
+        draftId = d.id;
+      }
+      await mk.schedulePost({ social_account_id: id, content_draft_id: draftId, media_asset_id: post.media_asset_id || null, scheduled_at: toIso(post.at), recurrence: post.recurrence });
+    }
+  }).then((ok) => { if (ok) { setPost({ ...post, account_ids: [], hashtags: "" }); reloadAll(); } });
+  const reloadAll = () => { accounts.reload(); posts.reload(); drafts.reload(); };
+  const handle = (id: string) => (accounts.data || []).find((a) => a.id === id);
+  return (
+    <>
+      <PageHead title="◎ Social" text="Connected accounts and scheduled posts. Posts publish automatically at their time through each platform's API (set up under super admin → Integrations: Meta for Facebook and Instagram, LinkedIn, X); without an integration they're recorded in console mode, not posted." />
+      <div className="split mb">
+        <div className="card">
+          <h3>Accounts</h3>
+          <div className="row mt">
+            <select value={acct.platform} onChange={(e) => setAcct({ ...acct, platform: e.target.value })}>{PLATFORMS.map((p) => <option key={p}>{p}</option>)}</select>
+            <input placeholder="@voyqi" value={acct.handle} onChange={(e) => setAcct({ ...acct, handle: e.target.value })} />
+            <button disabled={!acct.handle} onClick={() => run("Account connected", () => mk.connectAccount(acct)).then(() => { setAcct({ ...acct, handle: "" }); accounts.reload(); })}>Connect</button>
+          </div>
+          <table className="mt"><tbody>{(accounts.data || []).map((a) => (
+            <tr key={a.id}><td><b>{a.platform}</b></td><td>{a.handle}</td><td>{a.connected ? <span className="badge ok">connected</span> : <span className="badge">disconnected</span>}</td>
+              <td>{a.connected && <button className="sm ghost" onClick={() => run("Disconnected", () => mk.disconnectAccount(a.id)).then(accounts.reload)}>Disconnect</button>}</td></tr>
+          ))}</tbody></table>
+          {!accounts.loading && !(accounts.data || []).length && <Empty>No accounts connected.</Empty>}
+        </div>
+        <div className="card">
+          <h3>Schedule a post</h3>
+          {!(drafts.data || []).length ? <div className="sub mt">No approved social content. <Link href="/marketing/campaigns">Create a social campaign</Link> and draft a post.</div> : (
+            <div className="form mt">
+              <div className="field" style={{ gridColumn: "1 / -1" }}>Target platforms
+                <div className="row">{(accounts.data || []).filter((a) => a.connected).map((a) => (
+                  <label key={a.id} className="badge" style={{ cursor: "pointer" }}><input type="checkbox" checked={post.account_ids.includes(a.id)} onChange={(e) => setPost({ ...post, account_ids: e.target.checked ? [...post.account_ids, a.id] : post.account_ids.filter((x) => x !== a.id) })} /> {a.platform} {a.handle}</label>
+                ))}</div>
+              </div>
+              <label className="field">Content<select value={post.content_draft_id} onChange={(e) => setPost({ ...post, content_draft_id: e.target.value })}><option value="">— choose —</option>{(drafts.data || []).map((d) => <option key={d.id} value={d.id}>{d.body_text.slice(0, 50)}</option>)}</select></label>
+              <label className="field">Image<select value={post.media_asset_id} onChange={(e) => setPost({ ...post, media_asset_id: e.target.value })}><option value="">none</option>{(assets.data || []).map((a) => <option key={a.id} value={a.id}>{a.title.slice(0, 50) || a.id.slice(0, 8)} ({a.source})</option>)}</select></label>
+              <label className="field">Hashtags<input value={post.hashtags} placeholder="#VOYQI #PortableMobility" onChange={(e) => setPost({ ...post, hashtags: e.target.value })} /></label>
+              <label className="field">When<input type="datetime-local" value={post.at} onChange={(e) => setPost({ ...post, at: e.target.value })} /></label>
+              <label className="field">Repeat<select value={post.recurrence} onChange={(e) => setPost({ ...post, recurrence: e.target.value })}>{RECURRENCE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            </div>
+          )}
+          {post.account_ids.some((id) => (accounts.data || []).find((a) => a.id === id)?.platform === "instagram") && !post.media_asset_id && <div className="notice warn mt">Instagram only publishes posts with an image.</div>}
+          {chosen && (
+            <div className="card mt" style={{ background: "var(--panel-2)" }}>
+              <div className="row"><span className="avatar" style={{ width: 26, height: 26, fontSize: 11 }}>V</span><b>VOYQI Mobility</b><span className="muted">@voyqimobility</span></div>
+              {post.media_asset_id && <img src={(assets.data || []).find((a) => a.id === post.media_asset_id)?.url} alt="" style={{ width: "100%", borderRadius: 8, marginTop: 8 }} />}
+              <div className="mt" style={{ whiteSpace: "pre-wrap" }}>{copy}</div>
+              <div className={`counter ${onX && copy.length > 280 ? "over" : ""}`}>{copy.length}{onX ? " / 280 (X)" : ""} characters</div>
+            </div>
+          )}
+          <button className="mt" disabled={!post.account_ids.length || !post.content_draft_id || (onX && copy.length > 280)} onClick={schedule}>Schedule post{post.account_ids.length > 1 ? ` on ${post.account_ids.length} accounts` : ""}</button>
+        </div>
+      </div>
+      <h3>Posts</h3>
+      {posts.loading ? <Loading /> : !(posts.data || []).length ? <Empty>No posts yet.</Empty> : (
+        <div className="card table-wrap"><table>
+          <thead><tr><th>Account</th><th>Scheduled</th><th>Status</th><th>Platform post</th><th>Engagement</th><th /></tr></thead>
+          <tbody>{(posts.data || []).map((p) => {
+            const a = handle(p.social_account_id);
+            return (
+              <tr key={p.id}><td>{a ? `${a.platform} ${a.handle}` : "—"}</td><td>{fmtTime(p.scheduled_at)}</td><td><StatusBadge value={p.status} /></td><td className="mono muted">{p.delivery_mode === "console" ? <span title="No integration for this platform — recorded, not posted">console only</span> : p.platform_post_id || "—"}{p.published_at && <div>{fmtTime(p.published_at)}</div>}{p.error_detail && <div style={{ color: "var(--bad)", maxWidth: 320, whiteSpace: "normal" }}>{p.error_detail}</div>}</td>
+                <td style={{ fontSize: 12 }}>{p.status === "published" && ["real", "external"].includes(p.delivery_mode) ? <>
+                  {p.metrics_updated_at ? <div>♥ {p.likes ?? "—"} · 💬 {p.comments ?? "—"} · ↻ {p.shares ?? "—"}{p.impressions != null && <> · 👁 {p.impressions.toLocaleString()}</>}</div> : <div className="muted">not read yet</div>}
+                  {p.metrics_error && <div style={{ color: "var(--warn)", maxWidth: 260, whiteSpace: "normal" }}>{p.metrics_error}</div>}
+                  <button className="sm ghost" onClick={() => run("Engagement updated", () => mk.refreshMetrics(p.id)).then(posts.reload)}>Refresh</button>
+                </> : <span className="muted">—</span>}</td>
+                <td>{p.status === "scheduled" && <button className="sm" onClick={() => run("Published", () => mk.publishPost(p.id)).then(posts.reload)}>Publish now</button>}</td></tr>
+            );
+          })}</tbody>
+        </table></div>
+      )}
+    </>
+  );
+}
+
+export function Review() {
+  const [status, setStatus] = useState("held_for_review");
+  const { data, error, loading, reload } = useLoad(() => mk.drafts(undefined, status || undefined), [status]);
+  const campaigns = useLoad(() => mk.campaigns());
+  const name = (id: string) => (campaigns.data || []).find((c) => c.id === id)?.name || "";
+  return (
+    <>
+      <PageHead title="Content review" text="Every draft — AI-written or not — passes a deterministic brand and compliance guardrail. Passing drafts are approved automatically; the rest wait here for a person.">
+        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          {["held_for_review", "approved", "scheduled", "sent", "rejected", ""].map((s) => <option key={s} value={s}>{s ? s.replace(/_/g, " ") : "all"}</option>)}
+        </select>
+      </PageHead>
+      <ErrorNote error={error} />
+      {loading ? <Loading /> : !(data || []).length ? <Empty>{status === "held_for_review" ? "Nothing held — every draft passed the guardrail." : "No drafts."}</Empty> : (
+        <div className="grid cols-2">{(data || []).map((d) => (
+          <div key={d.id}><div className="muted mb" style={{ fontSize: 12 }}><Link href={`/marketing/campaigns/${d.campaign_id}`}>{name(d.campaign_id)}</Link></div><DraftCard d={d} onChange={reload} /></div>
+        ))}</div>
+      )}
+    </>
+  );
+}
+
+export function Studio() {
+  const run = useAction();
+  const { me } = useSession();
+  const media = useLoad(() => mk.media());
+  const assets = useLoad(() => mk.assets());
+  const [f, setF] = useState({ prompt: "", media_type: "image" });
+  const pending = (media.data || []).some((m) => m.status === "generating");
+  const reloadAll = () => { media.reload(); assets.reload(); };
+  const upload = async (file: File) => run("Image uploaded", async () => mk.uploadAsset({ title: file.name, content_type: file.type, data_base64: await fileToBase64(file), created_by: me?.email || "marketing" })).then(assets.reload);
+  return (
+    <>
+      <PageHead title="✦ AI studio" text="Images for campaigns and social posts — generated from a prompt (OpenAI, set up under super admin → Integrations) or uploaded. They're hosted by VOYQI so social platforms can fetch them. Copy is drafted on each campaign and in the composer.">
+        <label className="btn ghost" style={{ cursor: "pointer" }}>Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+        <button className="ghost" onClick={reloadAll}>Refresh</button>
+      </PageHead>
+      <Generator />
+      <div className="card mb">
+        <h3>Generate an image</h3>
+        <div className="row mt">
+          <select value={f.media_type} onChange={(e) => setF({ ...f, media_type: e.target.value })}><option value="image">image</option><option value="video">video</option></select>
+          <input style={{ flex: 1 }} placeholder="A silver Model Y at golden hour on a Texas highway, cinematic" value={f.prompt} onChange={(e) => setF({ ...f, prompt: e.target.value })} />
+          <button disabled={!f.prompt} onClick={() => run("Requested — generating", () => mk.requestMedia({ ...f, requested_by: me?.email || "marketing" })).then(() => { setF({ ...f, prompt: "" }); reloadAll(); })}>Generate</button>
+        </div>
+        {pending && <div className="notice info mt"><span className="spin" /> Generating… refresh in a minute.</div>}
+      </div>
+      <h3>Image library</h3>
+      {assets.loading ? <Loading /> : !(assets.data || []).length ? <Empty>No images yet — generate or upload one.</Empty> : (
+        <div className="grid cols-4 mb" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>{(assets.data || []).map((a) => (
+          <div key={a.id} className="card" style={{ padding: 10 }}>
+            <img src={a.url} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, background: "var(--panel-2)" }} />
+            <div className="row between mt"><span className="clip" title={a.title} style={{ maxWidth: 140 }}>{a.title || "untitled"}</span><span className="badge">{a.source}</span></div>
+          </div>
+        ))}</div>
+      )}
+      <h3>Requests</h3>
+      {media.loading ? <Loading /> : !(media.data || []).length ? <Empty>No generation requests.</Empty> : (
+        <div className="card table-wrap"><table>
+          <thead><tr><th>Prompt</th><th>Type</th><th>Status</th><th>Result</th></tr></thead>
+          <tbody>{(media.data || []).map((m) => (
+            <tr key={m.id}><td style={{ maxWidth: 420 }}>{m.prompt}</td><td>{m.media_type}</td><td><StatusBadge value={m.status} /></td>
+              <td>{m.result_url ? <a href={m.result_url} target="_blank" rel="noreferrer">open</a> : m.error_detail ? <span style={{ color: "var(--bad)" }}>{m.error_detail}</span> : m.status === "pending" ? <span className="muted">waiting for an image provider (Integrations → OpenAI)</span> : "—"}</td></tr>
+          ))}</tbody>
+        </table></div>
+      )}
+    </>
+  );
+}
+
+function Generator() {
+  const run = useAction();
+  const { me } = useSession();
+  const campaigns = useLoad(() => mk.campaigns());
+  const [f, setF] = useState({ channel: "email", mobility_class: "luxury", objective: "acquisition", context: "", tones: ["premium", "personal", "urgent"] });
+  const [variants, setVariants] = useState<{ tone: string; source: string; subject: string; body: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [target, setTarget] = useState<Record<number, string>>({});
+  const generate = async () => {
+    setBusy(true);
+    await run("Variants ready", async () => setVariants((await mk.compose(f)).variants));
+    setBusy(false);
+  };
+  const toggleTone = (t: string) => setF({ ...f, tones: f.tones.includes(t) ? f.tones.filter((x) => x !== t) : [...f.tones, t] });
+  const options = (campaigns.data || []).filter((c) => c.channel === f.channel);
+  return (
+    <div className="card mb">
+      <h3>✦ Generate campaign content</h3>
+      <div className="sub">Copy variants from the Marketing Content Agent, one per tone — pick one, put it on a campaign or save it as a template.</div>
+      <div className="form mt">
+        <label className="field">Target class<select value={f.mobility_class} onChange={(e) => setF({ ...f, mobility_class: e.target.value })}>{CLASSES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label className="field">Channel<select value={f.channel} onChange={(e) => { setF({ ...f, channel: e.target.value }); setVariants([]); }}>{["email", "sms", "push", "voice", "social"].map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}</select></label>
+        <label className="field">Objective<select value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })}>{OBJECTIVES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label className="field" style={{ gridColumn: "1 / -1" }}>Additional context<input value={f.context} placeholder="e.g. Brickell hub opens 1 November" onChange={(e) => setF({ ...f, context: e.target.value })} /></label>
+      </div>
+      <div className="row mt">{TONES.map(([k, l]) => <label key={k} className="badge" style={{ cursor: "pointer" }}><input type="checkbox" checked={f.tones.includes(k)} onChange={() => toggleTone(k)} /> {l}</label>)}</div>
+      <button className="mt" disabled={busy || !f.tones.length} onClick={generate}>{busy ? "Generating…" : variants.length ? "Regenerate" : "Generate"}</button>
+      {variants.length > 0 && (
+        <div className="grid cols-3 mt">{variants.map((v, i) => (
+          <div key={v.tone + i} className="card" style={{ background: "var(--panel-2)" }}>
+            <div className="row between"><b>{TONES.find(([k]) => k === v.tone)?.[1] || v.tone}</b><span className={`badge ${v.source === "claude" ? "ai" : ""}`}>{v.source === "claude" ? "Claude" : "template"}</span></div>
+            {v.subject && <div className="mt"><b>{v.subject}</b></div>}
+            <div className="mt" style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{v.body}</div>
+            <div className="row mt">
+              <select value={target[i] || ""} onChange={(e) => setTarget({ ...target, [i]: e.target.value })}><option value="">{options.length ? "campaign…" : `no ${f.channel} campaigns`}</option>{options.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <button className="sm" disabled={!target[i]} onClick={() => run("Added to the campaign — guardrail checked", () => mk.createDraft({ campaign_id: target[i], channel: f.channel as any, subject_line: v.subject, body_text: v.body, created_by: me?.email || "marketing" } as any))}>Use</button>
+            </div>
+            <div className="row mt">
+              <button className="sm ghost" onClick={() => run("Saved to library", () => mk.saveToLibrary({ title: v.subject || `${v.tone} ${f.channel}`, channel: f.channel, body_text: v.subject ? `${v.subject}\n\n${v.body}` : v.body, tags: [v.tone, f.objective], created_by: me?.email || "marketing" }))}>Save to library</button>
+              <button className="sm ghost" onClick={() => navigator.clipboard?.writeText(v.subject ? `${v.subject}\n\n${v.body}` : v.body)}>Copy</button>
+            </div>
+          </div>
+        ))}</div>
+      )}
+    </div>
+  );
+}
+
+export function Library() {
+  const [tab, setTab] = useState<"templates" | "campaigns">("templates");
+  const head = <div className="seg mb">{(["templates", "campaigns"] as const).map((t) => <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t === "templates" ? "Templates" : "Campaigns"}</button>)}</div>;
+  return tab === "campaigns" ? <>{head}<CampaignLibrary /></> : <>{head}<Templates /></>;
+}
+
+const CAMPAIGN_FILTERS = [["", "All"], ["active", "Running"], ["draft", "Drafts"], ["scheduled", "Scheduled"], ["paused", "Paused"], ["completed", "Completed"]] as const;
+
+/** Every campaign with its sends, filterable, exportable as CSV. */
+function CampaignLibrary() {
+  const campaigns = useLoad(() => mk.campaigns());
+  const sends = useLoad(() => mk.sends());
+  const [filter, setFilter] = useState("");
+  const [q, setQ] = useState("");
+  const bySend = (id: string) => (sends.data || []).filter((x) => x.campaign_id === id);
+  const scheduled = (id: string) => bySend(id).some((x) => x.status === "scheduled");
+  const all = campaigns.data || [];
+  const count = (f: string) => all.filter((c) => (f === "scheduled" ? scheduled(c.id) : !f || c.status === f)).length;
+  const rows = all.filter((c) => (filter === "scheduled" ? scheduled(c.id) : !filter || c.status === filter) && (!q || `${c.name} ${c.objective}`.toLowerCase().includes(q.toLowerCase())));
+  const reached = (id: string) => bySend(id).reduce((a, x) => a + Math.max(0, x.recipients_targeted - x.recipients_suppressed - x.recipients_failed), 0);
+  const lastSent = (id: string) => bySend(id).map((x) => x.sent_at).filter(Boolean).sort().pop() as string | undefined;
+  const exportCsv = () => {
+    const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["Campaign", "Channel", "Objective", "Status", "Sends", "Reached", "Last sent", "Created by"].join(",")]
+      .concat(rows.map((c) => [c.name, c.channel, c.objective, c.status, bySend(c.id).length, reached(c.id), lastSent(c.id) || "", c.created_by].map(cell).join(",")));
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    Object.assign(document.createElement("a"), { href: url, download: "campaigns.csv" }).click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <>
+      <PageHead title="Library" text="Every campaign in one place — filter by state, open one, or export the list.">
+        <input placeholder="Search campaigns…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button className="ghost" disabled={!rows.length} onClick={exportCsv}>Export CSV</button>
+      </PageHead>
+      <ErrorNote error={campaigns.error} />
+      <div className="seg mb">{CAMPAIGN_FILTERS.map(([v, l]) => <button key={v} className={filter === v ? "on" : ""} onClick={() => setFilter(v)}>{l} ({count(v)})</button>)}</div>
+      {campaigns.loading ? <Loading /> : !rows.length ? <Empty>{q || filter ? "Nothing matches." : "No campaigns yet."}</Empty> : (
+        <div className="card table-wrap"><table>
+          <thead><tr><th>Campaign</th><th>Channel</th><th>Status</th><th>Sends</th><th>Reached</th><th>Last sent</th><th /></tr></thead>
+          <tbody>{rows.map((c) => (
+            <tr key={c.id}>
+              <td><b>{c.name}</b><div className="muted">{c.objective}</div></td>
+              <td><Ch c={c.channel} /></td>
+              <td><StatusBadge value={c.status} />{scheduled(c.id) && <span className="badge">scheduled</span>}</td>
+              <td>{bySend(c.id).length}</td>
+              <td>{reached(c.id).toLocaleString()}</td>
+              <td className="muted">{lastSent(c.id) ? fmtTime(lastSent(c.id)!) : "—"}</td>
+              <td><Link href={`/marketing/campaigns/${c.id}`}><button className="sm ghost">Open</button></Link></td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+    </>
+  );
+}
+
+function Templates() {
+  const run = useAction();
+  const { me } = useSession();
+  const [channel, setChannel] = useState("");
+  const [q, setQ] = useState("");
+  const { data: all, loading, reload } = useLoad(() => mk.library(), []);
+  const data = (all || []).filter((t) => (!channel || t.channel === channel) && (!q || `${t.title} ${t.body_text} ${t.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
+  const [f, setF] = useState({ title: "", channel: "email", body_text: "", tags: "" });
+  return (
+    <>
+      <PageHead title="Library" text="Reusable templates per channel. Load one in the composer to start a message from it.">
+        <input placeholder="Search title, text or tag…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select value={channel} onChange={(e) => setChannel(e.target.value)}><option value="">all channels</option>{CHANNELS.map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}</select>
+      </PageHead>
+      <div className="grid cols-4 mb" style={{ gridTemplateColumns: "repeat(5, minmax(0,1fr))" }}>{CHANNELS.map((c) => (
+        <button key={c} className="card kpi" style={{ textAlign: "left", background: channel === c ? "var(--panel-2)" : undefined, borderColor: channel === c ? "var(--gold)" : undefined, color: "inherit" }} onClick={() => setChannel(channel === c ? "" : c)}>
+          <div className="l"><Ch c={c} /></div><div className="n">{(all || []).filter((t) => t.channel === c).length}</div><div className="d">templates</div>
+        </button>
+      ))}</div>
+      <div className="card mb">
+        <div className="form">
+          <label className="field">Title<input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></label>
+          <label className="field">Channel<select value={f.channel} onChange={(e) => setF({ ...f, channel: e.target.value })}>{CHANNELS.map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}</select></label>
+          <label className="field">Tags<input placeholder="welcome, ev" value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} /></label>
+        </div>
+        <textarea className="mt" style={{ fontFamily: "inherit" }} placeholder="For email, put the subject on the first line, then a blank line, then the body." value={f.body_text} onChange={(e) => setF({ ...f, body_text: e.target.value })} />
+        <button className="mt" disabled={!f.title || !f.body_text} onClick={() => run("Template saved", () => mk.saveToLibrary({ ...f, tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean), created_by: me?.email || "marketing" })).then(() => { setF({ ...f, title: "", body_text: "", tags: "" }); reload(); })}>Save template</button>
+      </div>
+      {loading ? <Loading /> : !data.length ? <Empty>{q || channel ? "Nothing matches." : "No templates."}</Empty> : (
+        <div className="grid cols-3">{data.map((t) => (
+          <div key={t.id} className="card">
+            <div className="row between"><b>{t.title}</b><Ch c={t.channel} /></div>
+            <div className="mt muted" style={{ whiteSpace: "pre-wrap", maxHeight: 140, overflow: "hidden" }}>{t.body_text}</div>
+            <div className="row mt">{t.tags.map((x: string) => <span key={x} className="badge">{x}</span>)}</div>
+            <div className="row mt"><Link href={`/marketing/compose/${t.channel === "social" ? "email" : t.channel}`}><button className="sm ghost">Use</button></Link><button className="sm ghost" onClick={() => run("Deleted", () => mk.deleteFromLibrary(t.id)).then(reload)}>Delete</button></div>
+          </div>
+        ))}</div>
+      )}
+    </>
+  );
+}
+
+export function Leads() {
+  const { data, loading, error } = useLoad(() => mk.leads());
+  const campaigns = useLoad(() => mk.campaigns());
+  const name = (id: string | null) => (id && (campaigns.data || []).find((c) => c.id === id)?.name) || "—";
+  return (
+    <>
+      <PageHead title="Leads" text="People who filled a landing-page form. Each one is also turned into a scored CRM lead by the Revenue Agent." />
+      <ErrorNote error={error} />
+      {loading ? <Loading /> : !(data || []).length ? <Empty>No leads yet.</Empty> : (
+        <div className="card table-wrap"><table>
+          <thead><tr><th>Name</th><th>Contact</th><th>Landing page</th><th>Campaign</th><th>Consent</th><th>When</th></tr></thead>
+          <tbody>{(data || []).slice().reverse().map((l) => (
+            <tr key={l.id}><td><b>{l.name}</b></td><td>{l.email}<div className="muted">{l.phone}</div></td><td className="mono">{l.landing_page}</td><td>{name(l.campaign_id)}</td><td>{l.consent_marketing ? <span className="badge ok">yes</span> : <span className="badge">no</span>}</td><td className="muted">{fmtTime(l.created_at)}</td></tr>
+          ))}</tbody>
+        </table></div>
+      )}
+    </>
+  );
+}

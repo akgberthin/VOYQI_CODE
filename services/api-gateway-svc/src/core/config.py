@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     rbac_base_url: str = "http://rbac-svc:8011"
     permission_cache_seconds: float = 30.0
 
+    # CORS (src/services/cors.py): fixed origins here, plus the ones super
+    # admin lists under Platform settings → Security (read from rbac-svc
+    # with the shared internal token).
+    cors_allowed_origins: str = ""
+    cors_refresh_seconds: float = 60.0
+    internal_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -24,3 +24,9 @@ async def test_audit_log_ordered_most_recent_first(client):
     await client.post("/api/v1/rbac/module-grants", json={"module_key": "loaners"}, headers=TENANT_HEADERS)
     log = (await client.get("/api/v1/rbac/audit-log", headers=TENANT_HEADERS)).json()
     assert log[0]["resource"] == "loaners"
+
+
+async def test_audit_log_entries_say_when_they_happened(client):
+    await client.post("/api/v1/rbac/module-grants", json={"module_key": "fleet"}, headers=TENANT_HEADERS)
+    entry = (await client.get("/api/v1/rbac/audit-log", headers=TENANT_HEADERS)).json()[0]
+    assert entry["occurred_at"].startswith("20")

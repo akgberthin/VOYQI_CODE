@@ -5,9 +5,42 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from src.core.config import get_settings
-from src.services import autopilot, journeys, send_engine, social_engine
+from src.seo import agents_bridge
+from src.seo import content as seo_content
+from src.seo import tasks as seo_tasks
+from src.seo.common import SeoError
+from src.services import autopilot, journeys, report_schedules, reports, send_engine, social_engine, tracking
 
 logger = logging.getLogger("marketing-svc.scheduler")
+_cycles: set[asyncio.Task] = set()
+
+
+async def _seo_cycle(tenant_id: str, site_id: str) -> None:
+    try:
+        result = await agents_bridge.run_cycle(tenant_id, site_id)
+        logger.info("SEO cycle for %s: %s", site_id, result.get("summary", result))
+    except SeoError as exc:
+        logger.warning("SEO cycle for %s did not run: %s", site_id, exc.detail)
+
+
+async def run_seo(session_factory) -> int:
+    """Publishes SEO content whose time has come and starts the autopilot
+    cycle for each site that is due (in the background: a cycle can take
+    minutes)."""
+    published = await seo_content.publish_due(session_factory)
+    minutes = get_settings().seo_cycle_minutes
+    if minutes <= 0:
+        return published
+    async with session_factory() as db:
+        due = await seo_tasks.due_sites(db, minutes)
+    for tenant_id, site_id in due:
+        async with session_factory() as db:
+            if not await seo_tasks.mark_cycle(db, tenant_id, site_id):
+                continue
+        task = asyncio.create_task(_seo_cycle(tenant_id, site_id))
+        _cycles.add(task)
+        task.add_done_callback(_cycles.discard)
+    return published
 
 
 async def run_once(session_factory) -> int:
@@ -64,6 +97,21 @@ async def run_once(session_factory) -> int:
                 ran += 1
             except Exception:
                 logger.exception("scheduled post %s failed", post_id)
+    try:
+        ran += await tracking.sync_outcomes(session_factory)
+        ran += await tracking.retry_due(session_factory)
+    except Exception:
+        logger.exception("delivery outcome / retry pass failed")
+    try:
+        ran += await reports.send_due(session_factory)
+        ran += await report_schedules.send_due(session_factory)
+        ran += await social_engine.refresh_due_metrics(session_factory)
+    except Exception:
+        logger.exception("scheduled report email failed")
+    try:
+        ran += await run_seo(session_factory)
+    except Exception:
+        logger.exception("SEO scheduling pass failed")
     return ran
 
 

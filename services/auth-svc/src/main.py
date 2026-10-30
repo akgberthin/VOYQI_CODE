@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.auth import router as auth_router
+from src.api.internal import router as internal_router
 from src.core.config import get_settings
 from src.core.database import init_models
 
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="auth-svc", lifespan=lifespan)
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(internal_router)
 
 
 @app.get("/health")
