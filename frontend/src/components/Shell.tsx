@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { loadAlerts, readIds } from "@/features/admin/alerts";
+import { loadVoyqiUi, pickerGroups, type Theme } from "@/lib/voyqiUi";
 import { get, onExpired, post } from "@/lib/api";
 import { SessionCtx, type Me } from "@/lib/session";
 import { ToastHost } from "@/lib/ui";
@@ -48,15 +49,42 @@ const BADGE: Record<Console, [href: string, load: () => Promise<number>]> = {
 const AI_TAG = new Set(["/admin/ai/agents", "/admin/website/ai-assist", "/marketing/studio", "/marketing/autopilot", "/marketing/seo/geo", "/marketing/seo/strategy"]);
 const strip = (label: string) => label.replace(/^[^\p{L}\p{N}]+/u, "");
 
-type Theme = "dark" | "light" | "system";
+/** Theme preference, kept by the shared library (falls back to plain storage if it didn't load). */
 function useTheme(): [Theme, (t: Theme) => void] {
   const [theme, setTheme] = useState<Theme>("dark");
-  useEffect(() => { const t = document.documentElement.dataset.theme as Theme; if (t) setTheme(t); }, []);
+  useEffect(() => {
+    try { const t = localStorage.getItem("voyqi.theme") as Theme | null; if (t) setTheme(t); } catch { /* default */ }
+    let off = () => {};
+    loadVoyqiUi().then((lib) => { if (lib) { setTheme(lib.getThemePref()); off = lib.subscribeTheme(() => setTheme(lib.getThemePref())); } });
+    return () => off();
+  }, []);
   return [theme, (t) => {
     setTheme(t);
-    document.documentElement.dataset.theme = t;
-    try { localStorage.setItem("voyqi.theme", t); } catch { /* not remembered */ }
+    if (window.VoyqiUI) window.VoyqiUI.setThemePref(t);
+    else {
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem("voyqi.theme", t); } catch { /* not remembered */ }
+    }
   }];
+}
+
+/** Language picker, as in the Marketing Command Center: active languages by region, native names. */
+function LanguagePicker() {
+  const [lib, setLib] = useState<NonNullable<Window["VoyqiUI"]> | null>(null);
+  const [code, setCode] = useState("en");
+  useEffect(() => {
+    let off = () => {};
+    loadVoyqiUi().then((l) => { if (!l) return; setLib(l); setCode(l.getLocale()); off = l.subscribe(() => setCode(l.getLocale())); });
+    return () => off();
+  }, []);
+  if (!lib) return null;
+  return (
+    <select className="vp-lang" aria-label="Choose language" data-no-i18n="" value={code} onChange={(e) => lib.setLocale(e.target.value)}>
+      {pickerGroups(lib).map(([region, ls]) => (
+        <optgroup key={region} label={region}>{ls.map((l) => <option key={l.code} value={l.code} lang={l.code}>{l.native}</option>)}</optgroup>
+      ))}
+    </select>
+  );
 }
 
 /** Jump to any page of the consoles this account can open. Ctrl+K or / to focus. */
@@ -167,7 +195,7 @@ export function Shell({ children }: { children: ReactNode }) {
     setMe(m);
     try { m ? sessionStorage.setItem(ME_KEY, JSON.stringify(m)) : sessionStorage.removeItem(ME_KEY); } catch { /* private mode */ }
   };
-  useEffect(() => { setMe(loadMe()); setReady(true); }, []);
+  useEffect(() => { setMe(loadMe()); setReady(true); loadVoyqiUi(); }, []);
   useEffect(() => onExpired(() => remember(null)), []);
 
   const current = consoleOf(path);
@@ -209,17 +237,18 @@ export function Shell({ children }: { children: ReactNode }) {
                 ))}
               </span>
             ) : <span className="where">{cfg.title}</span>}
-            <span className="where">tenant {me.tenant_id}</span>
+            <span className="where tenant">tenant {me.tenant_id}</span>
             <Search consoles={(Object.keys(CONSOLES) as Console[]).filter((c) => me.access[c])} />
             <span className="spacer" />
+            <LanguagePicker />
             <div className="theme-pick" role="group" aria-label="Theme">
               {(["light", "dark", "system"] as Theme[]).map((t) => <button key={t} className={theme === t ? "on" : ""} onClick={() => setTheme(t)}>{t === "light" ? "☀ Light" : t === "dark" ? "☾ Dark" : "System"}</button>)}
             </div>
             {me.access.admin && <Bell me={me} path={path} />}
             <div className="who">
               {me.access.admin
-                ? <Link href="/admin/profile" className="row" style={{ color: "inherit", textDecoration: "none" }}><span className="avatar">{initials}</span><span>{me.email}</span></Link>
-                : <><span className="avatar">{initials}</span><span>{me.email}</span></>}
+                ? <Link href="/admin/profile" className="row" style={{ color: "inherit", textDecoration: "none" }}><span className="avatar">{initials}</span><span className="email">{me.email}</span></Link>
+                : <><span className="avatar">{initials}</span><span className="email">{me.email}</span></>}
               <button className="sm ghost" onClick={logout}>Sign out</button>
             </div>
           </header>

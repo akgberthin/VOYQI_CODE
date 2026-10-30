@@ -263,3 +263,27 @@ pre.json { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.
 .side h6.toggle:hover { color: var(--ink); }
 .side .tag { margin-left: auto; line-height: 13px; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; border-radius: 4px; padding: 1px 5px; background: var(--ai-bg); color: var(--ai); }
 @media (max-width: 900px) { .search input { width: 160px; } .theme-pick { display: none; } }
+
+/* Language picker + right-to-left (Arabic, Urdu) + scripts the base fonts may lack */
+.vp-lang { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 12.5px; max-width: 170px; }
+[dir=rtl] .side { border-right: none; border-left: 1px solid var(--line); }
+[dir=rtl] .side .count, [dir=rtl] .side .tag { margin-left: 0; margin-right: auto; }
+[dir=rtl] .search .results { left: auto; right: 0; }
+[dir=rtl] input[type=email], [dir=rtl] input[type=url], [dir=rtl] input[type=number], [dir=rtl] .mono, [dir=rtl] code { direction: ltr; text-align: left; }
+[dir=rtl] :where(p, h1, h2, h3, h4, li, td, th, label, button, .badge, .sub, .muted, .notice, .vp-lang option) { unicode-bidi: plaintext; }
+:root[lang=ar], :root[lang=ur] { --vp-font: "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif; }
+:root[lang=am] { --vp-font: "Noto Sans Ethiopic", "Nyala", "Abyssinica SIL", sans-serif; }
+:root[lang=hi] { --vp-font: "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif; }
+:root[lang=bn] { --vp-font: "Noto Sans Bengali", "Nirmala UI", sans-serif; }
+:root[lang=th] { --vp-font: "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif; }
+:root[lang=zh] { --vp-font: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+:root[lang=zh-Hant] { --vp-font: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+:root[lang=ja] { --vp-font: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; }
+:root[lang=ko] { --vp-font: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+:root[lang=ar] body, :root[lang=ur] body, :root[lang=am] body, :root[lang=hi] body, :root[lang=bn] body, :root[lang=th] body, :root[lang=zh] body, :root[lang=zh-Hant] body, :root[lang=ja] body, :root[lang=ko] body { font-family: var(--vp-font); }
+/* Top bar: never wrap; drop the least important bits as space runs out */
+.topbar, .topbar * { white-space: nowrap; }
+.topbar { gap: 12px; }
+@media (max-width: 1500px) { .topbar .where.tenant { display: none; } }
+@media (max-width: 1350px) { .who .email { display: none; } }
+@media (max-width: 1150px) { .search input { width: 180px; } .vp-lang { max-width: 110px; } }
