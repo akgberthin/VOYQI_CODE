@@ -314,4 +314,7 @@ async def resolve_effective_permissions(user_id: uuid.UUID, tenant_id: str = Dep
     stamps their "last seen" (at most once a minute)."""
     if x_record_seen:
         await rbac_engine.touch_last_seen(db, tenant_id, user_id, get_settings().last_seen_resolution_seconds)
-    return await rbac_engine.resolve_effective_permissions(db, tenant_id, user_id)
+    try:
+        return await rbac_engine.resolve_effective_permissions(db, tenant_id, user_id)
+    except account_status.AccountServiceError as exc:
+        raise HTTPException(status_code=503, detail=f"MFA is required on this tenant and sign-in status can't be checked: {exc}") from exc

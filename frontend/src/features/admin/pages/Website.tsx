@@ -396,6 +396,74 @@ export function AiAssist() {
 }
 
 // ── Platform settings ─────────────────────────────────────────────────
+/** general.platform — the console's name (top bar, page titles) and defaults. */
+function PlatformCard() {
+  const run = useAction();
+  const actor = useActor();
+  const { me } = useSession();
+  const current = useLoad(async () => (await must<any[]>(get(`${R}/settings?category=general`))).find((x) => x.key === "platform")?.value || {});
+  const [f, setF] = useState<any>(null);
+  const v = f || { platform_name: current.data?.platform_name || "VOYQI", default_market: current.data?.default_market || "", environment: current.data?.environment || "production" };
+  const save = () => run("Platform settings saved", () => must(post(`${R}/settings`, { category: "general", key: "platform", value: { platform_name: v.platform_name.trim(), default_market: v.default_market.trim(), environment: v.environment }, updated_by: actor })))
+    .then((ok) => { if (ok) { setF(null); current.reload(); window.dispatchEvent(new Event("voyqi-platform-changed")); } });
+  return (
+    <div className="card">
+      <h3>Platform</h3>
+      <div className="sub">The name shows in the console&apos;s top bar and page titles.</div>
+      <div className="form mt">
+        <label className="field">Platform name<input value={v.platform_name} onChange={(e) => setF({ ...v, platform_name: e.target.value })} /></label>
+        <label className="field">Default market<input placeholder="Miami, FL" value={v.default_market} onChange={(e) => setF({ ...v, default_market: e.target.value })} /></label>
+        <label className="field">Environment<select value={v.environment} onChange={(e) => setF({ ...v, environment: e.target.value })}>{["production", "staging", "development"].map((x) => <option key={x}>{x}</option>)}</select></label>
+        <label className="field">Tenant (X-Tenant-Id)<input className="mono" readOnly value={me?.tenant_id || ""} /></label>
+      </div>
+      <button className="mt" disabled={!f || !v.platform_name.trim()} onClick={save}>Save platform settings</button>
+    </div>
+  );
+}
+
+/** Security policy — enforced by rbac-svc (required MFA) and the gateway (CORS). */
+function SecurityCard() {
+  const run = useAction();
+  const actor = useActor();
+  const { me } = useSession();
+  const policy = useLoad(() => must<any>(get(`${R}/security-policy`)));
+  const [origins, setOrigins] = useState<string | null>(null);
+  // The box shows its new state while the change is saved.
+  const [mfaPending, setMfaPending] = useState<boolean | null>(null);
+  const p = policy.data;
+  const put = (body: any, label: string) => run(label, () => must(api("PUT", `${R}/security-policy`, { ...body, updated_by: actor, actor_user_id: me?.user_id }))).then((ok) => { if (ok) { setOrigins(null); policy.reload(); } return ok; });
+  return (
+    <div className="card">
+      <h3>Security</h3>
+      <ErrorNote error={policy.error} />
+      {!p ? <Loading /> : (
+        <>
+          <label className="row mt" style={{ gap: 10, cursor: "pointer" }}>
+            <input type="checkbox" checked={mfaPending ?? p.require_mfa_for_operators} disabled={mfaPending !== null}
+              onChange={(e) => {
+                const on = e.target.checked;
+                if (!confirm(on ? "Require MFA for every operator? Anyone without it loses all access until they set it up under My profile." : "Stop requiring MFA? Operators without it get their access back.")) return;
+                setMfaPending(on);
+                put({ require_mfa_for_operators: on }, on ? "MFA now required for operators" : "MFA no longer required").finally(() => setMfaPending(null));
+              }} />
+            <span><b>Require TOTP MFA for operator accounts</b><div className="muted" style={{ fontSize: 12 }}>Enforced at the gateway: an operator without MFA gets no permissions (they can still sign in and set it up).</div></span>
+          </label>
+          <label className="field mt">CORS allowed origins — one per line
+            <textarea style={{ minHeight: 70 }} className="mono" placeholder={"https://app.voyqi.com\nhttps://portal.voyqi.com"} value={origins ?? p.cors_allowed_origins.join("\n")} onChange={(e) => setOrigins(e.target.value)} />
+          </label>
+          <div className="sub">Browser apps on these origins may call the API with a signed-in session. https only (http for localhost); no wildcards. The gateway picks up changes within a minute.</div>
+          <button className="mt" disabled={origins === null} onClick={() => put({ cors_allowed_origins: (origins || "").split(/\s+/).filter(Boolean) }, "Allowed origins saved")}>Save origins</button>
+          <h4 className="mt">Always on</h4>
+          <table><tbody>{p.enforced.map((e: any) => (
+            <tr key={e.key}><td>{e.key === "api_keys" ? <Badge>off</Badge> : <Badge kind="ok">on</Badge>}</td><td>{e.label}</td><td className="muted mono" style={{ fontSize: 11 }}>{e.where}</td></tr>
+          ))}</tbody></table>
+          <div className="row mt"><Link href="/admin/services"><button className="sm ghost">Service health</button></Link><Link href="/admin/integrations"><button className="sm ghost">Integrations</button></Link></div>
+        </>
+      )}
+    </div>
+  );
+}
+
 const SETTING_CATS: [string, string, string][] = [
   ["payment_gateway", "Payment gateways", '{"provider": "stripe", "publishable_key": "pk_live_…", "enabled": true}'],
   ["branding", "Branding / UI-UX", '{"logo_url": "https://…", "product_name": "VOYQI"}'],
@@ -424,7 +492,8 @@ export function Settings() {
   const cat = SETTING_CATS.find(([k]) => k === tab)!;
   return (
     <>
-      <PageHead title="Platform settings" text="Payment gateways, branding, feature flags and general configuration. None of this touches access control — that stays with roles and ABAC. Third-party credentials live under Integrations, encrypted." />
+      <PageHead title="Platform settings" text="Platform identity, security policy, payment gateways, branding, feature flags and general configuration. Third-party credentials live under Integrations, encrypted." />
+      <div className="grid cols-2 mb"><PlatformCard /><SecurityCard /></div>
       <ErrorNote error={error} />
       <div className="tabs">{SETTING_CATS.map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} onClick={() => { setTab(k); setOpen(null); }}>{l} <span className="muted">({(data || []).filter((s) => s.category === k).length})</span></button>)}</div>
       <div className="card mb">

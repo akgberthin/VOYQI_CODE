@@ -473,6 +473,7 @@ services:
     environment:
       GATEWAY_JWT_SECRET: ${VOYQI_JWT_SECRET:-local-dev-shared-jwt-secret-change-me}
       GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_INTERNAL_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
     depends_on:
       redis:
         condition: service_started

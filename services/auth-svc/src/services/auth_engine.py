@@ -189,17 +189,20 @@ async def enroll_mfa(db: AsyncSession, *, user_credential_id: uuid.UUID, tenant_
     result = await db.execute(select(UserCredential).where(UserCredential.id == user_credential_id, UserCredential.tenant_id == tenant_id))
     cred = result.scalar_one()
     secret = pyotp.random_base32()
-    cred.mfa_secret = secret
+    cred.mfa_pending_secret = secret
     return pyotp.TOTP(secret).provisioning_uri(name=cred.email, issuer_name="VOYQI")
 
 
 async def confirm_mfa_enrollment(db: AsyncSession, *, user_credential_id: uuid.UUID, tenant_id: str, totp_code: str) -> bool:
     result = await db.execute(select(UserCredential).where(UserCredential.id == user_credential_id, UserCredential.tenant_id == tenant_id))
     cred = result.scalar_one()
-    if not cred.mfa_secret:
+    secret = cred.mfa_pending_secret or (cred.mfa_secret if not cred.mfa_enabled else None)
+    if not secret:
         return False
-    if not pyotp.TOTP(cred.mfa_secret).verify(totp_code, valid_window=1):
+    if not pyotp.TOTP(secret).verify(totp_code, valid_window=1):
         return False
+    cred.mfa_secret = secret
+    cred.mfa_pending_secret = None
     cred.mfa_enabled = True
     return True
 

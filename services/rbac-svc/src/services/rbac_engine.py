@@ -164,6 +164,12 @@ async def resolve_effective_permissions(db: AsyncSession, tenant_id: str, user_i
     if user is not None and user.status == UserStatus.SUSPENDED:
         # A suspended account keeps its roles on record but can use none of them.
         return {"user_id": str(user_id), "effective_permissions": [], "denied": [], "suspended": True}
+    from src.services import account_status, security_policy
+    if (await security_policy.get(db, tenant_id))["require_mfa_for_operators"] and user is not None:
+        # Fails closed like the gateway: if auth-svc can't say, no access.
+        acct = (await account_status.fetch(tenant_id, [str(user_id)])).get(str(user_id))
+        if acct is not None and not acct["mfa_enabled"]:
+            return {"user_id": str(user_id), "effective_permissions": [], "denied": [], "mfa_required": True}
     assignments = await get_user_role_assignments(db, tenant_id, user_id)
     role_ids = [a.role_id for a in assignments]
     allowed: set[str] = set()

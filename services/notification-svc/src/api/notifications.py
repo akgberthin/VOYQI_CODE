@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
@@ -12,7 +12,7 @@ from src.core.kafka_events import publish_event
 DELIVERY_EVENT = {"sent": "notification.sent", "failed": "notification.failed", "skipped_opted_out": "notification.skipped_opted_out"}
 from src.core.security import get_tenant_id
 from src.models import Notification, NotificationTemplate
-from src.services import notification_engine, template_seed
+from src.services import notification_engine, sources, template_seed
 
 router = APIRouter()
 
@@ -97,16 +97,29 @@ async def send_direct(payload: DirectIn, background_tasks: BackgroundTasks, tena
 
 
 @router.get("/notifications")
-async def list_notifications(recipient: str | None = None, status: str | None = None, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
-    query = select(Notification).where(Notification.tenant_id == tenant_id).order_by(Notification.created_at.desc()).limit(200)
+async def list_notifications(recipient: str | None = None, status: str | None = None, channel: str | None = None, sender: str | None = None,
+                             hours: int | None = None, limit: int = 200, tenant_id: str = Depends(get_tenant_id), db: AsyncSession = Depends(get_db)):
+    """The delivery log, newest first. `status=failed` also matches messages
+    the provider accepted and later reported undelivered."""
+    query = select(Notification).where(Notification.tenant_id == tenant_id).order_by(Notification.created_at.desc())
     if recipient:
         query = query.where(Notification.recipient == recipient)
-    if status:
+    if status == "failed":
+        query = query.where(or_(Notification.status == "failed", Notification.provider_status.in_(("undelivered", "failed"))))
+    elif status:
         query = query.where(Notification.status == status)
-    result = await db.execute(query)
-    rows = result.scalars().all()
+    if channel:
+        query = query.where(Notification.channel == channel)
+    if hours:
+        query = query.where(Notification.created_at >= datetime.now(timezone.utc) - timedelta(hours=max(1, min(hours, 24 * 90))))
+    limit = max(1, min(limit, 500))
+    rows = (await db.execute(query.limit(limit if not sender else 2000))).scalars().all()
+    if sender:
+        rows = [r for r in rows if sources.classify(r.template_key) == sender][:limit]
     return [{"id": r.id, "channel": r.channel, "template_key": r.template_key, "recipient": r.recipient, "status": r.status,
-             "delivery_mode": r.delivery_mode, "error_message": r.error_message, "created_at": r.created_at,
+             "delivery_mode": r.delivery_mode, "error_message": r.error_message, "created_at": r.created_at, "sent_at": r.sent_at,
+             "subject": r.subject, "preview": (r.body or "")[:140], "sender": sources.classify(r.template_key),
+             "sender_label": sources.LABEL[sources.classify(r.template_key)], "automated": sources.classify(r.template_key) in sources.AUTOMATED,
              "provider_status": r.provider_status, "answered_by": r.answered_by} for r in rows]
 
 
@@ -121,13 +134,27 @@ async def delivery_summary(hours: int = 24, tenant_id: str = Depends(get_tenant_
         .group_by(Notification.channel, Notification.status, Notification.delivery_mode, Notification.provider_status)
     )).all()
     out: dict[str, dict[str, int]] = {}
+    totals = {"total": 0, "delivered": 0, "console": 0, "failed": 0, "opted_out": 0, "automated": 0}
+    by_sender: dict[str, int] = {}
+    for tag, n in (await db.execute(
+        select(Notification.template_key, func.count()).where(Notification.tenant_id == tenant_id, Notification.created_at >= since).group_by(Notification.template_key)
+    )).all():
+        who = sources.classify(tag)
+        by_sender[who] = by_sender.get(who, 0) + n
+        totals["automated"] += n if who in sources.AUTOMATED else 0
     for channel, status, mode, provider_status, n in rows:
         bucket = out.setdefault(channel, {"delivered": 0, "console": 0, "failed": 0, "opted_out": 0})
         # Accepted by the provider but later reported undelivered counts as failed.
         failed = status == "failed" or provider_status in ("undelivered", "failed")
         key = "failed" if failed else "opted_out" if status == "skipped_opted_out" else "console" if mode == "console" else "delivered"
         bucket[key] += n
-    return {"hours": hours, "channels": out}
+        totals[key] += n
+        totals["total"] += n
+    attempted = totals["delivered"] + totals["failed"]
+    return {"hours": hours, "channels": out, "totals": totals,
+            # Of messages handed to a real provider, the share not failed. None until something really went out.
+            "delivery_rate": round(totals["delivered"] / attempted, 4) if attempted else None,
+            "by_sender": [{"sender": k, "label": sources.LABEL[k], "count": v, "automated": k in sources.AUTOMATED} for k, v in sorted(by_sender.items(), key=lambda x: -x[1])]}
 
 
 @router.post("/templates/seed-defaults")

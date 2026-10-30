@@ -54,6 +54,47 @@ function SendTest({ onSent }: { onSent: () => void }) {
   );
 }
 
+const SENDERS: [string, string][] = [["", "All senders"], ["campaign", "Campaign"], ["automation", "Automation flow"], ["retry", "Automatic retry"],
+  ["report", "Scheduled report"], ["seo_agent", "SEO agent"], ["super_admin", "Super admin"], ["system", "Platform"]];
+
+/** Every message notification-svc handled, filterable — what was sent, by whom, and what happened. */
+function DeliveryLog({ hours, version }: { hours: number; version: number }) {
+  const [f, setF] = useState({ channel: "", status: "", sender: "" });
+  const log = useLoad(() => must<any[]>(get(`/api/v1/notifications/notifications?hours=${hours}&limit=100${f.channel ? `&channel=${f.channel}` : ""}${f.status ? `&status=${f.status}` : ""}${f.sender ? `&sender=${f.sender}` : ""}`)), [hours, f.channel, f.status, f.sender, version]);
+  const outcome = (n: any) => {
+    if (n.status === "failed" || ["undelivered", "failed"].includes(n.provider_status)) return <Badge kind="bad">failed</Badge>;
+    if (n.status === "skipped_opted_out") return <Badge>opted out</Badge>;
+    if (n.delivery_mode === "console") return <Badge kind="warn">console only</Badge>;
+    return <Badge kind="ok">{n.answered_by ? n.answered_by.replace(/_/g, " ") : n.provider_status || "sent"}</Badge>;
+  };
+  return (
+    <div className="card mb table-wrap">
+      <div className="row between">
+        <h3>Delivery log</h3>
+        <div className="row">
+          <select value={f.channel} onChange={(e) => setF({ ...f, channel: e.target.value })}><option value="">All channels</option>{["email", "sms", "push", "voice"].map((c) => <option key={c}>{c}</option>)}</select>
+          <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="">Any outcome</option><option value="sent">sent</option><option value="failed">failed</option><option value="skipped_opted_out">opted out</option></select>
+          <select value={f.sender} onChange={(e) => setF({ ...f, sender: e.target.value })}>{SENDERS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+        </div>
+      </div>
+      <ErrorNote error={log.error} />
+      {log.loading && !log.data ? <Loading /> : !(log.data || []).length ? <Empty>No messages match.</Empty> : (
+        <table className="mt"><thead><tr><th>When</th><th>Message</th><th>To</th><th>Channel</th><th>Sent by</th><th>Outcome</th></tr></thead>
+          <tbody>{(log.data || []).map((n) => (
+            <tr key={n.id}>
+              <td className="muted" style={{ whiteSpace: "nowrap" }}>{fmtTime(n.created_at)}</td>
+              <td style={{ maxWidth: 340 }}><b>{n.subject || n.preview.slice(0, 60) || "—"}</b>{n.subject && <div className="muted" style={{ fontSize: 12 }}>{n.preview.slice(0, 90)}</div>}{n.error_message && <div style={{ color: "var(--bad)", fontSize: 12 }}>{n.error_message}</div>}</td>
+              <td className="mono" style={{ fontSize: 12 }}>{n.recipient}</td>
+              <td>{n.channel}</td>
+              <td>{n.sender_label}{n.automated && <Badge kind="info">auto</Badge>}</td>
+              <td>{outcome(n)}</td>
+            </tr>
+          ))}</tbody></table>
+      )}
+    </div>
+  );
+}
+
 export default function Messaging() {
   const run = useAction();
   const [hours, setHours] = useState(24);
@@ -65,13 +106,25 @@ export default function Messaging() {
   const policy = useLoad(() => must<any>(get("/api/v1/marketing/settings")));
   const agent = useLoad(async () => (await must<any[]>(get("/api/v1/ai/agents/registry"))).find((a) => a.key === "marketing_content_agent"));
   const channels = Object.entries(summary.data?.channels || {}) as [string, any][];
-  const failures = (recent.data || []).filter((n) => n.status === "failed").slice(0, 8);
+  const failures = (recent.data || []).filter((n) => n.status === "failed" || ["undelivered", "failed"].includes(n.provider_status)).slice(0, 8);
+  const [version, setVersion] = useState(0);
+  const t = summary.data?.totals;
+  const rate = summary.data?.delivery_rate;
+  const period = hours === 24 ? "last 24 hours" : hours === 168 ? "last 7 days" : "last 30 days";
   const setAutopilot = (body: any, label: string) => run(label, () => must(api("PUT", "/api/v1/marketing/autopilot", body))).then(autopilot.reload);
   return (
     <>
       <PageHead title="Messaging & automation" text="Which outward channels are really live, what was actually delivered, and the marketing automation running on this tenant — with the controls to stop it.">
-        <button className="ghost" onClick={() => { integrations.reload(); summary.reload(); recent.reload(); autopilot.reload(); journeys.reload(); }}>Refresh</button>
+        <select value={hours} onChange={(e) => setHours(Number(e.target.value))}>{[24, 168, 720].map((h) => <option key={h} value={h}>last {h === 24 ? "24 hours" : h === 168 ? "7 days" : "30 days"}</option>)}</select>
+        <button className="ghost" onClick={() => { integrations.reload(); summary.reload(); recent.reload(); autopilot.reload(); journeys.reload(); setVersion(version + 1); }}>Refresh</button>
       </PageHead>
+
+      <div className="grid cols-4 mb">
+        <div className="card kpi"><div className="l">Sent</div><div className="n">{t ? t.total.toLocaleString() : "—"}</div><div className="d">{period} · all channels</div></div>
+        <div className="card kpi"><div className="l">Delivery rate</div><div className="n" style={{ color: rate == null ? undefined : rate >= 0.97 ? "var(--ok)" : "var(--bad)" }}>{rate == null ? "—" : `${(rate * 100).toFixed(1)}%`}</div><div className="d">{rate == null ? "nothing went through a provider yet" : rate >= 0.97 ? "SLA 97% ✓" : "below the 97% SLA"}</div></div>
+        <div className="card kpi"><div className="l">Automated</div><div className="n">{t ? t.automated.toLocaleString() : "—"}</div><div className="d">{t && t.total ? `${Math.round((t.automated / t.total) * 100)}% — flows, agents, retries, reports` : "flows, agents, retries, reports"}</div></div>
+        <div className="card kpi"><div className="l">Failed</div><div className="n" style={{ color: t?.failed ? "var(--bad)" : undefined }}>{t ? t.failed : "—"}</div><div className="d">{t?.console ? `${t.console} console only (no provider)` : "including provider-reported"}</div></div>
+      </div>
 
       <div className="card mb">
         <div className="row between"><h3>Channel readiness</h3><Link href="/admin/integrations">Manage integrations</Link></div>
@@ -86,8 +139,8 @@ export default function Messaging() {
 
       <div className="card mb">
         <div className="row between">
-          <h3>Delivery</h3>
-          <select value={hours} onChange={(e) => setHours(Number(e.target.value))}>{[24, 168, 720].map((h) => <option key={h} value={h}>last {h === 24 ? "24 hours" : h === 168 ? "7 days" : "30 days"}</option>)}</select>
+          <h3>Delivery by channel</h3>
+          <span className="muted">{period}</span>
         </div>
         <div className="sub">“Console only” messages were rendered and logged but never left VOYQI, because no provider was set up for that channel.</div>
         {summary.loading ? <Loading /> : !channels.length ? <Empty>Nothing sent in this period.</Empty> : (
@@ -95,6 +148,9 @@ export default function Messaging() {
             <tbody>{channels.map(([ch, c]) => (
               <tr key={ch}><td><b>{ch}</b></td><td>{c.delivered}</td><td className="muted">{c.console}</td><td style={{ color: c.failed ? "var(--bad)" : undefined }}>{c.failed}</td><td className="muted">{c.opted_out}</td></tr>
             ))}</tbody></table>
+        )}
+        {(summary.data?.by_sender || []).length > 0 && (
+          <div className="row mt">{summary.data.by_sender.map((x: any) => <span key={x.sender} className="badge">{x.label}: <b>{x.count}</b></span>)}</div>
         )}
         {failures.length > 0 && (
           <>
@@ -106,7 +162,9 @@ export default function Messaging() {
         )}
       </div>
 
-      <SendTest onSent={() => { summary.reload(); recent.reload(); }} />
+      <DeliveryLog hours={hours} version={version} />
+
+      <SendTest onSent={() => { summary.reload(); recent.reload(); setVersion((v) => v + 1); }} />
 
       <div className="grid cols-2">
         <div className="card">

@@ -228,6 +228,7 @@ class SettingCategory(str, enum.Enum):
     FEATURE_FLAG = "feature_flag"
     GENERAL = "general"
     AI_CONTENT_ASSIST = "ai_content_assist"
+    SECURITY = "security"
 
 
 class PlatformSetting(Base):

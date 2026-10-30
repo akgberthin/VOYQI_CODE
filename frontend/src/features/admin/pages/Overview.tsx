@@ -84,13 +84,28 @@ export default function Overview() {
           ) : <div className="empty">Nothing waiting.</div>}
         </div>
       </div>
-      <div className="card mt">
+      <div className="grid mt" style={{ gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)" }}>
+      <div className="card">
         <div className="row between"><h3>Recent platform activity</h3><Link href="/admin/security/audit">Audit log</Link></div>
         {data.audit.length ? (
           <table className="mt"><tbody>{data.audit.slice(0, 8).map((e) => (
             <tr key={e.id}><td className="muted" style={{ whiteSpace: "nowrap" }}>{fmtTime(e.occurred_at)}</td><td><Badge kind={e.actor_type === "ai" ? "ai" : ""}>{e.actor_type}</Badge> {e.actor_id}</td><td className="mono">{e.action}</td><td className="mono muted clip">{e.resource}</td></tr>
           ))}</tbody></table>
         ) : <div className="empty">No activity yet.</div>}
+      </div>
+      <div className="card">
+        <div className="row between"><h3>Subsidiaries</h3><Link href="/admin/access/tenants">Tenants</Link></div>
+        {!data.tenants.length ? <div className="empty">No tenants yet.</div> : (
+          <table className="mt"><tbody>{Object.entries(data.tenants.reduce((acc: Record<string, any[]>, t: any) => ((acc[t.subsidiary || "—"] ||= []).push(t), acc), {}))
+            .sort((a, b) => b[1].length - a[1].length).map(([sub, ts]) => {
+              const suspended = ts.filter((t: any) => t.status === "suspended").length;
+              return (
+                <tr key={sub}><td><b style={{ textTransform: "capitalize" }}>{sub}</b><div className="muted" style={{ fontSize: 12 }}>{ts.slice(0, 3).map((t: any) => t.name).join(", ")}{ts.length > 3 ? ` +${ts.length - 3}` : ""}</div></td>
+                  <td style={{ textAlign: "right" }}>{ts.length} tenant{ts.length > 1 ? "s" : ""}{suspended > 0 && <div><Badge kind="warn">{suspended} suspended</Badge></div>}</td></tr>
+              );
+            })}</tbody></table>
+        )}
+      </div>
       </div>
     </>
   );

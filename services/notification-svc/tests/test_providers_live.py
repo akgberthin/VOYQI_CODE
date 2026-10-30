@@ -178,3 +178,40 @@ async def test_email_attachments_and_their_limits(configured, monkeypatch, clien
     r = await client.post("/api/v1/notifications/send-direct", json={"channel": "email", "recipient": "cmo@x.com", "body": "x",
                                                                        "options": {"attachments": [{"filename": "a.pdf", "data_base64": "not base64!!"}]}}, headers=TENANT_HEADERS)
     assert r.status_code == 400 and "base64" in r.json()["detail"]
+
+
+async def test_delivery_log_and_kpis_by_sender(client, configured, outbound):
+    configured["twilio"] = TWILIO
+    send = lambda source, to="+2": client.post("/api/v1/notifications/send-direct", json={"channel": "sms", "recipient": to, "body": "hello there", "source": source}, headers=TENANT_HEADERS)  # noqa: E731
+    await send("journey:abc")
+    await send("marketing:1234")
+    await send("marketing:1234:retry")
+    await send("super_admin_test")
+    await client.post("/api/v1/notifications/send-direct", json={"channel": "email", "recipient": "a@b.c", "subject": "Hi", "body": "x", "source": "seo_outreach"}, headers=TENANT_HEADERS)  # console
+
+    summary = (await client.get("/api/v1/notifications/summary?hours=1", headers=TENANT_HEADERS)).json()
+    t = summary["totals"]
+    assert t["total"] == 5 and t["delivered"] == 4 and t["console"] == 1 and t["automated"] == 3
+    assert summary["delivery_rate"] == 1.0
+    senders = {x["sender"]: x for x in summary["by_sender"]}
+    assert senders["automation"]["count"] == 1 and senders["automation"]["automated"] and not senders["campaign"]["automated"]
+
+    log = (await client.get("/api/v1/notifications/notifications", params={"sender": "retry"}, headers=TENANT_HEADERS)).json()
+    assert len(log) == 1 and log[0]["sender_label"] == "Automatic retry" and log[0]["automated"] is True and log[0]["preview"] == "hello there"
+    emails = (await client.get("/api/v1/notifications/notifications", params={"channel": "email"}, headers=TENANT_HEADERS)).json()
+    assert len(emails) == 1 and emails[0]["subject"] == "Hi" and emails[0]["sender"] == "seo_agent"
+    assert len((await client.get("/api/v1/notifications/notifications", params={"limit": 2}, headers=TENANT_HEADERS)).json()) == 2
+
+
+async def test_failed_filter_includes_provider_reported_failures(client, db_session):
+    from src.models import Notification
+    db_session.add_all([
+        Notification(tenant_id=TENANT, channel="sms", template_key="x", recipient="+1", body="a", status="sent", delivery_mode="live", provider_status="undelivered"),
+        Notification(tenant_id=TENANT, channel="sms", template_key="x", recipient="+2", body="b", status="failed"),
+        Notification(tenant_id=TENANT, channel="sms", template_key="x", recipient="+3", body="c", status="sent", delivery_mode="live"),
+    ])
+    await db_session.commit()
+    failed = (await client.get("/api/v1/notifications/notifications", params={"status": "failed"}, headers=TENANT_HEADERS)).json()
+    assert sorted(f["recipient"] for f in failed) == ["+1", "+2"]
+    summary = (await client.get("/api/v1/notifications/summary?hours=1", headers=TENANT_HEADERS)).json()
+    assert summary["totals"]["failed"] == 2 and summary["delivery_rate"] == round(1 / 3, 4)

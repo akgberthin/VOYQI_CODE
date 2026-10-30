@@ -39,6 +39,9 @@ class UserCredential(Base):
 
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # A new secret waits here until the user proves their app produces codes
+    # for it, so starting a re-enrolment never breaks the MFA already in use.
+    mfa_pending_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

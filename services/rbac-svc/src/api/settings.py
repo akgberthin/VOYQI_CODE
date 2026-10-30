@@ -32,6 +32,8 @@ async def upsert_setting(body: SettingUpsert, tenant_id: str = Depends(get_tenan
     """Fully autonomous — a configuration change, not an access-control
     decision. Who is allowed to reach this endpoint at all is RBAC's
     job, enforced upstream of this engine, not inside it."""
+    if body.category == "security":
+        raise HTTPException(status_code=422, detail="Security settings are saved through /api/v1/rbac/security-policy, which validates them.")
     setting = await settings_engine.upsert_setting(db, tenant_id, body.category, body.key, body.value, body.updated_by)
     await audit_engine.record(db, tenant_id, "human", body.updated_by, "platform_setting.updated", body.category + "." + body.key)
     return setting

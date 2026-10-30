@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
 
 from src.api.platform import router as platform_router
 from src.api.proxy import router as proxy_router
 from src.core.config import get_settings
+from src.services import cors
 
 settings = get_settings()
 
@@ -21,6 +23,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="api-gateway-svc", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if not origin or not await cors.allowed(origin):
+        return await call_next(request)
+    if request.method == "OPTIONS" and request.headers.get("access-control-request-method"):
+        return Response(status_code=204, headers=cors.headers(origin, preflight=True))
+    response = await call_next(request)
+    for k, v in cors.headers(origin, preflight=False).items():
+        response.headers[k] = v
+    return response
 
 
 @app.get("/health")

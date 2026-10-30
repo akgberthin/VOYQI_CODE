@@ -33,6 +33,8 @@ class RecommendationOut(BaseModel):
     tier: int | None
     requires_accountable_role: bool
     accountable_role: str | None
+    created_at: datetime | None = None
+    decided_at: datetime | None = None
 
 
 class DecisionRequest(BaseModel):

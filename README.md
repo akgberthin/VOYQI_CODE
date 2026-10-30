@@ -81,8 +81,15 @@ demo):
 - **AI** — every agent with a per-tenant kill switch, the approval
   queue, autonomy tiers, prompt versions (evaluate → promote), goals and
   the decision log.
-- **Access & security** — users, roles, overrides, ABAC policies,
-  tenants, break-glass/impersonation sessions and the audit log.
+- **Access & security** — users (last seen, sign-in lockouts with
+  unlock, edit, suspend), roles and who holds them, overrides, ABAC
+  policies, tenants, break-glass/impersonation sessions and the audit log.
+- **Notifications** — what needs a person now (AI approvals, failed
+  deliveries, failing integrations, lockouts, risky overrides), with the
+  unread count on the bell; **Messaging** has the delivery log by sender.
+- **Platform settings** — platform name, and a security policy the
+  services enforce: required MFA for operators (rbac-svc grants nothing
+  to an operator without it) and the CORS origins the gateway answers.
 
 ## Marketing console
 
@@ -216,6 +223,12 @@ before forwarding. If rbac-svc is unreachable the
 request is refused. Self-service paths (`/api/v1/auth/*`, the caller's
 own user record) need no role. `GATEWAY_ENFORCE_RBAC=false` turns
 enforcement off for debugging.
+
+A suspended user, or (when the tenant requires it) an operator without
+MFA, gets no permissions. The gateway's permission check also stamps the
+user's "last seen". Browser apps on other origins get CORS only for the
+origins listed in super admin → Platform settings → Security (plus
+`GATEWAY_CORS_ALLOWED_ORIGINS`).
 
 Logout, password reset and refresh-token reuse revoke access tokens
 immediately through Redis; without Redis a token stays valid until it
